@@ -17,7 +17,7 @@ import bitcoin.core
 from concurrent import futures
 from ephemeral_port_reserve import reserve
 from pyln.testing.utils import wait_for, SimpleBitcoinProxy
-from lnprototest import EventError, SpecFileError
+from lnprototest import EventError, SpecFileError, KeySet
 
 TIMEOUT = int(os.getenv("TIMEOUT", "30"))
 LIGHTNING_SRC = os.getenv("LIGHTNING_SRC", '../lightning/')
@@ -107,6 +107,14 @@ class Runner(lnprototest.Runner):
                                '--list-features-only'],
                               stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').splitlines()
         self.options = dict([o.split('/') for o in opts])
+
+    def get_keyset(self):
+        return KeySet(funding_privkey='0000000000000000000000000000000000000000000000000000000000000010',
+                      revocation_base_secret='0000000000000000000000000000000000000000000000000000000000000011',
+                      payment_base_secret='0000000000000000000000000000000000000000000000000000000000000012',
+                      delayed_payment_base_secret='0000000000000000000000000000000000000000000000000000000000000013',
+                      htlc_base_secret='0000000000000000000000000000000000000000000000000000000000000014',
+                      shachain_seed='FF' * 32)
 
     def start(self):
         self.proc = subprocess.Popen(['{}/lightningd/lightningd'.format(LIGHTNING_SRC),

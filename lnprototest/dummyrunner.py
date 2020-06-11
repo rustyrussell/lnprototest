@@ -3,6 +3,7 @@
 from .runner import Runner, Conn
 from .event import Event
 from typing import List, Optional
+from .keyset import KeySet
 
 
 class DummyRunner(Runner):
@@ -20,6 +21,14 @@ class DummyRunner(Runner):
         self.add_stash('ExpectMsg', [('init', {'temporary_channel_id': "00" * 32,
                                                'features': '',
                                                'globalfeatures': ''})])
+
+    def get_keyset(self) -> KeySet:
+        return KeySet(funding_privkey='10',
+                      revocation_base_secret='11',
+                      payment_base_secret='12',
+                      htlc_base_secret='14',
+                      delayed_payment_base_secret='13',
+                      shachain_seed='FF' * 32)
 
     def has_option(self, optname: str) -> bool:
         return False

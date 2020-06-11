@@ -3,8 +3,10 @@ from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event
 from .utils import privkey_expand
+from .keyset import KeySet
 import coincurve
-from typing import Dict, Optional, List, Union, Any
+import functools
+from typing import Dict, Optional, List, Union, Any, Callable
 
 
 class Conn(object):
@@ -135,3 +137,49 @@ class Runner(object):
     def addhtlc(self, event: Event, conn: Conn,
                 amount: int, preimage: str) -> None:
         raise NotImplementedError()
+
+    def get_keyset(self) -> KeySet:
+        raise NotImplementedError()
+
+
+def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
+    """Get the remote revocation basepoint"""
+    def _remote_revocation_basepoint(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().revocation_basepoint().format().hex()
+
+    return _remote_revocation_basepoint
+
+
+def remote_payment_basepoint() -> Callable[[Runner, Event, str], str]:
+    """Get the remote payment basepoint"""
+    def _remote_payment_basepoint(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().payment_basepoint().format().hex()
+    return _remote_payment_basepoint
+
+
+def remote_delayed_payment_basepoint() -> Callable[[Runner, Event, str], str]:
+    """Get the remote delayed_payment basepoint"""
+    def _remote_delayed_payment_basepoint(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().delayed_payment_basepoint().format().hex()
+    return _remote_delayed_payment_basepoint
+
+
+def remote_htlc_basepoint() -> Callable[[Runner, Event, str], str]:
+    """Get the remote htlc basepoint"""
+    def _remote_htlc_basepoint(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().htlc_basepoint().format().hex()
+    return _remote_htlc_basepoint
+
+
+def remote_funding_pubkey() -> Callable[[Runner, Event, str], str]:
+    """Get the remote funding pubkey"""
+    def _remote_funding_pubkey(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().funding_pubkey().format().hex()
+    return _remote_funding_pubkey
+
+
+def remote_per_commitment_point(n: int) -> Callable[[Runner, Event, str], str]:
+    """Get the n'th remote per-commitment point"""
+    def _remote_per_commitment_point(n: int, runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().per_commit_point(n).format().hex()
+    return functools.partial(_remote_per_commitment_point, n)
