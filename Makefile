@@ -7,3 +7,6 @@ check:
 
 check-source:
 	flake8 --ignore=E501,E731,W503
+
+TAGS:
+	etags `find . -name '*.py'`

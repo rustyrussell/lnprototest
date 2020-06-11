@@ -1,14 +1,19 @@
 #! /usr/bin/python3
 from .event import Event
-from .dummyrunner import DummyRunner
 from .errors import SpecFileError, EventError
 
 
 class Sequence(Event):
     """A sequence of ordered events"""
-    def __init__(self, events=[]):
+    def __init__(self, events):
+        """Events can be a Sequence, a single Event, or a list of Events"""
         super().__init__()
-        self.events = events
+        if type(events) is Sequence:
+            self.events = events.events
+        elif isinstance(events, Event):
+            self.events = [events]
+        else:
+            self.events = events
 
     def num_undone(self):
         return sum([e.num_undone() for e in self.events])
@@ -22,7 +27,7 @@ class Sequence(Event):
     def match_which_sequence(runner, msg, sequences):
         """Return which sequence expects this msg, or None"""
         # For DummyRunner, we always match
-        if type(runner) == DummyRunner:
+        if runner._is_dummy():
             return sequences[0]
 
         for s in sequences:
@@ -37,13 +42,12 @@ class OneOf(Event):
     """Event representing multiple possible sequences, one of which should happen"""
     def __init__(self, sequences=[]):
         super().__init__()
-        self.sequences = sequences
-        for s in self.sequences:
-            # FIXME: We could support raw ExpectError or ExpectMsg here.
-            if type(s) is not Sequence:
-                raise ValueError("{} is not a sequence".format(s))
-            if len(s.events) == 0:
+        self.sequences = []
+        for s in sequences:
+            seq = Sequence(s)
+            if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
+            self.sequences.append(seq)
 
     def num_undone(self):
         # Use mean, unless we're done.
@@ -79,13 +83,12 @@ class AnyOrder(Event):
     """Event representing multiple sequences, all of which should happen, but not defined which order they would happen"""
     def __init__(self, sequences=[]):
         super().__init__()
-        self.sequences = sequences
-        for s in self.sequences:
-            # FIXME: We could support raw ExpectError or ExpectMsg here.
-            if type(s) is not Sequence:
-                raise ValueError("{} is not a sequence".format(s))
-            if len(s.events) == 0:
+        self.sequences = []
+        for s in sequences:
+            seq = Sequence(s)
+            if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
+            self.sequences.append(seq)
 
     def num_undone(self):
         # Use total, unless we're done.
@@ -126,7 +129,9 @@ class TryAll(Event):
     """Event representing multiple sequences, each of which should be tested"""
     def __init__(self, sequences=[]):
         super().__init__()
-        self.sequences = sequences
+        self.sequences = []
+        for s in sequences:
+            self.sequences.append(Sequence(s))
 
     def num_undone(self):
         return sum([s.num_undone() for s in self.sequences])

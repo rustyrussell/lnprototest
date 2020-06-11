@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 from .errors import EventError, SpecFileError
+from .structure import Sequence
 import coincurve
 
 
@@ -24,6 +25,10 @@ class Runner(object):
         # key == connprivkey, value == Conn
         self.conns = {}
         self.last_conn = None
+
+    def _is_dummy(self):
+        """The DummyRunner returns True here, as it can't do some things"""
+        return False
 
     def find_conn(self, connprivkey):
         # Default is whatever we specified last.
@@ -59,7 +64,8 @@ class Runner(object):
         self.conns = {}
         self.last_conn = None
 
-    def run(self, sequence):
+    def run(self, events):
+        sequence = Sequence(events)
         self.start()
         while sequence.num_undone() != 0:
             self.restart()

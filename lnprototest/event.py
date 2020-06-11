@@ -5,7 +5,6 @@ import string
 import os.path
 import io
 from .errors import SpecFileError, EventError
-from .dummyrunner import DummyRunner
 
 
 def check_hex(val, digits):
@@ -154,7 +153,7 @@ for a new one.
             binmsg = runner.get_output_message(self.find_conn(runner))
             if binmsg is None:
                 # Dummyrunner never returns output, so pretend it worked.
-                if type(runner) is DummyRunner:
+                if runner._is_dummy():
                     return
                 raise EventError(self, "Did not receive a message from runner")
 
@@ -277,5 +276,5 @@ class ExpectError(Event):
         error = runner.check_error(self, self.find_conn(runner))
         if error is None:
             # We ignore lack of responses from dummyrunner
-            if type(runner) is not DummyRunner:
+            if not runner._is_dummy():
                 raise EventError(self, "No error found")

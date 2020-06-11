@@ -7,6 +7,10 @@ class DummyRunner(Runner):
     def __init__(self, config):
         super().__init__(config)
 
+    def _is_dummy(self):
+        """The DummyRunner returns True here, as it can't do some things"""
+        return True
+
     def start(self):
         pass
 
