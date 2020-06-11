@@ -2,22 +2,16 @@
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
-from lnprototest import TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError
+from lnprototest import TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len
 import pyln.proto.message.bolt1
 from fixtures import *  # noqa: F401,F403
-
-
-def has_bit(msg, field, bitnum):
-    if len(msg.fields[field]) < bitnum // 8:
-        return False
-    return (msg.fields[field][bitnum // 8] & (1 << (bitnum % 8)) != 0)
 
 
 # BOLT #1: The sending node:
 # ...
 # - SHOULD NOT set features greater than 13 in `globalfeatures`.
 def no_gf13(event, msg):
-    for i in range(13, len(msg.fields['globalfeatures']) * 8):
+    for i in range(14, bitfield_len(msg, 'globalfeatures')):
         if has_bit(msg, 'globalfeatures', i):
             raise EventError(event, "globalfeatures bit {} set".format(i))
 
@@ -60,7 +54,7 @@ def test_init(runner, namespaceoverride):
                  #    - MUST ignore the bit.
 
                  # init msg with unknown odd global bit (19): no error
-                 Msg('init', globalfeatures='020000', features='')],
+                 Msg('init', globalfeatures=bitfield(19), features='')],
 
                 # Sanity check that bits 34 and 35 are not used!
                 [ExpectMsg('init', if_match=no_34_35),
@@ -70,19 +64,19 @@ def test_init(runner, namespaceoverride):
                  #    - MUST ignore the bit.
 
                  # init msg with unknown odd local bit (19): no error
-                 Msg('init', globalfeatures='', features='020000')],
+                 Msg('init', globalfeatures='', features=bitfield(19))],
 
                 # BOLT #1:
                 # The receiving node: ...
                 #  - upon receiving unknown _even_ feature bits that are non-zero:
                 #    - MUST fail the connection.
                 [ExpectMsg('init'),
-                 Msg('init', globalfeatures='', features='0100000000'),
+                 Msg('init', globalfeatures='', features=bitfield(34)),
                  ExpectError()],
 
                 # init msg with unknown even global bit (34): you will error
                 [ExpectMsg('init'),
-                 Msg('init', globalfeatures='0100000000', features=''),
+                 Msg('init', globalfeatures=bitfield(34), features=''),
                  ExpectError()],
 
                 # FIXME: Test based on features of runner!

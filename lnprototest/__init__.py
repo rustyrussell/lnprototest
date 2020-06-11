@@ -4,6 +4,7 @@ from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn
 from .dummyrunner import DummyRunner
 from .namespace import peer_message_namespace, event_namespace
+from .bitfield import bitfield, has_bit, bitfield_len
 
 __version__ = '0.0.1'
 
@@ -31,4 +32,7 @@ __all__ = [
     "Conn",
     "peer_message_namespace",
     "event_namespace",
+    "bitfield",
+    "has_bit",
+    "bitfield_len",
 ]
