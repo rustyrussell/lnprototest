@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 from .errors import SpecFileError
 from .structure import Sequence
-from .event import Event
+from .event import Event, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
 import coincurve
@@ -107,7 +107,7 @@ class Runner(object):
     def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
         raise NotImplementedError()
 
-    def get_output_message(self, conn: Conn) -> Optional[bytes]:
+    def get_output_message(self, conn: Conn, event: ExpectMsg) -> Optional[bytes]:
         raise NotImplementedError()
 
     def getblockheight(self) -> int:

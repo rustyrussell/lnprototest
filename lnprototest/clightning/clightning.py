@@ -17,7 +17,7 @@ import bitcoin.core
 from concurrent import futures
 from ephemeral_port_reserve import reserve
 from pyln.testing.utils import wait_for, SimpleBitcoinProxy
-from lnprototest import EventError, SpecFileError, KeySet
+from lnprototest import Event, EventError, SpecFileError, KeySet
 
 TIMEOUT = int(os.getenv("TIMEOUT", "30"))
 LIGHTNING_SRC = os.getenv("LIGHTNING_SRC", '../lightning/')
@@ -278,7 +278,7 @@ class Runner(lnprototest.Runner):
         }
         self.rpc.sendpay([routestep], payhash)
 
-    def get_output_message(self, conn, timeout=TIMEOUT):
+    def get_output_message(self, conn, event: Event, timeout=TIMEOUT):
         fut = self.executor.submit(conn.connection.read_message)
         try:
             return fut.result(timeout)
@@ -288,13 +288,13 @@ class Runner(lnprototest.Runner):
     def check_error(self, event, conn):
         # We get errors in form of err msgs, always.
         super().check_error(event, conn)
-        return self.get_output_message(conn)
+        return self.get_output_message(conn, event)
 
     def check_final_error(self, event, conn, expected):
         if not expected:
             # Inject raw packet to ensure it hangs up *after* processing all previous ones.
             conn.connection.connection.send(bytes(18))
-            error = self.get_output_message(conn)
+            error = self.get_output_message(conn, event)
             if error:
                 raise EventError(event, "Runner sent error after sequence: {}".format(error))
         conn.connection.connection.close()

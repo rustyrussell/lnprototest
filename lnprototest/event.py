@@ -205,11 +205,8 @@ for a new one.
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
         while True:
-            binmsg = runner.get_output_message(self.find_conn(runner))
+            binmsg = runner.get_output_message(self.find_conn(runner), self)
             if binmsg is None:
-                # Dummyrunner never returns output, so pretend it worked.
-                if runner._is_dummy():
-                    return
                 raise EventError(self, "Did not receive a message from runner")
 
             # Might be completely unknown to namespace.
@@ -313,9 +310,7 @@ class ExpectError(PerConnEvent):
         super().action(runner)
         error = runner.check_error(self, self.find_conn(runner))
         if error is None:
-            # We ignore lack of responses from dummyrunner
-            if not runner._is_dummy():
-                raise EventError(self, "No error found")
+            raise EventError(self, "No error found")
 
 
 class CheckEq(Event):
@@ -329,7 +324,8 @@ class CheckEq(Event):
         super().action(runner)
         a = self.resolve_arg('a', runner, self.a)
         b = self.resolve_arg('b', runner, self.b)
-        if a != b:
+        # dummy runner generates dummy fields.
+        if a != b and not runner._is_dummy():
             raise EventError(self, "{} != {}".format(a, b))
 
 

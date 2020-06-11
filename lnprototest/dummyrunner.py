@@ -1,26 +1,20 @@
 #! /usr/bin/python3
 # #### Dummy runner which you should replace with real one. ####
+import io
 from .runner import Runner, Conn
-from .event import Event
+from .event import Event, ExpectMsg
 from typing import List, Optional
 from .keyset import KeySet
+from pyln.proto.message import Message, FieldType, DynamicArrayType, EllipsisArrayType, SizedArrayType
 
 
 class DummyRunner(Runner):
     def __init__(self, config):
         super().__init__(config)
-        self._fakerecvstash()
 
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
         return True
-
-    def _fakerecvstash(self):
-        # We don't actually receive packets, so put typical values here
-        # to make tests "work".
-        self.add_stash('ExpectMsg', [('init', {'temporary_channel_id': "00" * 32,
-                                               'features': '',
-                                               'globalfeatures': ''})])
 
     def get_keyset(self) -> KeySet:
         return KeySet(funding_privkey='10',
@@ -41,7 +35,6 @@ class DummyRunner(Runner):
 
     def restart(self) -> None:
         super().restart()
-        self._fakerecvstash()
         if self.config.getoption('verbose'):
             print("[RESTART]")
         self.blockheight = 102
@@ -92,12 +85,46 @@ class DummyRunner(Runner):
             print("[ADDHTLC TO {} for {} with PREIMAGE {}]"
                   .format(conn, amount, preimage))
 
-    def get_output_message(self, conn: Conn) -> Optional[bytes]:
+    @staticmethod
+    def fake_field(ftype: FieldType) -> str:
+        if isinstance(ftype, DynamicArrayType) or isinstance(ftype, EllipsisArrayType):
+            # Byte arrays are literal hex strings
+            if ftype.elemtype.name == 'byte':
+                return ''
+            return '[]'
+        elif isinstance(ftype, SizedArrayType):
+            # Byte arrays are literal hex strings
+            if ftype.elemtype.name == 'byte':
+                return '00' * ftype.arraysize
+            return '[' + ','.join([DummyRunner.fake_field(ftype.elemtype)] * ftype.arraysize) + ']'
+        elif ftype.name in ('byte', 'u8', 'u16', 'u32', 'u64', 'tu16', 'tu32', 'tu64', 'bigsize', 'varint'):
+            return '0'
+        elif ftype.name in ('chain_hash', 'channel_id', 'sha256'):
+            return '00' * 32
+        elif ftype.name == 'point':
+            return '038f1573b4238a986470d250ce87c7a91257b6ba3baf2a0b14380c4e1e532c209d'
+        elif ftype.name == 'short_channel_id':
+            return '0x0x0'
+        elif ftype.name == 'signature':
+            return '01' * 64
+        else:
+            raise NotImplementedError("don't know how to fake {} type!".format(ftype.name))
+
+    def get_output_message(self, conn: Conn, event: ExpectMsg) -> Optional[bytes]:
         if self.config.getoption('verbose'):
             print("[GET_OUTPUT_MESSAGE {}]".format(conn))
-        # return bytes.fromhex(input("{}? ".format(conn)))
-        # event.py has a special hack for DummyRunner
-        return None
+
+        # We make the message they were expecting.
+        msg = Message(event.msgtype, **event.resolve_args(self, event.kwargs))
+
+        # Fake up the other fields.
+        for m in msg.missing_fields():
+            ftype = msg.messagetype.find_field(m.name)
+            msg.set_field(m.name, self.fake_field(ftype.fieldtype))
+
+        binmsg = io.BytesIO()
+        msg.write(binmsg)
+        return binmsg.getvalue()
 
     def expect_tx(self, event: Event, txid: str) -> None:
         if self.config.getoption('verbose'):
@@ -107,7 +134,7 @@ class DummyRunner(Runner):
         super().check_error(event, conn)
         if self.config.getoption('verbose'):
             print("[CHECK-ERROR {}]".format(event))
-        return None
+        return "Dummy error"
 
     def check_final_error(self, event: Event, conn: Conn, expected: bool) -> None:
         pass

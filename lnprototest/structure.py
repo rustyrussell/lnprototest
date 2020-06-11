@@ -47,10 +47,6 @@ it)."""
     @staticmethod
     def match_which_sequence(runner: 'Runner', msg: Message, sequences: List['Sequence']) -> Optional['Sequence']:
         """Return which sequence expects this msg, or None"""
-        # For DummyRunner, we always match
-        if runner._is_dummy():
-            return sequences[0]
-
         for s in sequences:
             failreason = cast(ExpectMsg, s.events[0]).message_match(runner, msg)
         if failreason is None:
@@ -90,11 +86,8 @@ class OneOf(Event):
                 raise SpecFileError(self, "sequences do not all use the same conn?")
         assert conn
 
-        binmsg = runner.get_output_message(conn)
+        binmsg = runner.get_output_message(conn, self.sequences[0].events[0])
         if binmsg is None:
-            # Dummyrunner never returns output, so pretend it worked.
-            if runner._is_dummy():
-                return self.sequences[0].action(runner, skip_first=True)
             raise EventError(self, "Did not receive a message from runner")
 
         seq = Sequence.match_which_sequence(runner, binmsg, self.sequences)
@@ -137,17 +130,14 @@ class AnyOrder(Event):
                 raise SpecFileError(self, "sequences do not all use the same conn?")
         assert conn
 
-        # Get message, but leave it in the queue for real sequence.
-        binmsg = runner.get_output_message(conn)
-        if binmsg is None:
-            # Dummyrunner never returns output, so pretend it worked.
-            if runner._is_dummy():
-                binmsg = bytes()
-            raise EventError(self, "Did not receive a message from runner")
-
         sequences = self.sequences[:]
         while sequences != []:
-            seq = Sequence.match_which_sequence(runner, binmsg, self.sequences)
+            # Get message
+            binmsg = runner.get_output_message(conn, sequences[0].events[0])
+            if binmsg is None:
+                raise EventError(self, "Did not receive a message from runner")
+
+            seq = Sequence.match_which_sequence(runner, binmsg, sequences)
             if seq is not None:
                 sequences.remove(seq)
                 seq.action(runner, skip_first=True)
