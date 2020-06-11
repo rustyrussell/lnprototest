@@ -3,8 +3,8 @@
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
 from lnprototest import TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError
-from pyln.proto.message import Message
 import pyln.proto.message.bolt1
+from fixtures import *  # noqa: F401,F403
 
 
 def has_bit(msg, field, bitnum):
@@ -26,11 +26,12 @@ def no_34_35(event, msg):
         raise EventError(event, "features set bits 34/35 unexpected: {}".format(msg))
 
 
-def test_init(runner):
-    ns = pyln.proto.message.bolt1.namespace
+def test_init(runner, namespaceoverride):
+    # We override default namespace since we only need BOLT1
+    namespaceoverride(pyln.proto.message.bolt1.namespace)
     test = [Connect(connprivkey='03'),
-            ExpectMsg(ns, Message(ns.get_msgtype('init'))),
-            Msg(Message(ns.get_msgtype('init'), globalfeatures='', features='')),
+            ExpectMsg('init'),
+            Msg('init', globalfeatures='', features=''),
 
             # optionally disconnect that first one
             TryAll([[], Disconnect()]),
@@ -38,36 +39,31 @@ def test_init(runner):
             Connect(connprivkey='02'),
             TryAll([
                 # Even if we don't send anything, it should send init.
-                [ExpectMsg(ns, Message(ns.get_msgtype('init')))],
+                [ExpectMsg('init')],
 
                 # Minimal possible init message.
                 # Spec: MUST send `init` as the first Lightning message for any connection.
-                [ExpectMsg(ns, Message(ns.get_msgtype('init'))),
-                 Msg(Message(ns.get_msgtype('init'),
-                             globalfeatures='', features=''))],
+                [ExpectMsg('init'),
+                 Msg('init', globalfeatures='', features='')],
 
                 # SHOULD NOT set features greater than 13 in `globalfeatures`.
-                [ExpectMsg(ns, Message(ns.get_msgtype('init')), if_match=no_gf13),
+                [ExpectMsg('init', if_match=no_gf13),
                  # init msg with unknown odd global bit (19): no error
-                 Msg(Message(ns.get_msgtype('init'),
-                             globalfeatures='020000', features=''))],
+                 Msg('init', globalfeatures='020000', features='')],
 
                 # Sanity check that bits 34 and 35 are not used!
-                [ExpectMsg(ns, Message(ns.get_msgtype('init')), if_match=no_34_35),
+                [ExpectMsg('init', if_match=no_34_35),
                  # init msg with unknown odd local bit (19): no error
-                 Msg(Message(ns.get_msgtype('init'),
-                             globalfeatures='', features='020000'))],
+                 Msg('init', globalfeatures='', features='020000')],
 
                 # init msg with unknown even local bit (34): you will error
-                [ExpectMsg(ns, Message(ns.get_msgtype('init'))),
-                 Msg(Message(ns.get_msgtype('init'),
-                             globalfeatures='', features='0100000000')),
+                [ExpectMsg('init'),
+                 Msg('init', globalfeatures='', features='0100000000'),
                  ExpectError()],
 
                 # init msg with unknown even global bit (34): you will error
-                [ExpectMsg(ns, Message(ns.get_msgtype('init'))),
-                 Msg(Message(ns.get_msgtype('init'),
-                             globalfeatures='0100000000', features='')),
+                [ExpectMsg('init'),
+                 Msg('init', globalfeatures='0100000000', features=''),
                  ExpectError()],
 
                 # FIXME: Test based on features of runner!

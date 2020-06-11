@@ -5,6 +5,7 @@ import string
 import os.path
 import io
 from .errors import SpecFileError, EventError
+from .namespace import event_namespace
 
 
 def check_hex(val, digits):
@@ -84,9 +85,16 @@ class Disconnect(Event):
 
 class Msg(Event):
     """Feed a message to the runner (via optional given connection)"""
-    def __init__(self, message, connprivkey=None):
+    def __init__(self, msgtypename, connprivkey=None, **kwargs):
         super().__init__()
-        self.message = message
+        msgtype = event_namespace.get_msgtype(msgtypename)
+        if not msgtype:
+            raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
+        self.message = Message(msgtype, **kwargs)
+        missing = self.message.missing_fields()
+        if missing:
+            raise SpecFileError(self, "Missing fields {}".format(missing))
+
         self.connprivkey = connprivkey
 
     def action(self, runner):
@@ -112,10 +120,9 @@ for a new one.
     def _default_if_nomatch(self, binmsg, errstr):
         raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg, errstr))
 
-    def __init__(self, namespace, partmessage, if_match=_default_if_match, if_nomatch=_default_if_nomatch, connprivkey=None):
+    def __init__(self, msgtypename, if_match=_default_if_match, if_nomatch=_default_if_nomatch, connprivkey=None, **kwargs):
         super().__init__()
-        self.namespace = namespace
-        self.partmessage = partmessage
+        self.partmessage = Message(event_namespace.get_msgtype(msgtypename), **kwargs)
         self.if_match = if_match
         self.if_nomatch = if_nomatch
         self.connprivkey = connprivkey
@@ -159,7 +166,7 @@ for a new one.
 
             # Might be completely unknown to namespace.
             try:
-                msg = Message.read(self.namespace, io.BytesIO(binmsg))
+                msg = Message.read(event_namespace, io.BytesIO(binmsg))
             except ValueError as ve:
                 self.if_nomatch(self, binmsg, str(ve))
                 continue

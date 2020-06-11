@@ -3,6 +3,7 @@ from .event import Event, Connect, Disconnect, Msg, ExpectMsg, Block, ExpectTx, 
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn
 from .dummyrunner import DummyRunner
+from .namespace import peer_message_namespace, event_namespace
 
 __version__ = '0.0.1'
 
@@ -28,4 +29,6 @@ __all__ = [
     "DummyRunner",
     "Runner",
     "Conn",
+    "peer_message_namespace",
+    "event_namespace",
 ]
