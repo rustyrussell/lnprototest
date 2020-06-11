@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-from .errors import EventError, SpecFileError
+from .errors import SpecFileError
 from .structure import Sequence
 import coincurve
 
@@ -47,18 +47,16 @@ class Runner(object):
         if conn is None:
             raise SpecFileError(event, "Unknown conn")
         del self.conns[conn.name]
+        self.check_final_error(event, conn, conn.expected_error)
 
     def check_error(self, event, conn):
         conn.expected_error = True
+        return None
 
     def post_check(self, sequence):
         # Make sure no connection had an error.
-        for c in self.conns.values():
-            if not c.expected_error:
-                error = self.check_error(sequence, c)
-                if error is not None:
-                    raise EventError(sequence,
-                                     "Unexpected error message at end: {}".format(error))
+        while len(self.conns) != 0:
+            self.disconnect(sequence, next(iter(self.conns.values())))
 
     def restart(self):
         self.conns = {}

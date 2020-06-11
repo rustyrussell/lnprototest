@@ -11,7 +11,6 @@ import os
 import shutil
 import subprocess
 import tempfile
-import time
 import lnprototest
 import bitcoin.core
 
@@ -202,14 +201,6 @@ class Runner(lnprototest.Runner):
 
         wait_for(lambda: self.rpc.getinfo()['blockheight'] == self.getblockheight())
 
-    def disconnect(self, event, conn):
-        super().disconnect(event, conn)
-
-        # FIXME: Inject a bad enc packet, so it hangs up on us *after*
-        # processing
-        time.sleep(1)
-        conn.connection.connection.close()
-
     def recv(self, event, conn, outbuf):
         try:
             conn.connection.send_message(outbuf)
@@ -304,13 +295,22 @@ class Runner(lnprototest.Runner):
         fut = self.executor.submit(conn.connection.read_message)
         try:
             return fut.result(timeout)
-        except futures.TimeoutError:
+        except (futures.TimeoutError, ValueError):
             return None
 
     def check_error(self, event, conn):
         # We get errors in form of err msgs, always.
         super().check_error(event, conn)
-        return self.get_output_message(conn, timeout=1)
+        return self.get_output_message(conn)
+
+    def check_final_error(self, event, conn, expected):
+        if not expected:
+            # Inject raw packet to ensure it hangs up *after* processing all previous ones.
+            conn.connection.connection.send(bytes(18))
+            error = self.get_output_message(conn)
+            if error:
+                raise EventError(event, "Runner sent error after sequence: {}".format(error))
+        conn.connection.connection.close()
 
     def expect_tx(self, event, txid):
         # Ah bitcoin endianness...

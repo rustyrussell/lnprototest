@@ -86,3 +86,6 @@ class DummyRunner(Runner):
         if self.config.getoption('verbose'):
             print("[CHECK-ERROR {}]".format(event))
         return None
+
+    def check_final_error(self, event, conn, expected):
+        pass
