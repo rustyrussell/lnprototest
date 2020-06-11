@@ -322,6 +322,21 @@ class ExpectError(PerConnEvent):
                 raise EventError(self, "No error found")
 
 
+class CheckEq(Event):
+    """Event to check a condition is true"""
+    def __init__(self, a: ResolvableStr, b: ResolvableStr):
+        super().__init__()
+        self.a = a
+        self.b = b
+
+    def action(self, runner: 'Runner') -> None:
+        super().action(runner)
+        a = self.resolve_arg('a', runner, self.a)
+        b = self.resolve_arg('b', runner, self.b)
+        if a != b:
+            raise EventError(self, "{} != {}".format(a, b))
+
+
 def msg_to_stash(runner: 'Runner', event: Event, msg: Message):
     """ExpectMsg and Msg save every field to the stash, in order"""
     fields = {}
