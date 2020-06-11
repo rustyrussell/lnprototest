@@ -128,10 +128,7 @@ class Runner(object):
     def fundchannel(self,
                     event: Event,
                     conn: Conn,
-                    amount: int,
-                    txid: str,
-                    outnum: int,
-                    feerate: int) -> None:
+                    amount: int) -> None:
         raise NotImplementedError()
 
     def addhtlc(self, event: Event, conn: Conn,

@@ -269,19 +269,15 @@ class ExpectTx(Event):
 
 class FundChannel(PerConnEvent):
     """Tell the runner to fund a channel with this peer."""
-    def __init__(self, amount, utxo, feerate, connprivkey: Optional[str] = None):
+    def __init__(self, amount: ResolvableInt, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
         self.amount = amount
-        parts = utxo.partition('/')
-        self.utxo = (check_hex(parts[0], 64), int(parts[2]))
-        self.feerate = feerate
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.fundchannel(self,
                            self.find_conn(runner),
-                           self.amount, self.utxo[0],
-                           self.utxo[1], self.feerate)
+                           self.resolve_arg('amount', runner, self.amount))
 
 
 class Invoice(Event):

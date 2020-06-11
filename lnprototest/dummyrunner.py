@@ -76,13 +76,10 @@ class DummyRunner(Runner):
     def fundchannel(self,
                     event: Event,
                     conn: Conn,
-                    amount: int,
-                    txid: str,
-                    outnum: int,
-                    feerate: int) -> None:
+                    amount: int) -> None:
         if self.config.getoption('verbose'):
-            print("[FUNDCHANNEL TO {} for {} with UTXO {}/{} feerate {}]"
-                  .format(conn, amount, txid, outnum, feerate))
+            print("[FUNDCHANNEL TO {} for {}]"
+                  .format(conn, amount))
 
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
         if self.config.getoption('verbose'):

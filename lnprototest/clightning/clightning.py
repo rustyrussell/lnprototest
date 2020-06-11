@@ -230,14 +230,11 @@ class Runner(lnprototest.Runner):
             else:
                 raise EventError(event, "Connection closed")
 
-    def fundchannel(self, event, conn, amount, txid, outnum, feerate):
+    def fundchannel(self, event, conn, amount):
         """
             event   - the event which cause this, for error logging
             conn    - which conn (i.e. peer) to fund.
             amount  - amount to fund the channel with
-            txid    - txid of the utxo to use
-            outnum  - outnum of the utxo to use
-            feerate - feerate to use when building the tx
         """
         # First, check that another fundchannel isn't already running
         if self.fundchannel_future:
@@ -245,29 +242,10 @@ class Runner(lnprototest.Runner):
                 raise RuntimeError("{} called fundchannel while another fundchannel is still in process".format(event))
             self.fundchannel_future = None
 
-        def _fundchannel(self, event, conn, amount, txid, outnum, feerate):
+        def _fundchannel(self, conn, amount):
             peer_id = conn.pubkey.format().hex()
-            result = self.rpc.fundchannel_start(peer_id, amount, feerate=feerate)
-
-            # Build a transaction
-            funding_addr = result['funding_address']
-            tx = self.rpc.txprepare([{funding_addr: amount}], feerate=feerate, utxos=["{}:{}".format(txid, outnum)])
-
-            # Get the vout index of the funding output
-            decode = self.bitcoind.rpc.decoderawtransaction(tx['unsigned_tx'])
-            txout = -1
-            for vout in decode['vout']:
-                if vout['scriptPubKey']['addresses'][0] == funding_addr:
-                    txout = vout['n']
-                    break
-
-            if txout < 0:
-                raise SpecFileError(event,
-                                    "Unable to find txout for {} (tx:{})".format(funding_addr, decode))
-
-            self.rpc.fundchannel_complete(peer_id, tx['txid'], txout)
-            self.rpc.txsend(tx['txid'])
-            return True
+            # Need to supply feerate here, since regtest cannot estimate fees
+            return self.rpc.fundchannel(peer_id, amount, feerate='253perkw')
 
         def _done(fut):
             exception = fut.exception(0)
@@ -277,8 +255,7 @@ class Runner(lnprototest.Runner):
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)
 
-        fut = self.executor.submit(_fundchannel, self, event, conn, amount,
-                                   txid, outnum, feerate)
+        fut = self.executor.submit(_fundchannel, self, conn, amount)
         fut.add_done_callback(_done)
         self.fundchannel_future = fut
         self.cleanup_callbacks.append(self.kill_fundchannel)
