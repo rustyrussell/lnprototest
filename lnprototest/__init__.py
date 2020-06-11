@@ -1,5 +1,5 @@
 from .errors import EventError, SpecFileError
-from .event import Event, Connect, Disconnect, Msg, ExpectMsg, Block, ExpectTx, FundChannel, Invoice, AddHtlc, SetFeeEvent, ExpectError
+from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, Block, ExpectTx, FundChannel, Invoice, AddHtlc, SetFeeEvent, ExpectError
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn
 from .dummyrunner import DummyRunner
@@ -16,6 +16,7 @@ __all__ = [
     "Connect",
     "Disconnect",
     "Msg",
+    "RawMsg",
     "ExpectMsg",
     "Block",
     "ExpectTx",

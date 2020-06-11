@@ -96,6 +96,18 @@ class Msg(Event):
         runner.recv(self, self.find_conn(runner), binmsg.getvalue())
 
 
+class RawMsg(Event):
+    """Feed a raw binary message to the runner (via optional given connection)"""
+    def __init__(self, binmsg, connprivkey=None):
+        super().__init__()
+        self.message = binmsg
+        self.connprivkey = connprivkey
+
+    def action(self, runner):
+        super().action(runner)
+        runner.recv(self, self.find_conn(runner), self.message)
+
+
 class ExpectMsg(Event):
     """Wait for a message from the runner.
 
