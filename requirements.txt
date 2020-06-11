@@ -1,3 +1,4 @@
 pyln.proto.message
 pyln.proto.message.bolt
 coincurve
+mypy

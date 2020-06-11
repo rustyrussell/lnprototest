@@ -3,6 +3,7 @@ import coincurve
 from io import BufferedIOBase
 from pyln.proto.message import FieldType, split_field
 from .utils import check_hex
+from typing import Union, Tuple, Dict, Any, Optional, cast
 
 
 class Sig(object):
@@ -17,9 +18,11 @@ signature of privkey over hash, they are considered "equal"
             if type(args[0]) is bytes:
                 if len(args[0]) != 64:
                     raise ValueError('Sig() with 1 arg expects 64 bytes or 128 hexstr')
-                self.sigval = args[0]
+                self.sigval: Union[bytes, None] = cast(bytes, args[0])
             else:
-                self.sigval = bytes.fromhex(check_hex(args[0], 128))
+                if type(args[0]) is not str:
+                    raise TypeError('Expected hexsig or Privkey, hash')
+                self.sigval = bytes.fromhex(check_hex(cast(str, args[0]), 128))
         elif len(args) == 2:
             self.sigval = None
             # Privkey can be truncated, since we use tiny values a lot.
@@ -61,7 +64,7 @@ signature of privkey over hash, they are considered "equal"
         assert(len(s) == 32)
         return r + s
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         # For convenience of using stashed objects, we allow comparison with str
         if isinstance(other, str):
             other = Sig(other)
@@ -81,14 +84,14 @@ signature of privkey over hash, they are considered "equal"
             return True
         return False
 
-    def to_str(self):
+    def to_str(self) -> str:
         if self.sigval:
             return self.sigval.hex()
         else:
             return 'Sig({},{})'.format(self.privkey.secret.hex(), self.hashval.hex())
 
     @staticmethod
-    def from_str(s):
+    def from_str(s: str) -> Tuple['Sig', str]:
         a, b = split_field(s)
         if a.startswith('Sig('):
             privkey = a[4:]
@@ -97,7 +100,7 @@ signature of privkey over hash, they are considered "equal"
             return Sig(privkey, a[:-1]), b
         return Sig(bytes.fromhex(a)), b
 
-    def to_bin(self):
+    def to_bin(self) -> bytes:
         if not self.sigval:
             return self.from_der(self.privkey.sign(self.hashval, hasher=None))
         else:
@@ -109,16 +112,16 @@ class SigType(FieldType):
     def __init__(self):
         super().__init__('signature')
 
-    def val_to_str(self, v, otherfields):
+    def val_to_str(self, v: Sig, otherfields: Dict[str, Any]) -> str:
         return v.to_str()
 
-    def val_from_str(self, s):
+    def val_from_str(self, s: str) -> Tuple['Sig', str]:
         return Sig.from_str(s)
 
-    def write(self, io_out: BufferedIOBase, v, otherfields) -> None:
-        return io_out.write(v.to_bin())
+    def write(self, io_out: BufferedIOBase, v: Sig, otherfields: Dict[str, Any]) -> None:
+        io_out.write(v.to_bin())
 
-    def read(self, io_in: BufferedIOBase, otherfields) -> Sig:
+    def read(self, io_in: BufferedIOBase, otherfields: Dict[str, Any]) -> Optional[Sig]:
         val = io_in.read(64)
         if len(val) == 0:
             return None

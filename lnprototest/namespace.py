@@ -6,7 +6,7 @@ from pyln.proto.message import MessageNamespace
 from .signature import SigType
 
 
-def peer_message_namespace():
+def peer_message_namespace() -> MessageNamespace:
     """Namespace containing all the peer messages"""
     ns = MessageNamespace()
     # We replace the fundamental signature type with our custom type,

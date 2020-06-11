@@ -38,7 +38,7 @@ make sure no errors occurred.
 3. Did you test something which wasn't clear in the spec?  Consider
    opening a PR or issue to add an explicit requirement.
 
-4. Does it pass `make check-source` a.k.a. flake8?
+4. Does it pass `make check-source` a.k.a. flake8 and mypy?
 
 ## Adding a New Runner
 

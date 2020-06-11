@@ -1,8 +1,9 @@
 import pytest
 import lnprototest
+import pyln.proto.message
 
 
-def _setter(newns):
+def _setter(newns: pyln.proto.message.MessageNamespace):
     lnprototest.event_namespace = newns
 
 

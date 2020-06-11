@@ -2,7 +2,7 @@
 import string
 
 
-def check_hex(val, digits):
+def check_hex(val: str, digits: int) -> str:
     if not all(c in string.hexdigits for c in val):
         raise ValueError("{} is not valid hex".format(val))
     if len(val) != digits:

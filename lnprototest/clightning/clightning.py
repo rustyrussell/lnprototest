@@ -293,9 +293,6 @@ class Runner(lnprototest.Runner):
         }
         self.rpc.sendpay([routestep], payhash)
 
-    def setfee(self, event, conn, feerate):
-        self.rpc.call('dev-feerate', [conn.pubkey.format().hex(), feerate])
-
     def get_output_message(self, conn, timeout=TIMEOUT):
         fut = self.executor.submit(conn.connection.read_message)
         try:

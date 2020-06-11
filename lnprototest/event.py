@@ -6,6 +6,10 @@ import io
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
+from typing import Optional, Dict, Any, TYPE_CHECKING
+if TYPE_CHECKING:
+    # Otherwise a circular dependency
+    from .runner import Runner, Conn
 
 
 class Event(object):
@@ -24,18 +28,28 @@ class Event(object):
                 break
         self.done = False
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         if runner.config.getoption('verbose'):
             print("# running {}:".format(self))
         self.done = True
 
-    def num_undone(self):
+    def num_undone(self) -> int:
         """Number of actions to be done in this event; usually 1."""
         if self.done:
             return 0
         return 1
 
-    def find_conn(self, runner):
+    def __repr__(self):
+        return self.name
+
+
+class PerConnEvent(Event):
+    """An event which takes a connprivkey arg"""
+    def __init__(self, connprivkey: Optional[str]):
+        super().__init__()
+        self.connprivkey = connprivkey
+
+    def find_conn(self, runner: 'Runner') -> 'Conn':
         """Helper for events which have a connection"""
         conn = runner.find_conn(self.connprivkey)
         if conn is None:
@@ -46,17 +60,14 @@ class Event(object):
                 raise SpecFileError(self, "Unknown connection {}".format(self.connprivkey))
         return conn
 
-    def __repr__(self):
-        return self.name
-
 
 class Connect(Event):
     """Connect to the runner, as if a node with private key connprivkey"""
-    def __init__(self, connprivkey):
-        super().__init__()
+    def __init__(self, connprivkey: str):
         self.connprivkey = connprivkey
+        super().__init__()
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         if runner.find_conn(self.connprivkey):
             raise SpecFileError(self, "Already have connection to {}"
@@ -64,21 +75,20 @@ class Connect(Event):
         runner.connect(self, self.connprivkey)
 
 
-class Disconnect(Event):
+class Disconnect(PerConnEvent):
     """Disconnect the runner from the node whose private key is connprivkey: default is last connection specified"""
-    def __init__(self, connprivkey=None):
-        super().__init__()
-        self.connprivkey = connprivkey
+    def __init__(self, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.disconnect(self, self.find_conn(runner))
 
 
-class Msg(Event):
+class Msg(PerConnEvent):
     """Feed a message to the runner (via optional given connection)"""
-    def __init__(self, msgtypename, connprivkey=None, **kwargs):
-        super().__init__()
+    def __init__(self, msgtypename, connprivkey: Optional[str] = None, **kwargs):
+        super().__init__(connprivkey)
         msgtype = event_namespace.get_msgtype(msgtypename)
         if not msgtype:
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
@@ -87,28 +97,25 @@ class Msg(Event):
         if missing:
             raise SpecFileError(self, "Missing fields {}".format(missing))
 
-        self.connprivkey = connprivkey
-
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         binmsg = io.BytesIO()
         self.message.write(binmsg)
         runner.recv(self, self.find_conn(runner), binmsg.getvalue())
 
 
-class RawMsg(Event):
+class RawMsg(PerConnEvent):
     """Feed a raw binary message to the runner (via optional given connection)"""
-    def __init__(self, binmsg, connprivkey=None):
-        super().__init__()
+    def __init__(self, binmsg, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
         self.message = binmsg
-        self.connprivkey = connprivkey
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.recv(self, self.find_conn(runner), self.message)
 
 
-class ExpectMsg(Event):
+class ExpectMsg(PerConnEvent):
     """Wait for a message from the runner.
 
 partmessage is the (usually incomplete) message which it should match.
@@ -125,17 +132,19 @@ for a new one.
         raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg, errstr))
 
     def __init__(self, msgtypename, if_match=_default_if_match,
-                 if_nomatch=_default_if_nomatch, if_arg=None, connprivkey=None, **kwargs):
-        super().__init__()
+                 if_nomatch=_default_if_nomatch, if_arg=None, connprivkey: Optional[str] = None, **kwargs):
+        super().__init__(connprivkey)
         self.partmessage = Message(event_namespace.get_msgtype(msgtypename), **kwargs)
         self.if_match = if_match
         self.if_nomatch = if_nomatch
         self.if_arg = if_arg
-        self.connprivkey = connprivkey
 
     # FIXME: Put helper in Message?
     @staticmethod
-    def _cmp_msg(subtype, fieldsa, fieldsb, prefix=""):
+    def _cmp_msg(subtype: SubtypeType,
+                 fieldsa: Dict[str, Any],
+                 fieldsb: Dict[str, Any],
+                 prefix="") -> Optional[str]:
         """a is a subset of b"""
         for f in fieldsa:
             if f not in fieldsb:
@@ -153,14 +162,17 @@ for a new one.
                                                        fieldtype.fieldtype.val_to_str(fieldsa[f], fieldsa))
         return None
 
-    def message_match(self, msg):
+    def message_match(self, msg: Message) -> Optional[str]:
         """Does this message match what we expect?"""
         if msg.messagetype != self.partmessage.messagetype:
             return "Expected {}, got {}".format(self.partmessage.messagetype,
                                                 msg.messagetype)
-        return self._cmp_msg(msg.messagetype, self.partmessage.fields, msg.fields)
+        ret = self._cmp_msg(msg.messagetype, self.partmessage.fields, msg.fields)
+        if ret is None:
+            self.if_match(self, msg, self.if_arg)
+        return ret
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         while True:
             binmsg = runner.get_output_message(self.find_conn(runner))
@@ -197,7 +209,7 @@ class Block(Event):
         self.number = number
         self.txs = txs
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         # Oops, did they ask us to produce a block with no predecessor?
         if runner.getblockheight() + 1 < self.blockheight:
@@ -221,22 +233,21 @@ class ExpectTx(Event):
         super().__init__()
         self.txid = txid
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.expect_tx(self, self.txid)
 
 
-class FundChannel(Event):
+class FundChannel(PerConnEvent):
     """Tell the runner to fund a channel with this peer."""
-    def __init__(self, amount, utxo, feerate, connprivkey=None):
-        super().__init__()
-        self.connprivkey = connprivkey
+    def __init__(self, amount, utxo, feerate, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
         self.amount = amount
         parts = utxo.partition('/')
         self.utxo = (check_hex(parts[0], 64), int(parts[2]))
         self.feerate = feerate
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.fundchannel(self,
                            self.find_conn(runner),
@@ -250,41 +261,28 @@ class Invoice(Event):
         self.preimage = check_hex(preimage, 64)
         self.amount = amount
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.invoice(self, self.amount, self.preimage)
 
 
-class AddHtlc(Event):
-    def __init__(self, amount, preimage, connprivkey=None):
-        super().__init__()
-        self.connprivkey = connprivkey
+class AddHtlc(PerConnEvent):
+    def __init__(self, amount, preimage, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
         self.preimage = check_hex(preimage, 64)
         self.amount = amount
 
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.addhtlc(self, self.find_conn(runner),
                        self.amount, self.preimage)
 
 
-class SetFeeEvent(Event):
-    def __init__(self, feerate, connprivkey=None):
-        super().__init__()
-        self.connprivkey = connprivkey
-        self.feerate = feerate
+class ExpectError(PerConnEvent):
+    def __init__(self, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
 
-    def action(self, runner):
-        super().action(runner)
-        runner.setfee(self, self.find_conn(runner), self.feerate)
-
-
-class ExpectError(Event):
-    def __init__(self, connprivkey=None):
-        super().__init__()
-        self.connprivkey = connprivkey
-
-    def action(self, runner):
+    def action(self, runner: 'Runner') -> None:
         super().action(runner)
         error = runner.check_error(self, self.find_conn(runner))
         if error is None:
