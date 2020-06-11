@@ -2,7 +2,7 @@
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
-from lnprototest import TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len
+from lnprototest import Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len
 import pyln.proto.message.bolt1
 from fixtures import *  # noqa: F401,F403
 
@@ -85,7 +85,26 @@ def test_init(runner, namespaceoverride):
                  Msg('init', globalfeatures=bitfield(34), features=''),
                  ExpectError()],
 
-                # FIXME: Test based on features of runner!
+                # If you don't support `option_data_loss_protect`, you will be ok if
+                # we ask for it.
+                Sequence([ExpectMsg('init', if_match=no_feature, if_arg=[0, 1]),
+                          Msg('init', globalfeatures='', features=bitfield(1))],
+                         enable=not runner.has_option('option_data_loss_protect')),
+
+                # If you don't support `option_data_loss_protect`, you will error if
+                # we require it.
+                Sequence([ExpectMsg('init', if_match=no_feature, if_arg=[0, 1]),
+                          Msg('init', globalfeatures='', features=bitfield(0)),
+                          ExpectError()],
+                         enable=not runner.has_option('option_data_loss_protect')),
+
+                # If you support `option_data_loss_protect`, you will advertize it odd.
+                Sequence([ExpectMsg('init', if_match=has_feature, if_arg=[1])],
+                         enable=(runner.has_option('option_data_loss_protect') == 'odd')),
+
+                # If you require `option_data_loss_protect`, you will advertize it even.
+                Sequence([ExpectMsg('init', if_match=has_feature, if_arg=[0])],
+                         enable=(runner.has_option('option_data_loss_protect') == 'even')),
             ])]
 
     runner.run(test)

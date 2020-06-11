@@ -103,6 +103,11 @@ class Runner(lnprototest.Runner):
         for flag in config.getoption("runner_args"):
             self.startup_flags.append("--{}".format(flag))
 
+        opts = subprocess.run(['{}/lightningd/lightningd'.format(LIGHTNING_SRC),
+                               '--list-features-only'],
+                              stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').splitlines()
+        self.options = dict([o.split('/') for o in opts])
+
     def start(self):
         self.proc = subprocess.Popen(['{}/lightningd/lightningd'.format(LIGHTNING_SRC),
                                       '--lightning-dir={}'.format(self.lightning_dir),
@@ -322,3 +327,9 @@ class Runner(lnprototest.Runner):
         except ValueError:
             raise EventError(event, "Did not broadcast the txid {}, just {}"
                              .format(revtxid, [(txid, self.bitcoind.rpc.getrawtransaction(txid)) for txid in self.bitcoind.rpc.getrawmempool()]))
+
+    def has_option(self, optname):
+        """Returns None if it doesn't support, otherwise 'even' or 'odd' (required or supported)"""
+        if optname in self.options:
+            return self.options[optname]
+        return None

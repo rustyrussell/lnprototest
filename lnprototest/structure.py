@@ -5,15 +5,22 @@ from .errors import SpecFileError, EventError
 
 class Sequence(Event):
     """A sequence of ordered events"""
-    def __init__(self, events):
-        """Events can be a Sequence, a single Event, or a list of Events"""
+    def __init__(self, events, enable=True):
+        """Events can be a Sequence, a single Event, or a list of Events.  If
+needs is False, this turns into a noop (e.g. if runner doesn't support
+it).  If needs is a string, only run if runner supports that option
+(or doesn't, with '!' prefix)"""
         super().__init__()
+        self.enable = enable
         if type(events) is Sequence:
             self.events = events.events
+            self.enable = events.enable
+            self.name = events.name
         elif isinstance(events, Event):
             self.events = [events]
         else:
-            self.events = events
+            # Filter out any events which are not enabled
+            self.events = [e for e in events if (not isinstance(e, Sequence)) or e.enable]
 
     def num_undone(self):
         return sum([e.num_undone() for e in self.events])
@@ -47,7 +54,8 @@ class OneOf(Event):
             seq = Sequence(s)
             if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
-            self.sequences.append(seq)
+            if seq.enable:
+                self.sequences.append(seq)
 
     def num_undone(self):
         # Use mean, unless we're done.
@@ -88,7 +96,8 @@ class AnyOrder(Event):
             seq = Sequence(s)
             if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
-            self.sequences.append(seq)
+            if seq.enable:
+                self.sequences.append(seq)
 
     def num_undone(self):
         # Use total, unless we're done.
@@ -131,7 +140,9 @@ class TryAll(Event):
         super().__init__()
         self.sequences = []
         for s in sequences:
-            self.sequences.append(Sequence(s))
+            seq = Sequence(s)
+            if seq.enable:
+                self.sequences.append(seq)
 
     def num_undone(self):
         return sum([s.num_undone() for s in self.sequences])

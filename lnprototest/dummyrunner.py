@@ -11,6 +11,9 @@ class DummyRunner(Runner):
         """The DummyRunner returns True here, as it can't do some things"""
         return True
 
+    def has_option(self, optname):
+        return False
+
     def start(self):
         pass
 
