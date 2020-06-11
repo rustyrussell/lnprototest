@@ -2,6 +2,7 @@
 from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event
+from .utils import privkey_expand
 import coincurve
 from typing import Dict, Optional, List, Union, Any
 
@@ -12,7 +13,7 @@ class Conn(object):
         """Create a connection from a node with the given hex privkey: we use
 trivial values for private keys, so we simply left-pad with zeroes"""
         self.name = connprivkey
-        self.connprivkey = coincurve.PrivateKey.from_hex(connprivkey.zfill(64))
+        self.connprivkey = privkey_expand(connprivkey)
         self.pubkey = coincurve.PublicKey.from_secret(self.connprivkey.secret)
         self.expected_error = False
 

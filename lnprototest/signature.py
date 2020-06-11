@@ -2,7 +2,7 @@
 import coincurve
 from io import BufferedIOBase
 from pyln.proto.message import FieldType, split_field
-from .utils import check_hex
+from .utils import check_hex, privkey_expand
 from typing import Union, Tuple, Dict, Any, Optional, cast
 
 
@@ -25,8 +25,7 @@ signature of privkey over hash, they are considered "equal"
                 self.sigval = bytes.fromhex(check_hex(cast(str, args[0]), 128))
         elif len(args) == 2:
             self.sigval = None
-            # Privkey can be truncated, since we use tiny values a lot.
-            self.privkey = coincurve.PrivateKey(bytes.fromhex(args[0]).rjust(32, bytes(1)))
+            self.privkey = privkey_expand(args[0])
             self.hashval = bytes.fromhex(check_hex(args[1], 64))
         else:
             raise TypeError('Expected hexsig or Privkey, hash')
