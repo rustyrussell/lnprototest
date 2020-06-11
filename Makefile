@@ -3,7 +3,7 @@
 default: check-source check check-quotes
 
 check:
-	pytest
+	pytest $(PYTEST_ARGS)
 
 check-source:
 	flake8 --ignore=E501,E731,W503
