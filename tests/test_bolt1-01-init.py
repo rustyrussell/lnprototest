@@ -10,16 +10,22 @@ from fixtures import *  # noqa: F401,F403
 # BOLT #1: The sending node:
 # ...
 # - SHOULD NOT set features greater than 13 in `globalfeatures`.
-def no_gf13(event, msg):
+def no_gf13(event, msg, unused):
     for i in range(14, bitfield_len(msg, 'globalfeatures')):
         if has_bit(msg, 'globalfeatures', i):
             raise EventError(event, "globalfeatures bit {} set".format(i))
 
 
-# We assume these are unused.
-def no_34_35(event, msg):
-    if has_bit(msg, 'features', 34) or has_bit(msg, 'features', 35):
-        raise EventError(event, "features set bits 34/35 unexpected: {}".format(msg))
+def no_feature(event, msg, featurebits):
+    for bit in featurebits:
+        if has_bit(msg, 'features', bit):
+            raise EventError(event, "features set bit {} unexpected: {}".format(bit, msg))
+
+
+def has_feature(event, msg, featurebits):
+    for bit in featurebits:
+        if not has_bit(msg, 'features', bit):
+            raise EventError(event, "features set bit {} unset: {}".format(bit, msg.to_str()))
 
 
 def test_init(runner, namespaceoverride):
@@ -57,7 +63,7 @@ def test_init(runner, namespaceoverride):
                  Msg('init', globalfeatures=bitfield(19), features='')],
 
                 # Sanity check that bits 34 and 35 are not used!
-                [ExpectMsg('init', if_match=no_34_35),
+                [ExpectMsg('init', if_match=no_feature, if_arg=[34, 35]),
                  # BOLT #1:
                  # The receiving node:...
                  #  - upon receiving unknown _odd_ feature bits that are non-zero:

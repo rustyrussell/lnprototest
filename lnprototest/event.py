@@ -114,17 +114,19 @@ it doesn't match: if this returns the message is ignored and we wait
 for a new one.
 
     """
-    def _default_if_match(self, msg):
+    def _default_if_match(self, msg, ignore):
         pass
 
-    def _default_if_nomatch(self, binmsg, errstr):
+    def _default_if_nomatch(self, binmsg, errstr, ignore):
         raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg, errstr))
 
-    def __init__(self, msgtypename, if_match=_default_if_match, if_nomatch=_default_if_nomatch, connprivkey=None, **kwargs):
+    def __init__(self, msgtypename, if_match=_default_if_match,
+                 if_nomatch=_default_if_nomatch, if_arg=None, connprivkey=None, **kwargs):
         super().__init__()
         self.partmessage = Message(event_namespace.get_msgtype(msgtypename), **kwargs)
         self.if_match = if_match
         self.if_nomatch = if_nomatch
+        self.if_arg = if_arg
         self.connprivkey = connprivkey
 
     # FIXME: Put helper in Message?
@@ -168,16 +170,16 @@ for a new one.
             try:
                 msg = Message.read(event_namespace, io.BytesIO(binmsg))
             except ValueError as ve:
-                self.if_nomatch(self, binmsg, str(ve))
+                self.if_nomatch(self, binmsg, str(ve), self.if_arg)
                 continue
 
             err = self.message_match(msg)
             if err:
-                self.if_nomatch(self, binmsg, err)
+                self.if_nomatch(self, binmsg, err, self.if_arg)
                 # If that returns, it means we try again.
                 continue
 
-            self.if_match(self, msg)
+            self.if_match(self, msg, self.if_arg)
             break
 
 
