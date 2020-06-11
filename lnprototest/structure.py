@@ -52,7 +52,7 @@ it)."""
             return sequences[0]
 
         for s in sequences:
-            failreason = cast(ExpectMsg, s.events[0]).message_match(msg)
+            failreason = cast(ExpectMsg, s.events[0]).message_match(runner, msg)
         if failreason is None:
             return s
 

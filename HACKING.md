@@ -22,6 +22,32 @@ try to get maximum coverage early in testing).
 Tests which don't have an ExpectError event have a check at the end to
 make sure no errors occurred.
 
+## Using ExpectMsg Events
+
+`ExpectMsg` matches a (perhaps only partially defined) message, then
+calls its `if_match` function which can do more fine-grained matching.
+For example, it could check that a specific field is not specified, or
+a specific bit is set, etc.  There's also an `if_nomatch` which can
+ignore a message (if it returns, the message is discarded as if it had
+not been received).
+
+`ExpectMsg` also stores the received fields in the runner's `stash`:
+the convenient `rcvd` function can be used to access them for use in
+`Msg` fields.
+
+
+## Creating New Event Types
+
+For various special effects, you might want to create a new Event
+subclass.
+
+Events are constructed once, but then their `action` method is called
+in multiple orders for multiple traverses: they can store state across
+runs in the `runner` using its `add_stash()` and `get_stash()`
+methods, as used by `ExpectMsg` and `Msg`.  The entire stash
+is emptied upon restart.
+
+
 ## Test Checklist
 
 1. Did you quote the part of the BOLT you are testing?  This is vital

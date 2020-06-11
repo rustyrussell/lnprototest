@@ -3,13 +3,20 @@ import traceback
 from pyln.proto.message import SubtypeType, Message
 import os.path
 import io
+import functools
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Optional, Dict, Union, Callable, Any, TYPE_CHECKING
 if TYPE_CHECKING:
     # Otherwise a circular dependency
     from .runner import Runner, Conn
+
+
+# Type for arguments: either strings, or functions to call at runtime
+ResolvableStr = Union[str, Callable[['Runner', 'Event', str], str]]
+ResolvableInt = Union[int, Callable[['Runner', 'Event', str], int]]
+Resolvable = Union[Any, Callable[['Runner', 'Event', str], Any]]
 
 
 class Event(object):
@@ -38,6 +45,20 @@ class Event(object):
         if self.done:
             return 0
         return 1
+
+    def resolve_arg(self, fieldname: str, runner: 'Runner', arg: ResolvableStr) -> str:
+        """If this is a string, return it, otherwise call it to get result"""
+        if callable(arg):
+            return arg(runner, self, fieldname)
+        else:
+            return arg
+
+    def resolve_args(self, runner: 'Runner', kwargs: Dict[str, ResolvableStr]) -> Dict[str, str]:
+        """Take a dict of args, replace callables with their return values"""
+        ret: Dict[str, str] = {}
+        for field, str_or_func in kwargs.items():
+            ret[field] = self.resolve_arg(field, runner, str_or_func)
+        return ret
 
     def __repr__(self):
         return self.name
@@ -87,21 +108,25 @@ class Disconnect(PerConnEvent):
 
 class Msg(PerConnEvent):
     """Feed a message to the runner (via optional given connection)"""
-    def __init__(self, msgtypename, connprivkey: Optional[str] = None, **kwargs):
+    def __init__(self, msgtypename: str, connprivkey: Optional[str] = None,
+                 **kwargs: ResolvableStr):
         super().__init__(connprivkey)
-        msgtype = event_namespace.get_msgtype(msgtypename)
-        if not msgtype:
+        self.msgtype = event_namespace.get_msgtype(msgtypename)
+        if not self.msgtype:
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
-        self.message = Message(msgtype, **kwargs)
-        missing = self.message.missing_fields()
-        if missing:
-            raise SpecFileError(self, "Missing fields {}".format(missing))
+        self.kwargs = kwargs
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
+        # Now we have runner, we can fill in all the message fields
+        message = Message(self.msgtype, **self.resolve_args(runner, self.kwargs))
+        missing = message.missing_fields()
+        if missing:
+            raise SpecFileError(self, "Missing fields {}".format(missing))
         binmsg = io.BytesIO()
-        self.message.write(binmsg)
+        message.write(binmsg)
         runner.recv(self, self.find_conn(runner), binmsg.getvalue())
+        msg_to_stash(runner, self, message)
 
 
 class RawMsg(PerConnEvent):
@@ -118,7 +143,7 @@ class RawMsg(PerConnEvent):
 class ExpectMsg(PerConnEvent):
     """Wait for a message from the runner.
 
-partmessage is the (usually incomplete) message which it should match.
+Args is the (usually incomplete) message which it should match.
 if_match is the function to call if it matches: should raise an
 exception if it's not satisfied.  if_nomatch is the function to all if
 it doesn't match: if this returns the message is ignored and we wait
@@ -134,7 +159,10 @@ for a new one.
     def __init__(self, msgtypename, if_match=_default_if_match,
                  if_nomatch=_default_if_nomatch, if_arg=None, connprivkey: Optional[str] = None, **kwargs):
         super().__init__(connprivkey)
-        self.partmessage = Message(event_namespace.get_msgtype(msgtypename), **kwargs)
+        self.msgtype = event_namespace.get_msgtype(msgtypename)
+        if not self.msgtype:
+            raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
+        self.kwargs = kwargs
         self.if_match = if_match
         self.if_nomatch = if_nomatch
         self.if_arg = if_arg
@@ -162,14 +190,16 @@ for a new one.
                                                        fieldtype.fieldtype.val_to_str(fieldsa[f], fieldsa))
         return None
 
-    def message_match(self, msg: Message) -> Optional[str]:
+    def message_match(self, runner: 'Runner', msg: Message) -> Optional[str]:
         """Does this message match what we expect?"""
-        if msg.messagetype != self.partmessage.messagetype:
-            return "Expected {}, got {}".format(self.partmessage.messagetype,
+        if msg.messagetype != self.msgtype:
+            return "Expected {}, got {}".format(self.msgtype,
                                                 msg.messagetype)
-        ret = self._cmp_msg(msg.messagetype, self.partmessage.fields, msg.fields)
+        partmessage = Message(self.msgtype, **self.resolve_args(runner, self.kwargs))
+        ret = self._cmp_msg(msg.messagetype, partmessage.fields, msg.fields)
         if ret is None:
             self.if_match(self, msg, self.if_arg)
+            msg_to_stash(runner, self, msg)
         return ret
 
     def action(self, runner: 'Runner') -> None:
@@ -189,13 +219,12 @@ for a new one.
                 self.if_nomatch(self, binmsg, str(ve), self.if_arg)
                 continue
 
-            err = self.message_match(msg)
+            err = self.message_match(runner, msg)
             if err:
                 self.if_nomatch(self, binmsg, err, self.if_arg)
                 # If that returns, it means we try again.
                 continue
 
-            self.if_match(self, msg, self.if_arg)
             break
 
 
@@ -229,13 +258,13 @@ class ExpectTx(Event):
     """Expect the runner to broadcast a transaction
 
     """
-    def __init__(self, txid):
+    def __init__(self, txid: ResolvableStr):
         super().__init__()
         self.txid = txid
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
-        runner.expect_tx(self, self.txid)
+        runner.expect_tx(self, self.resolve_arg('txid', runner, self.txid))
 
 
 class FundChannel(PerConnEvent):
@@ -256,26 +285,28 @@ class FundChannel(PerConnEvent):
 
 
 class Invoice(Event):
-    def __init__(self, amount, preimage):
+    def __init__(self, amount: int, preimage: ResolvableStr):
         super().__init__()
-        self.preimage = check_hex(preimage, 64)
+        self.preimage = preimage
         self.amount = amount
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
-        runner.invoice(self, self.amount, self.preimage)
+        runner.invoice(self, self.amount,
+                       check_hex(self.resolve_arg('preimage', runner, self.preimage), 64))
 
 
 class AddHtlc(PerConnEvent):
-    def __init__(self, amount, preimage, connprivkey: Optional[str] = None):
+    def __init__(self, amount: int, preimage: ResolvableStr, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
-        self.preimage = check_hex(preimage, 64)
+        self.preimage = preimage
         self.amount = amount
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
         runner.addhtlc(self, self.find_conn(runner),
-                       self.amount, self.preimage)
+                       self.amount,
+                       check_hex(self.resolve_arg('preimage', runner, self.preimage), 64))
 
 
 class ExpectError(PerConnEvent):
@@ -289,3 +320,87 @@ class ExpectError(PerConnEvent):
             # We ignore lack of responses from dummyrunner
             if not runner._is_dummy():
                 raise EventError(self, "No error found")
+
+
+def msg_to_stash(runner: 'Runner', event: Event, msg: Message):
+    """ExpectMsg and Msg save every field to the stash, in order"""
+    fields = {}
+    # Convert to strings.
+    for f in msg.fields:
+        fieldtype = msg.messagetype.find_field(f)
+        fields[f] = fieldtype.fieldtype.val_to_str(msg.fields[f], msg.fields)
+    stash = runner.get_stash(event, type(event).__name__, [])
+    stash.append((msg.messagetype.name, fields))
+    runner.add_stash(type(event).__name__, stash)
+
+
+def field_from_stash(event: Event, runner: 'Runner', stashname: str, var: str) -> str:
+    """Get field from stash for ExpectMsg or Nsg"""
+    stash = runner.get_stash(event, stashname)
+    if '.' in var:
+        prevname, _, var = var.partition('.')
+    else:
+        prevname = ''
+    for name, d in reversed(stash):
+        if prevname == '' or name == prevname:
+            if var not in d:
+                raise SpecFileError(event, '{}: {} did not receive a {}'
+                                    .format(stashname, prevname, var))
+            return d[var]
+    raise SpecFileError(event, '{}: have no prior {}'.format(stashname, prevname))
+
+
+def _get_stash(stashname: str,
+               # This is the signature which Msg() expects for callable values:
+               runner: 'Runner',
+               event: Event):
+    return runner.get_stash(event, stashname)
+
+
+def _get_stashed_field(stashname: str,
+                       fieldname: Optional[str],
+                       casttype: Any,
+                       # This is the signature which Msg() expects for callable values:
+                       runner: 'Runner',
+                       event: Event,
+                       field: str) -> Any:
+    # If they don't specify fieldname, it's same as this field.
+    if fieldname is None:
+        fieldname = field
+    strval = field_from_stash(event, runner, stashname, fieldname)
+    try:
+        return casttype(strval)
+    except ValueError:
+        raise SpecFileError(event, "{}.{} is {}, not a valid {}".format(stashname, fieldname, strval, casttype))
+
+
+def stashed(stashname: str) -> functools.partial:
+    """Use an entry from the stash as a field value at runtime"""
+    return functools.partial(_get_stash, stashname)
+
+
+def rcvd(fieldname: Optional[str] = None, casttype: Any = str) -> functools.partial:
+    """Use previous ExpectMsg field (as string)
+
+fieldname can be [msg].[field] or just [field] for last ExpectMsg
+
+    """
+    return functools.partial(_get_stashed_field, 'ExpectMsg', fieldname, casttype)
+
+
+def sent(fieldname: Optional[str] = None, casttype: Any = str) -> functools.partial:
+    """Use previous Msg field (as string)
+
+fieldname can be [msg].[field] or just [field] for last Msg
+
+    """
+    return functools.partial(_get_stashed_field, 'Msg', fieldname, casttype)
+
+
+def msat(sats: ResolvableInt) -> ResolvableInt:
+    def _msat(runner: 'Runner', event: Event, field: str) -> int:
+        if callable(sats):
+            return 1000 * sats(runner, event, field)
+        else:
+            return 1000 * sats
+    return _msat

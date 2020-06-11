@@ -1,5 +1,5 @@
 from .errors import EventError, SpecFileError
-from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, Block, ExpectTx, FundChannel, Invoice, AddHtlc, ExpectError
+from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, Block, ExpectTx, FundChannel, Invoice, AddHtlc, ExpectError, stashed, sent, rcvd, msat
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn
 from .dummyrunner import DummyRunner
@@ -38,4 +38,8 @@ __all__ = [
     "bitfield",
     "has_bit",
     "bitfield_len",
+    "stashed",
+    "sent",
+    "rcvd",
+    "msat",
 ]

@@ -3,7 +3,7 @@ from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event
 import coincurve
-from typing import Dict, Optional, List, Union
+from typing import Dict, Optional, List, Union, Any
 
 
 class Conn(object):
@@ -27,6 +27,7 @@ class Runner(object):
         # key == connprivkey, value == Conn
         self.conns: Dict[str, Conn] = {}
         self.last_conn: Optional[Conn] = None
+        self.stash: Dict[str, Dict[str, Any]] = {}
 
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
@@ -63,6 +64,7 @@ class Runner(object):
     def restart(self) -> None:
         self.conns = {}
         self.last_conn = None
+        self.stash = {}
 
     # FIXME: Why can't we use SequenceUnion here?
     def run(self, events: Union[Sequence, List[Event], Event]) -> None:
@@ -73,6 +75,18 @@ class Runner(object):
             sequence.action(self)
             self.post_check(sequence)
         self.stop()
+
+    def add_stash(self, stashname: str, vals: Any) -> None:
+        """Add a dict to the stash."""
+        self.stash[stashname] = vals
+
+    def get_stash(self, event: Event, stashname: str, default: Any = None) -> Any:
+        """Get an entry from the stash."""
+        if stashname not in self.stash:
+            if default is not None:
+                return default
+            raise SpecFileError(event, "Unknown stash name {}".format(stashname))
+        return self.stash[stashname]
 
     # You need to implement these!
     def connect(self, event: Event, connprivkey: str) -> None:

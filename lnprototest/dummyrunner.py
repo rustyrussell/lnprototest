@@ -8,10 +8,18 @@ from typing import List, Optional
 class DummyRunner(Runner):
     def __init__(self, config):
         super().__init__(config)
+        self._fakerecvstash()
 
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
         return True
+
+    def _fakerecvstash(self):
+        # We don't actually receive packets, so put typical values here
+        # to make tests "work".
+        self.add_stash('ExpectMsg', [('init', {'temporary_channel_id': "00" * 32,
+                                               'features': '',
+                                               'globalfeatures': ''})])
 
     def has_option(self, optname: str) -> bool:
         return False
@@ -24,6 +32,7 @@ class DummyRunner(Runner):
 
     def restart(self) -> None:
         super().restart()
+        self._fakerecvstash()
         if self.config.getoption('verbose'):
             print("[RESTART]")
         self.blockheight = 102

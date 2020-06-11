@@ -2,7 +2,7 @@
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
-from lnprototest import Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len
+from lnprototest import Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len, rcvd
 import pyln.proto.message.bolt1
 from fixtures import *  # noqa: F401,F403
 
@@ -105,6 +105,11 @@ def test_init(runner, namespaceoverride):
                 # If you require `option_data_loss_protect`, you will advertize it even.
                 Sequence([ExpectMsg('init', if_match=has_feature, if_arg=[0])],
                          enable=(runner.has_option('option_data_loss_protect') == 'even')),
+
+                # You should always handle us echoing your own features back!
+                [ExpectMsg('init'),
+                 Msg('init', globalfeatures=rcvd(), features=rcvd())],
+
             ])]
 
     runner.run(test)
