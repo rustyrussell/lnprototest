@@ -1,4 +1,5 @@
 pyln.proto.message
 pyln.proto.message.bolt
 coincurve
+python-bitcoinlib=0.11.0
 mypy

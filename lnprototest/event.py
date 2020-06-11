@@ -46,14 +46,14 @@ class Event(object):
             return 0
         return 1
 
-    def resolve_arg(self, fieldname: str, runner: 'Runner', arg: ResolvableStr) -> str:
+    def resolve_arg(self, fieldname: str, runner: 'Runner', arg: Resolvable) -> Any:
         """If this is a string, return it, otherwise call it to get result"""
         if callable(arg):
             return arg(runner, self, fieldname)
         else:
             return arg
 
-    def resolve_args(self, runner: 'Runner', kwargs: Dict[str, ResolvableStr]) -> Dict[str, str]:
+    def resolve_args(self, runner: 'Runner', kwargs: Dict[str, Resolvable]) -> Dict[str, Any]:
         """Take a dict of args, replace callables with their return values"""
         ret: Dict[str, str] = {}
         for field, str_or_func in kwargs.items():

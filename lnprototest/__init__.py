@@ -7,6 +7,7 @@ from .namespace import peer_message_namespace, event_namespace
 from .bitfield import bitfield, has_bit, bitfield_len
 from .signature import SigType, Sig
 from .keyset import KeySet
+from .commit_tx import Commit, commitsig_to_send, commitsig_to_recv, REMOTE, LOCAL, channel_id
 
 __version__ = '0.0.1'
 
@@ -50,4 +51,10 @@ __all__ = [
     "remote_htlc_basepoint",
     "remote_per_commitment_point",
     "remote_funding_pubkey",
+    "Commit",
+    "commitsig_to_send",
+    "commitsig_to_recv",
+    "channel_id",
+    "REMOTE",
+    "LOCAL",
 ]
