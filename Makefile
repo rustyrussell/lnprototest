@@ -13,7 +13,7 @@ check-flake8:
 	flake8 --ignore=E501,E731,W503
 
 check-mypy:
-	mypy --ignore-missing-imports $(PYTHONFILES)
+	mypy --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs $(PYTHONFILES)
 
 check-internal-tests:
 	pytest `find lnprototest -name '*.py'`

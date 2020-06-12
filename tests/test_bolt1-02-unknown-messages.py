@@ -2,12 +2,13 @@
 # Init exchange, with unknown messages
 #
 
-from lnprototest import (TryAll, Connect, ExpectMsg, Msg, RawMsg, ExpectError)
+from lnprototest import (TryAll, Connect, ExpectMsg, Msg, RawMsg, ExpectError, Runner)
 import pyln.proto.message.bolt1
 from fixtures import *  # noqa: F401,F403
+from typing import Any
 
 
-def test_unknowns(runner, namespaceoverride):
+def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
     # We override default namespace since we only need BOLT1
     namespaceoverride(pyln.proto.message.bolt1.namespace)
     test = [Connect(connprivkey='03'),

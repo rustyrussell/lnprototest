@@ -79,7 +79,7 @@ class Commitment(object):
         """Derive the pubkey used for side's commitment transaction."""
         return coincurve.PublicKey.from_secret(self.revocation_privkey(side).secret)
 
-    def _basepoint_tweak(self, basesecret: coincurve.PrivateKey, side: Side):
+    def _basepoint_tweak(self, basesecret: coincurve.PrivateKey, side: Side) -> coincurve.PrivateKey:
         # BOLT #3:
         # ### `localpubkey`, `local_htlcpubkey`, `remote_htlcpubkey`,
         #  `local_delayedpubkey`, and `remote_delayedpubkey` Derivation
@@ -426,7 +426,7 @@ def channel_update(short_channel_id: str,
     return functools.partial(_channel_update, short_channel_id, side, disable, cltv_expiry_delta, htlc_minimum_msat, fee_base_msat, fee_proportional_millionths, htlc_maximum_msat, timestamp)
 
 
-def test_commitment_number():
+def test_commitment_number() -> None:
     # BOLT #3:
     # In the following:
     #  - *local* transactions are considered, which implies that all payments to *local* are delayed.
@@ -452,7 +452,7 @@ def test_commitment_number():
     assert Commitment.obscured_commit_num(opener_pubkey, non_opener_pubkey, 42) == 0x2bb038521914 ^ 42
 
 
-def test_simple_commitment():
+def test_simple_commitment() -> None:
     # Damn, we can't use test vectors because they don't provide all the secrets!
     tx = Commitment(funding=Funding(funding_txid='8984484a580b825b9972d7adb15050b3ab624ccd731946b3eeddb92f4e7ef6be',
                                     funding_output_index=0,

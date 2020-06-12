@@ -20,13 +20,13 @@ trivial values for private keys, so we simply left-pad with zeroes"""
         self.expected_error = False
         self.must_not_events: List[MustNotMsg] = []
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
 class Runner(object):
     """Abstract base class for runners"""
-    def __init__(self, config):
+    def __init__(self, config: Any):
         self.config = config
         # key == connprivkey, value == Conn
         self.conns: Dict[str, Conn] = {}
@@ -143,6 +143,9 @@ class Runner(object):
         raise NotImplementedError()
 
     def get_node_bitcoinkey(self) -> str:
+        raise NotImplementedError()
+
+    def has_option(self, optname: str) -> Optional[str]:
         raise NotImplementedError()
 
 

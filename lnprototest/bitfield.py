@@ -12,13 +12,16 @@ def has_bit(msg: Message, field: str, bitnum: int) -> bool:
     bitlen = bitfield_len(msg, field)
     if bitnum >= bitlen:
         return False
-    return (msg.fields[field][bitlen // 8 - 1 - bitnum // 8] & (1 << (bitnum % 8)) != 0)
+    if (msg.fields[field][bitlen // 8 - 1 - bitnum // 8] & (1 << (bitnum % 8))) != 0:
+        return True
+    else:
+        return False
 
 
-def bitfield(*args) -> bytes:
+def bitfield(*args: int) -> str:
     """Create a bitfield hex value with these bit numbers set"""
     bytelen = max(args) + 8 // 8
     bfield = bytearray(bytelen)
     for bitnum in args:
         bfield[bytelen - 1 - bitnum // 8] |= (1 << (bitnum % 8))
-    return bytes(bfield)
+    return bfield.hex()

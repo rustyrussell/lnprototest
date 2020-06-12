@@ -91,7 +91,7 @@ class Funding(object):
             assert isinstance(remote_funding_privkey, str)
             self.bitcoin_privkeys[REMOTE] = privkey_expand(remote_funding_privkey)
 
-    def resolve_args(self, event: Event, runner: Runner):
+    def resolve_args(self, event: Event, runner: Runner) -> None:
         """Called at runtime when Funding is used in a Commit event"""
         for k, v in event.resolve_args(runner, self.unresolved).items():
             if k == 'funding_txid':
@@ -172,7 +172,7 @@ class Funding(object):
 
     def _unsigned_channel_announcment(self,
                                       features: str,
-                                      short_channel_id: str):
+                                      short_channel_id: str) -> Message:
         """Produce a channel_announcement message with dummy sigs"""
         node_ids = self.node_ids()
         bitcoin_keys = self.funding_pubkeys_for_gossip()
@@ -191,7 +191,7 @@ class Funding(object):
 
     def channel_announcement(self,
                              short_channel_id: str,
-                             features: str):
+                             features: str) -> bytes:
         """Produce a (signed) channel_announcement message"""
         ann = self._unsigned_channel_announcment(features, short_channel_id)
         # BOLT #7:
@@ -232,7 +232,7 @@ class Funding(object):
                        fee_base_msat: int,
                        fee_proportional_millionths: int,
                        timestamp: int,
-                       htlc_maximum_msat: Optional[int]):
+                       htlc_maximum_msat: Optional[int]) -> bytes:
         # BOLT #7: The `channel_flags` bitfield is used to indicate the
         # direction of the channel: it identifies the node that this update
         # originated from and signals various options concerning the

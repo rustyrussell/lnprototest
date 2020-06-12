@@ -3,25 +3,30 @@ import fileinput
 import glob
 import re
 import sys
-from argparse import ArgumentParser, REMAINDER
+from argparse import ArgumentParser, REMAINDER, Namespace
 from collections import namedtuple
+from typing import Dict, List, Tuple, Optional
 
 Quote = namedtuple('Quote', ['filename', 'line', 'text'])
 whitespace_re = re.compile(r'\s+')
 
 
-def collapse_whitespace(string):
+def collapse_whitespace(string: str) -> str:
     return whitespace_re.sub(' ', string)
 
 
-def add_quote(boltquotes, boltnum, filename, line, quote):
+def add_quote(boltquotes: Dict[int, List[Quote]],
+              boltnum: int,
+              filename: str,
+              line: int,
+              quote: str) -> None:
     if boltnum not in boltquotes:
         boltquotes[boltnum] = []
     boltquotes[boltnum].append(Quote(filename, line,
                                      collapse_whitespace(quote.strip())))
 
 
-def included_commit(args, boltprefix):
+def included_commit(args: Namespace, boltprefix: str) -> bool:
     for inc in args.include_commit:
         if boltprefix.startswith(inc):
             return True
@@ -30,7 +35,10 @@ def included_commit(args, boltprefix):
 
 # This looks like a BOLT line; return the bolt number and start of
 # quote if we shouldn't ignore it.
-def get_boltstart(args, line, filename, linenum):
+def get_boltstart(args: Namespace,
+                  line: str,
+                  filename: str,
+                  linenum: int) -> Tuple[Optional[int], Optional[str]]:
     if not line.startswith(args.comment_start + 'BOLT'):
         return None, None
 
@@ -50,24 +58,24 @@ def get_boltstart(args, line, filename, linenum):
         sys.exit(1)
 
     try:
-        boltnum = int(boltnum[1:].strip())
+        boltint = int(boltnum[1:].strip())
     except ValueError:
         print('{}:{}:bad bolt number {}'.format(filename, linenum,
                                                 line),
               file=sys.stderr)
         sys.exit(1)
 
-    return boltnum, parts[2]
+    return boltint, parts[2]
 
 
 # We expect lines to start with '# BOLT #NN:'
-def gather_quotes(args):
-    boltquotes = {}
+def gather_quotes(args: Namespace) -> Dict[int, List[Quote]]:
+    boltquotes: Dict[int, List[Quote]] = {}
     curquote = None
     # These initializations simply keep flake8 happy
-    curbolt = None
-    filestart = None
-    linestart = None
+    curbolt = 0
+    filestart = ''
+    linestart = 0
     for l in fileinput.input(args.files):
         line = l.strip()
         boltnum, quote = get_boltstart(args, line, fileinput.filename(), fileinput.filelineno())
@@ -100,7 +108,7 @@ def gather_quotes(args):
     return boltquotes
 
 
-def load_bolt(boltdir, num):
+def load_bolt(boltdir: str, num: int) -> List[str]:
     """Return a list, divided into one-string-per-bolt-section, with
 whitespace collapsed into single spaces.
 
@@ -130,7 +138,7 @@ whitespace collapsed into single spaces.
     return boltsections
 
 
-def find_quote(text, boltsections):
+def find_quote(text: str, boltsections: List[str]) -> Tuple[Optional[str], Optional[int]]:
     # '...' means "match anything".
     textparts = text.split('...')
     for b in boltsections:
@@ -144,7 +152,7 @@ def find_quote(text, boltsections):
     return None, None
 
 
-def main(args):
+def main(args: Namespace) -> None:
     boltquotes = gather_quotes(args)
     for bolt in boltquotes:
         boltsections = load_bolt(args.boltdir, bolt)

@@ -10,7 +10,7 @@ class Side(int):
     def __not__(self) -> 'Side':
         return Side(not self.v)
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.v
 
 

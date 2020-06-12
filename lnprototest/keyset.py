@@ -63,7 +63,7 @@ class KeySet(object):
         return coincurve.PublicKey.from_secret(self.per_commit_secret(n).secret)
 
 
-def test_shachain():
+def test_shachain() -> None:
     # BOLT #3:
     # ## Generation Tests
     # name: generate_from_seed 0 final node

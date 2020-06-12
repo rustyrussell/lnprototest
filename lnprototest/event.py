@@ -8,7 +8,7 @@ import struct
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
-from typing import Optional, Dict, Union, Callable, Any, TYPE_CHECKING
+from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING
 if TYPE_CHECKING:
     # Otherwise a circular dependency
     from .runner import Runner, Conn
@@ -22,7 +22,7 @@ Resolvable = Union[Any, Callable[['Runner', 'Event', str], Any]]
 
 class Event(object):
     """Abstract base class for events."""
-    def __init__(self):
+    def __init__(self) -> None:
         # From help(traceback.extract_stack):
         #   Each item in the list is a quadruple (filename,
         #   line number, function name, text), and the entries are in order
@@ -61,7 +61,7 @@ class Event(object):
             ret[field] = self.resolve_arg(field, runner, str_or_func)
         return ret
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
 
@@ -103,7 +103,7 @@ class MustNotMsg(PerConnEvent):
         super().__init__(connprivkey)
         self.must_not = must_not
 
-    def matches(self, binmsg: bytes):
+    def matches(self, binmsg: bytes) -> bool:
         msgnum = struct.unpack('>H', binmsg[0:2])[0]
         msgtype = event_namespace.get_msgtype_by_number(msgnum)
         if msgtype:
@@ -131,7 +131,7 @@ class Disconnect(PerConnEvent):
 class Msg(PerConnEvent):
     """Feed a message to the runner (via optional given connection)"""
     def __init__(self, msgtypename: str, connprivkey: Optional[str] = None,
-                 **kwargs: ResolvableStr):
+                 **kwargs: Union[ResolvableStr, ResolvableInt]):
         super().__init__(connprivkey)
         self.msgtype = event_namespace.get_msgtype(msgtypename)
         if not self.msgtype:
@@ -172,14 +172,18 @@ it doesn't match: if this returns the message is ignored and we wait
 for a new one.
 
     """
-    def _default_if_match(self, msg, ignore):
+    def _default_if_match(self, msg: Message, ignore: Any) -> None:
         pass
 
-    def _default_if_nomatch(self, binmsg, errstr, ignore):
-        raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg, errstr))
+    def _default_if_nomatch(self, binmsg: bytes, errstr: str, ignore: Any) -> None:
+        raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg.hex(), errstr))
 
-    def __init__(self, msgtypename, if_match=_default_if_match,
-                 if_nomatch=_default_if_nomatch, if_arg=None, connprivkey: Optional[str] = None, **kwargs):
+    def __init__(self, msgtypename: str,
+                 if_match: Callable[['ExpectMsg', Message, Any], None] = _default_if_match,
+                 if_nomatch: Callable[['ExpectMsg', bytes, str, Any], None] = _default_if_nomatch,
+                 if_arg: Any = None,
+                 connprivkey: Optional[str] = None,
+                 **kwargs: Union[str, Resolvable]):
         super().__init__(connprivkey)
         self.msgtype = event_namespace.get_msgtype(msgtypename)
         if not self.msgtype:
@@ -194,7 +198,7 @@ for a new one.
     def _cmp_msg(subtype: SubtypeType,
                  fieldsa: Dict[str, Any],
                  fieldsb: Dict[str, Any],
-                 prefix="") -> Optional[str]:
+                 prefix: str = "") -> Optional[str]:
         """a is a subset of b"""
         for f in fieldsa:
             if f not in fieldsb:
@@ -257,7 +261,7 @@ class Block(Event):
     """Generate a block, at blockheight, with optional txs.
 
     """
-    def __init__(self, blockheight, number=1, txs=[]):
+    def __init__(self, blockheight: int, number: int = 1, txs: List[str] = []):
         super().__init__()
         self.blockheight = blockheight
         self.number = number
@@ -357,7 +361,7 @@ class CheckEq(Event):
             raise EventError(self, "{} != {}".format(a, b))
 
 
-def msg_to_stash(runner: 'Runner', event: Event, msg: Message):
+def msg_to_stash(runner: 'Runner', event: Event, msg: Message) -> None:
     """ExpectMsg and Msg save every field to the stash, in order"""
     fields = {}
     # Convert to strings.
@@ -390,7 +394,7 @@ def field_from_stash(event: Event, runner: 'Runner', stashname: str, var: str) -
 def _get_stash(stashname: str,
                # This is the signature which Msg() expects for callable values:
                runner: 'Runner',
-               event: Event):
+               event: Event) -> Any:
     return runner.get_stash(event, stashname)
 
 

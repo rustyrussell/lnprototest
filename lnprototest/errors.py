@@ -10,7 +10,7 @@ class EventError(Exception):
         self.eventpath = [event]
         self.message = message
 
-    def add_path(self, event: 'Event'):
+    def add_path(self, event: 'Event') -> None:
         self.eventpath = [event] + self.eventpath
 
 

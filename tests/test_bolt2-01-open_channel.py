@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 # Variations on open_channel, accepter + opener perspectives
 
-from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, Funding, Commit, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, LOCAL, REMOTE, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey
+from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, Funding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, LOCAL, REMOTE, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey
 from fixtures import *  # noqa: F401,F403
 from blocks import BLOCK_102
 
 
-def test_open_channel(runner):
+def test_open_channel(runner: Runner) -> None:
     # regtest chain hash
     chain_hash = '06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f'
 

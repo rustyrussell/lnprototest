@@ -12,7 +12,7 @@ signature.  This has the property that if the raw signature is a valid
 signature of privkey over hash, they are considered "equal"
 
 """
-    def __init__(self, *args):
+    def __init__(self, *args: Any):
         """Either a 64-byte hex/bytes value, or a PrivateKey and a hash"""
         if len(args) == 1:
             if type(args[0]) is bytes:
@@ -63,22 +63,25 @@ signature of privkey over hash, they are considered "equal"
         assert(len(s) == 32)
         return r + s
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         # For convenience of using stashed objects, we allow comparison with str
         if isinstance(other, str):
-            other = Sig(other)
-        if self.sigval and other.sigval:
-            return self.sigval == other.sigval
-        elif not self.sigval and not other.sigval:
-            return self.privkey == other.privkey and self.hashval == other.hashval
+            othersig = Sig(other)
+        else:
+            othersig = cast(Sig, other)
+        if self.sigval and othersig.sigval:
+            return self.sigval == othersig.sigval
+        elif not self.sigval and not othersig.sigval:
+            return self.privkey == othersig.privkey and self.hashval == othersig.hashval
         elif not self.sigval:
             a = self
-            b = other
+            b = othersig
         else:
-            a = other
+            a = othersig
             b = self
         # A has a privkey/hash, B has a sigval.
         pubkey = coincurve.PublicKey.from_secret(a.privkey.secret)
+        assert b.sigval is not None
         if coincurve.verify_signature(self.to_der(b.sigval), a.hashval, pubkey.format(), hasher=None):
             return True
         return False
@@ -108,7 +111,7 @@ signature of privkey over hash, they are considered "equal"
 
 class SigType(FieldType):
     """A signature type which has special comparison properties"""
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('signature')
 
     def val_to_str(self, v: Sig, otherfields: Dict[str, Any]) -> str:
@@ -129,14 +132,14 @@ class SigType(FieldType):
         return Sig(val)
 
 
-def test_der():
+def test_der() -> None:
     der = b'0E\x02!\x00\xa0\xb3\x7f\x8f\xbah<\xc6\x8fet\xcdC\xb3\x9f\x03C\xa5\x00\x08\xbfl\xce\xa9\xd121\xd9\xe7\xe2\xe1\xe4\x02 \x11\xed\xc8\xd3\x07%B\x96&J\xeb\xfc=\xc7l\xd8\xb6h7:\x07/\xd6Fe\xb5\x00\x00\xe9\xfc\xceR'
     sig = Sig.from_der(der)
     der2 = Sig.to_der(sig)
     assert der == der2
 
 
-def test_signature():
+def test_signature() -> None:
     s = Sig('01', '00' * 32)
 
     assert s == s

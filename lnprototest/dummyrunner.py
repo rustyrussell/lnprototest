@@ -6,10 +6,11 @@ from .event import Event, ExpectMsg, MustNotMsg
 from typing import List, Optional
 from .keyset import KeySet
 from pyln.proto.message import Message, FieldType, DynamicArrayType, EllipsisArrayType, SizedArrayType
+from typing import Any
 
 
 class DummyRunner(Runner):
-    def __init__(self, config):
+    def __init__(self, config: Any):
         super().__init__(config)
 
     def _is_dummy(self) -> bool:
@@ -29,8 +30,8 @@ class DummyRunner(Runner):
     def get_node_bitcoinkey(self) -> str:
         return '10'
 
-    def has_option(self, optname: str) -> bool:
-        return False
+    def has_option(self, optname: str) -> Optional[str]:
+        return None
 
     def start(self) -> None:
         pass

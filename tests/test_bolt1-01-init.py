@@ -2,33 +2,35 @@
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
-from lnprototest import Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len, rcvd
+from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len, rcvd
 import pyln.proto.message.bolt1
+from pyln.proto.message import Message
+from typing import List, Any
 from fixtures import *  # noqa: F401,F403
 
 
 # BOLT #1: The sending node:
 # ...
 # - SHOULD NOT set features greater than 13 in `globalfeatures`.
-def no_gf13(event, msg, unused):
+def no_gf13(event: Event, msg: Message, unused: Any) -> None:
     for i in range(14, bitfield_len(msg, 'globalfeatures')):
         if has_bit(msg, 'globalfeatures', i):
             raise EventError(event, "globalfeatures bit {} set".format(i))
 
 
-def no_feature(event, msg, featurebits):
+def no_feature(event: Event, msg: Message, featurebits: List[int]) -> None:
     for bit in featurebits:
         if has_bit(msg, 'features', bit):
             raise EventError(event, "features set bit {} unexpected: {}".format(bit, msg))
 
 
-def has_feature(event, msg, featurebits):
+def has_feature(event: Event, msg: Message, featurebits: List[int]) -> None:
     for bit in featurebits:
         if not has_bit(msg, 'features', bit):
             raise EventError(event, "features set bit {} unset: {}".format(bit, msg.to_str()))
 
 
-def test_init(runner, namespaceoverride):
+def test_init(runner: Runner, namespaceoverride: Any) -> None:
     # We override default namespace since we only need BOLT1
     namespaceoverride(pyln.proto.message.bolt1.namespace)
     test = [Connect(connprivkey='03'),
