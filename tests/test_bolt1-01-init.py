@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 

@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 # Variations on open_channel, accepter + opener perspectives
 
 from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, Funding, Commit, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, LOCAL, REMOTE, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey
