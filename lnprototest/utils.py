@@ -3,6 +3,21 @@ import string
 import coincurve
 
 
+class Side(int):
+    def __init__(self, v: int):
+        self.v = int(v)
+
+    def __not__(self) -> 'Side':
+        return Side(not self.v)
+
+    def __int__(self):
+        return self.v
+
+
+LOCAL = Side(0)
+REMOTE = Side(1)
+
+
 def check_hex(val: str, digits: int) -> str:
     if not all(c in string.hexdigits for c in val):
         raise ValueError("{} is not valid hex".format(val))

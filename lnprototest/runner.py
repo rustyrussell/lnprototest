@@ -139,6 +139,12 @@ class Runner(object):
     def get_keyset(self) -> KeySet:
         raise NotImplementedError()
 
+    def get_node_privkey(self) -> str:
+        raise NotImplementedError()
+
+    def get_node_bitcoinkey(self) -> str:
+        raise NotImplementedError()
+
 
 def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote revocation basepoint"""
@@ -170,10 +176,17 @@ def remote_htlc_basepoint() -> Callable[[Runner, Event, str], str]:
 
 
 def remote_funding_pubkey() -> Callable[[Runner, Event, str], str]:
-    """Get the remote funding pubkey"""
+    """Get the remote funding pubkey (FIXME: we assume there's only one!)"""
     def _remote_funding_pubkey(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().funding_pubkey().format().hex()
+        return coincurve.PublicKey.from_secret(privkey_expand(runner.get_node_bitcoinkey()).secret).format().hex()
     return _remote_funding_pubkey
+
+
+def remote_funding_privkey() -> Callable[[Runner, Event, str], str]:
+    """Get the remote funding privkey (FIXME: we assume there's only one!)"""
+    def _remote_funding_privkey(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_node_bitcoinkey()
+    return _remote_funding_privkey
 
 
 def remote_per_commitment_point(n: int) -> Callable[[Runner, Event, str], str]:

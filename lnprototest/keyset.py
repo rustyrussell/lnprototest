@@ -7,13 +7,11 @@ from .utils import privkey_expand, check_hex
 
 class KeySet(object):
     def __init__(self,
-                 funding_privkey: str,
                  revocation_base_secret: str,
                  payment_base_secret: str,
                  htlc_base_secret: str,
                  delayed_payment_base_secret: str,
                  shachain_seed: str):
-        self.funding_privkey = privkey_expand(funding_privkey)
         self.revocation_base_secret = privkey_expand(revocation_base_secret)
         self.payment_base_secret = privkey_expand(payment_base_secret)
         self.htlc_base_secret = privkey_expand(htlc_base_secret)
@@ -31,9 +29,6 @@ class KeySet(object):
 
     def htlc_basepoint(self) -> coincurve.PublicKey:
         return coincurve.PublicKey.from_secret(self.htlc_base_secret.secret)
-
-    def funding_pubkey(self) -> coincurve.PublicKey:
-        return coincurve.PublicKey.from_secret(self.funding_privkey.secret)
 
     def per_commit_secret(self, n: int) -> coincurve.PrivateKey:
         # BOLT #3:
@@ -75,7 +70,7 @@ def test_shachain():
     # seed: 0x0000000000000000000000000000000000000000000000000000000000000000
     # I: 281474976710655
     # output: 0x02a40c85b6f28da08dfdbe0926c53fab2de6d28c10301f8f7c4073d5e42e3148
-    keyset = KeySet('01', '01', '01', '01', '01', '0000000000000000000000000000000000000000000000000000000000000000')
+    keyset = KeySet('01', '01', '01', '01', '0000000000000000000000000000000000000000000000000000000000000000')
     assert keyset.per_commit_secret(0xFFFFFFFFFFFF - 281474976710655).secret.hex() == '02a40c85b6f28da08dfdbe0926c53fab2de6d28c10301f8f7c4073d5e42e3148'
 
     # BOLT #3:
@@ -83,7 +78,7 @@ def test_shachain():
     # seed: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     # I: 281474976710655
     # output: 0x7cc854b54e3e0dcdb010d7a3fee464a9687be6e8db3be6854c475621e007a5dc
-    keyset = KeySet('01', '01', '01', '01', '01', 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+    keyset = KeySet('01', '01', '01', '01', 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
     assert keyset.per_commit_secret(0xFFFFFFFFFFFF - 281474976710655).secret.hex() == '7cc854b54e3e0dcdb010d7a3fee464a9687be6e8db3be6854c475621e007a5dc'
 
     # BOLT #3:
@@ -91,7 +86,7 @@ def test_shachain():
     # seed: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     # I: 0xaaaaaaaaaaa
     # output: 0x56f4008fb007ca9acf0e15b054d5c9fd12ee06cea347914ddbaed70d1c13a528
-    keyset = KeySet('01', '01', '01', '01', '01', 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+    keyset = KeySet('01', '01', '01', '01', 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
     assert keyset.per_commit_secret(0xFFFFFFFFFFFF - 0xaaaaaaaaaaa).secret.hex() == '56f4008fb007ca9acf0e15b054d5c9fd12ee06cea347914ddbaed70d1c13a528'
 
     # BOLT #3:
@@ -99,7 +94,7 @@ def test_shachain():
     # seed: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     # I: 0x555555555555
     # output: 0x9015daaeb06dba4ccc05b91b2f73bd54405f2be9f217fbacd3c5ac2e62327d31
-    keyset = KeySet('01', '01', '01', '01', '01', 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+    keyset = KeySet('01', '01', '01', '01', 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
     assert keyset.per_commit_secret(0xFFFFFFFFFFFF - 0x555555555555).secret.hex() == '9015daaeb06dba4ccc05b91b2f73bd54405f2be9f217fbacd3c5ac2e62327d31'
 
     # BOLT #3:
@@ -107,5 +102,5 @@ def test_shachain():
     # seed: 0x0101010101010101010101010101010101010101010101010101010101010101
     # I: 1
     # output: 0x915c75942a26bb3a433a8ce2cb0427c29ec6c1775cfc78328b57f6ba7bfeaa9c
-    keyset = KeySet('01', '01', '01', '01', '01', '0101010101010101010101010101010101010101010101010101010101010101')
+    keyset = KeySet('01', '01', '01', '01', '0101010101010101010101010101010101010101010101010101010101010101')
     assert keyset.per_commit_secret(0xFFFFFFFFFFFF - 1).secret.hex() == '915c75942a26bb3a433a8ce2cb0427c29ec6c1775cfc78328b57f6ba7bfeaa9c'

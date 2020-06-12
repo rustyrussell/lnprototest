@@ -7,25 +7,15 @@ import struct
 from hashlib import sha256
 from .keyset import KeySet
 from .signature import Sig
-from typing import List, Tuple, Callable, cast
-from .event import Event, ResolvableInt, ResolvableStr
+from typing import List, Tuple, Callable, Optional
+from .event import Event, ResolvableInt
 from .runner import Runner
+from pyln.proto.message import Message
+from .utils import Side, LOCAL, REMOTE
+from .funding import Funding
 import coincurve
-
-
-class Side(int):
-    def __init__(self, v: int):
-        self.v = int(v)
-
-    def __not__(self) -> 'Side':
-        return Side(not self.v)
-
-    def __int__(self):
-        return self.v
-
-
-LOCAL = Side(0)
-REMOTE = Side(1)
+import time
+import functools
 
 
 # FIXME
@@ -35,9 +25,7 @@ class HTLC(object):
 
 class Commitment(object):
     def __init__(self,
-                 funding_txid: str,
-                 funding_output_index: int,
-                 funding_amount: int,
+                 funding: Funding,
                  opener: Side,
                  local_keyset: KeySet,
                  remote_keyset: KeySet,
@@ -50,9 +38,7 @@ class Commitment(object):
                  feerate: int,
                  option_static_remotekey: bool = False):
         self.opener = opener
-        self.funding_txid = bytes.fromhex(funding_txid)
-        self.funding_output_index = funding_output_index
-        self.funding_amount = funding_amount
+        self.funding = funding
         self.feerate = feerate
         self.keyset = [local_keyset, remote_keyset]
         self.self_delay = (local_to_self_delay, remote_to_self_delay)
@@ -60,34 +46,7 @@ class Commitment(object):
         self.dust_limit = (local_dust_limit, remote_dust_limit)
         self.htlcs: List[HTLC] = []
         self.commitnum = 0
-        self.firstkey = self._keyorder(local_keyset.funding_pubkey(),
-                                       remote_keyset.funding_pubkey())
         self.option_static_remotekey = option_static_remotekey
-
-    @staticmethod
-    def _keyorder(localpubkey: coincurve.PublicKey,
-                  remotepubkey: coincurve.PublicKey) -> Side:
-        # BOLT #3:
-        # ## Funding Transaction Output
-        #
-        # * The funding output script is a P2WSH to:
-        #  `2 <pubkey1> <pubkey2> 2 OP_CHECKMULTISIG`
-        # * Where `pubkey1` is the lexicographically lesser of the two
-        #   `funding_pubkey` in compressed format, and where `pubkey2`
-        #   is the lexicographically greater of the two.
-        if (localpubkey.format() < remotepubkey.format()):
-            return LOCAL
-        return REMOTE
-
-    def channel_id(self) -> str:
-        # BOLT #2: This message introduces the `channel_id` to identify the
-        # channel. It's derived from the funding transaction by combining the
-        # `funding_txid` and the `funding_output_index`, using big-endian
-        # exclusive-OR (i.e. `funding_output_index` alters the last 2 bytes).
-        chanid = bytearray(self.funding_txid)
-        chanid[-1] ^= self.funding_output_index % 256
-        chanid[-2] ^= self.funding_output_index // 256
-        return chanid.hex()
 
     def revocation_privkey(self, side: Side) -> coincurve.PrivateKey:
         """Derive the privkey used for the revocation of side's commitment transaction."""
@@ -249,7 +208,7 @@ class Commitment(object):
         #    * `txin[0]` sequence: upper 8 bits are 0x80, lower 24 bits are upper 24 bits of the obscured commitment number
         #    * `txin[0]` script bytes: 0
         #    * `txin[0]` witness: `0 <signature_for_pubkey1> <signature_for_pubkey2>`
-        txin = CTxIn(COutPoint(self.funding_txid, self.funding_output_index),
+        txin = CTxIn(COutPoint(bytes.fromhex(self.funding.txid), self.funding.output_index),
                      nSequence=0x80000000 | (ocn >> 24))
 
         # txouts, with ctlv_timeouts for htlc output tiebreak
@@ -314,47 +273,43 @@ class Commitment(object):
         return self._unsigned_tx(REMOTE)
 
     def input_wscript(self) -> CScript:
-        return CScript([script.OP_2,
-                        self.keyset[self.firstkey].funding_pubkey().format(),
-                        self.keyset[not self.firstkey].funding_pubkey().format(),
-                        script.OP_2,
-                        script.OP_CHECKMULTISIG])
+        return CScript([script.OP_2]
+                       + [k.format() for k in self.funding.funding_pubkeys_for_tx()]
+                       + [script.OP_2,
+                          script.OP_CHECKMULTISIG])
 
-    def _sig(self, side: Side, tx: CMutableTransaction) -> Sig:
-        print('Signing input_wscript keys {} and {} {}'.format(
-            self.keyset[LOCAL].funding_pubkey().format().hex(),
-            self.keyset[REMOTE].funding_pubkey().format().hex(),
-            self.input_wscript().hex()))
+    def _sig(self, privkey: coincurve.PrivateKey, tx: CMutableTransaction) -> Sig:
         sighash = script.SignatureHash(self.input_wscript(), tx, inIdx=0,
                                        hashtype=script.SIGHASH_ALL,
-                                       amount=self.funding_amount,
+                                       amount=self.funding.amount,
                                        sigversion=script.SIGVERSION_WITNESS_V0)
-
-        print('Gives sig of {} with key {}'.format(sighash.hex(), coincurve.PublicKey.from_secret(self.keyset[side].funding_privkey.secret).format().hex()))
-        return Sig(self.keyset[side].funding_privkey.secret.hex(), sighash.hex())
+        return Sig(privkey.secret.hex(), sighash.hex())
 
     def local_sig(self, tx: CMutableTransaction) -> Sig:
-        return self._sig(LOCAL, tx)
+        return self._sig(self.funding.bitcoin_privkeys[LOCAL], tx)
 
     def remote_sig(self, tx: CMutableTransaction) -> Sig:
-        return self._sig(REMOTE, tx)
+        print('Signing {} input_wscript keys {} and {}: {} amount = {}'.format(
+            REMOTE,
+            self.funding.funding_pubkey(LOCAL).format().hex(),
+            self.funding.funding_pubkey(REMOTE).format().hex(),
+            self.input_wscript().hex(),
+            self.funding.amount))
+        return self._sig(self.funding.bitcoin_privkeys[REMOTE], tx)
 
     def signed_tx(self, unsigned_tx: CMutableTransaction) -> CMutableTransaction:
         # BOLT #3:
         # * `txin[0]` witness: `0 <signature_for_pubkey1> <signature_for_pubkey2>`
         tx = unsigned_tx.copy()
-        tx.wit = CTxWitness([CScriptWitness([script.OP_0,
-                                             self._sig(self.firstkey, tx),
-                                             self._sig(cast(Side, not self.firstkey), tx),
-                                             self.input_wscript()])])
+        tx.wit = CTxWitness([CScriptWitness([script.OP_0]
+                                            + [self._sig(key, tx) for key in self.funding.funding_privkeys_for_tx()]
+                                            + [self.input_wscript()])])
         return tx
 
 
 class Commit(Event):
     def __init__(self,
-                 funding_txid: ResolvableStr,
-                 funding_output_index: ResolvableInt,
-                 funding_amount: ResolvableInt,
+                 funding: Funding,
                  opener: Side,
                  local_keyset: KeySet,
                  local_to_self_delay: ResolvableInt,
@@ -366,9 +321,7 @@ class Commit(Event):
                  feerate: ResolvableInt,
                  option_static_remotekey: bool = False):
         super().__init__()
-        self.funding_txid = funding_txid
-        self.funding_output_index = funding_output_index
-        self.funding_amount = funding_amount
+        self.funding = funding
         self.opener = opener
         self.local_keyset = local_keyset
         self.local_to_self_delay = local_to_self_delay
@@ -382,15 +335,16 @@ class Commit(Event):
 
     def action(self, runner: Runner) -> None:
         super().action(runner)
-        commit = Commitment(local_keyset=self.local_keyset,
+
+        # Now we can resolve any runtime fields in Funding
+        self.funding.resolve_args(self, runner)
+        commit = Commitment(funding=self.funding,
+                            local_keyset=self.local_keyset,
                             remote_keyset=runner.get_keyset(),
                             option_static_remotekey=self.option_static_remotekey,
                             opener=self.opener,
                             **self.resolve_args(runner,
-                                                {'funding_txid': self.funding_txid,
-                                                 'funding_output_index': self.funding_output_index,
-                                                 'funding_amount': self.funding_amount,
-                                                 'local_to_self_delay': self.local_to_self_delay,
+                                                {'local_to_self_delay': self.local_to_self_delay,
                                                  'remote_to_self_delay': self.remote_to_self_delay,
                                                  'local_amount': self.local_amount,
                                                  'remote_amount': self.remote_amount,
@@ -425,12 +379,51 @@ def commitsig_to_recv() -> Callable[[Runner, Event, str], str]:
 
 def _channel_id(runner: Runner, event: Event, field: str) -> str:
     """Get the channel id"""
-    return runner.get_stash(event, 'Commit').channel_id()
+    return runner.get_stash(event, 'Commit').funding.channel_id()
 
 
 def channel_id() -> Callable[[Runner, Event, str], str]:
     """Get the channel_id for the current Commit"""
     return _channel_id
+
+
+def _channel_announcement(short_channel_id: str, features: bytes, runner: Runner, event: Event, field: str) -> Message:
+    """Get the channel announcement"""
+    return runner.get_stash(event, 'Commit').channel_announcement(short_channel_id, features)
+
+
+def channel_announcement(short_channel_id: str, features: bytes) -> Callable[[Runner, Event, str], str]:
+    """Get the channel_announcement for the current Commit"""
+    return functools.partial(_channel_announcement, short_channel_id, features)
+
+
+def _channel_update(short_channel_id: str,
+                    side: Side,
+                    disable: bool,
+                    cltv_expiry_delta: int,
+                    htlc_minimum_msat: int,
+                    fee_base_msat: int,
+                    fee_proportional_millionths: int,
+                    timestamp: Optional[int],
+                    htlc_maximum_msat: Optional[int],
+                    runner: Runner, event: Event, field: str) -> Message:
+    """Get the channel_update"""
+    if timestamp is None:
+        timestamp = int(time.time())
+    return runner.get_stash(event, 'Commit').channel_update(short_channel_id, side, disable, cltv_expiry_delta, htlc_maximum_msat, fee_base_msat, fee_proportional_millionths, timestamp, htlc_maximum_msat)
+
+
+def channel_update(short_channel_id: str,
+                   side: Side,
+                   disable: bool,
+                   cltv_expiry_delta: int,
+                   htlc_minimum_msat: int,
+                   fee_base_msat: int,
+                   fee_proportional_millionths: int,
+                   htlc_maximum_msat: Optional[int],
+                   timestamp: Optional[int] = None) -> Callable[[Runner, Event, str], str]:
+    """Get a channel_update for the current Commit"""
+    return functools.partial(_channel_update, short_channel_id, side, disable, cltv_expiry_delta, htlc_minimum_msat, fee_base_msat, fee_proportional_millionths, htlc_maximum_msat, timestamp)
 
 
 def test_commitment_number():
@@ -461,12 +454,16 @@ def test_commitment_number():
 
 def test_simple_commitment():
     # Damn, we can't use test vectors because they don't provide all the secrets!
-    tx = Commitment(funding_txid='8984484a580b825b9972d7adb15050b3ab624ccd731946b3eeddb92f4e7ef6be',
-                    funding_output_index=0,
-                    funding_amount=10000000,
+    tx = Commitment(funding=Funding(funding_txid='8984484a580b825b9972d7adb15050b3ab624ccd731946b3eeddb92f4e7ef6be',
+                                    funding_output_index=0,
+                                    funding_amount=10000000,
+                                    local_node_privkey='01',
+                                    local_funding_privkey='01',
+                                    remote_node_privkey='01',
+                                    remote_funding_privkey='02'),
                     opener=LOCAL,
-                    local_keyset=KeySet('01', '02', '03', '04', '05', '06' * 32),
-                    remote_keyset=KeySet('11', '12', '13', '14', '15', '16' * 32),
+                    local_keyset=KeySet('02', '03', '04', '05', '06' * 32),
+                    remote_keyset=KeySet('12', '13', '14', '15', '16' * 32),
                     local_to_self_delay=144,
                     remote_to_self_delay=145,
                     local_amount=7000000000,

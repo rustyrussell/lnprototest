@@ -110,12 +110,17 @@ class Runner(lnprototest.Runner):
         self.options = dict([o.split('/') for o in opts])
 
     def get_keyset(self):
-        return KeySet(funding_privkey='0000000000000000000000000000000000000000000000000000000000000010',
-                      revocation_base_secret='0000000000000000000000000000000000000000000000000000000000000011',
+        return KeySet(revocation_base_secret='0000000000000000000000000000000000000000000000000000000000000011',
                       payment_base_secret='0000000000000000000000000000000000000000000000000000000000000012',
                       delayed_payment_base_secret='0000000000000000000000000000000000000000000000000000000000000013',
                       htlc_base_secret='0000000000000000000000000000000000000000000000000000000000000014',
                       shachain_seed='FF' * 32)
+
+    def get_node_privkey(self) -> str:
+        return '01'
+
+    def get_node_bitcoinkey(self) -> str:
+        return '0000000000000000000000000000000000000000000000000000000000000010'
 
     def start(self):
         self.proc = subprocess.Popen(['{}/lightningd/lightningd'.format(LIGHTNING_SRC),

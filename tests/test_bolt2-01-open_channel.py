@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 # Variations on open_channel, accepter + opener perspectives
 
-from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, Commit, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, LOCAL, REMOTE, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id
+from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, Funding, Commit, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, LOCAL, REMOTE, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey
 from fixtures import *  # noqa: F401,F403
 from blocks import BLOCK_102
 
@@ -10,8 +10,16 @@ def test_open_channel(runner):
     # regtest chain hash
     chain_hash = '06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f'
 
-    local_keyset = KeySet(funding_privkey='20',
-                          revocation_base_secret='21',
+    # Funding tx is 020000000001016b85f654d8186f4d5dd32a977b2cf8c4b01ff4634152acba16b654c1c85a83160100000000ffffffff01c6410f0000000000220020c46bf3d1686d6dbb2d9244f8f67b90370c5aa2747045f1aeccb77d818711738202473044022047e9e6e798ba9adb6c84bdcd6230a96fb6de9dcca84d81103fb2bc08906cb884022027599b1e80289eaf238e9a00119a79a0ccceab7d83d54719e10bd0c3300a0d34012102d6a3c2d0cf7904ab6af54d7c959435a452b24a63194e1c4e7c337d3ebbb3017b00000000
+    funding = Funding(funding_txid='2f0b21d6bd32971ca6803de2bdc7370bbf12e0cd9ce73afc1c591f5c995b0841',
+                      funding_output_index=0,
+                      funding_amount=999878,
+                      local_node_privkey='02',
+                      local_funding_privkey='20',
+                      remote_node_privkey=runner.get_node_privkey(),
+                      remote_funding_privkey=remote_funding_privkey())
+
+    local_keyset = KeySet(revocation_base_secret='21',
                           payment_base_secret='22',
                           htlc_base_secret='24',
                           delayed_payment_base_secret='23',
@@ -27,7 +35,7 @@ def test_open_channel(runner):
                 [Msg('open_channel',
                      chain_hash=chain_hash,
                      temporary_channel_id='0000000000000000000000000000000000000000000000000000000000000000',
-                     funding_satoshis=999878,
+                     funding_satoshis=funding.amount,
                      push_msat=0,
                      dust_limit_satoshis=546,
                      max_htlc_value_in_flight_msat=4294967295,
@@ -36,7 +44,7 @@ def test_open_channel(runner):
                      feerate_per_kw=253,
                      to_self_delay=6,
                      max_accepted_htlcs=483,
-                     funding_pubkey=local_keyset.funding_pubkey().format().hex(),
+                     funding_pubkey=funding.funding_pubkey(LOCAL).format().hex(),
                      revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
                      payment_basepoint=local_keyset.payment_basepoint().format().hex(),
                      delayed_payment_basepoint=local_keyset.delayed_payment_basepoint().format().hex(),
@@ -66,9 +74,7 @@ def test_open_channel(runner):
                  # FIXME: Implement funding tx in python!
                  # Funding tx is 020000000001016b85f654d8186f4d5dd32a977b2cf8c4b01ff4634152acba16b654c1c85a83160100000000ffffffff01c6410f0000000000220020c46bf3d1686d6dbb2d9244f8f67b90370c5aa2747045f1aeccb77d818711738202473044022047e9e6e798ba9adb6c84bdcd6230a96fb6de9dcca84d81103fb2bc08906cb884022027599b1e80289eaf238e9a00119a79a0ccceab7d83d54719e10bd0c3300a0d34012102d6a3c2d0cf7904ab6af54d7c959435a452b24a63194e1c4e7c337d3ebbb3017b00000000
                  # txid=41085b995c1f591cfc3ae79ccde012bf0b37c7bde23d80a61c9732bdd6210b2f
-                 Commit(funding_txid='2f0b21d6bd32971ca6803de2bdc7370bbf12e0cd9ce73afc1c591f5c995b0841',
-                        funding_output_index=0,
-                        funding_amount=sent('funding_satoshis', int),
+                 Commit(funding,
                         opener=LOCAL,
                         local_keyset=local_keyset,
                         local_to_self_delay=sent('to_self_delay', int),
@@ -139,7 +145,7 @@ def test_open_channel(runner):
                      max_accepted_htlcs=483,
                      # If these are different, the commitment tx will be different!
                      to_self_delay=6,
-                     funding_pubkey=local_keyset.funding_pubkey().format().hex(),
+                     funding_pubkey=funding.funding_pubkey(LOCAL).format().hex(),
                      revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
                      payment_basepoint=local_keyset.payment_basepoint().format().hex(),
                      delayed_payment_basepoint=local_keyset.delayed_payment_basepoint().format().hex(),
@@ -152,9 +158,13 @@ def test_open_channel(runner):
                  ExpectMsg('funding_created',
                            temporary_channel_id=rcvd('temporary_channel_id')),
 
-                 Commit(funding_txid=rcvd(),
-                        funding_output_index=rcvd(casttype=int),
-                        funding_amount=rcvd('open_channel.funding_satoshis', int),
+                 Commit(funding=Funding(funding_txid=rcvd(),
+                                        funding_output_index=rcvd(casttype=int),
+                                        funding_amount=rcvd('open_channel.funding_satoshis', int),
+                                        local_node_privkey='02',
+                                        local_funding_privkey='20',
+                                        remote_node_privkey=runner.get_node_privkey(),
+                                        remote_funding_privkey=remote_funding_privkey()),
                         opener=REMOTE,
                         local_keyset=local_keyset,
                         local_to_self_delay=sent('to_self_delay', int),
