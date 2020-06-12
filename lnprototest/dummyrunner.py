@@ -2,7 +2,7 @@
 # #### Dummy runner which you should replace with real one. ####
 import io
 from .runner import Runner, Conn
-from .event import Event, ExpectMsg
+from .event import Event, ExpectMsg, MustNotMsg
 from typing import List, Optional
 from .keyset import KeySet
 from pyln.proto.message import Message, FieldType, DynamicArrayType, EllipsisArrayType, SizedArrayType
@@ -136,5 +136,5 @@ class DummyRunner(Runner):
             print("[CHECK-ERROR {}]".format(event))
         return "Dummy error"
 
-    def check_final_error(self, event: Event, conn: Conn, expected: bool) -> None:
+    def check_final_error(self, event: Event, conn: Conn, expected: bool, must_not_events: List[MustNotMsg]) -> None:
         pass

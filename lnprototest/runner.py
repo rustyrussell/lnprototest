@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 from .errors import SpecFileError
 from .structure import Sequence
-from .event import Event, ExpectMsg
+from .event import Event, MustNotMsg, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
 import coincurve
@@ -18,6 +18,7 @@ trivial values for private keys, so we simply left-pad with zeroes"""
         self.connprivkey = privkey_expand(connprivkey)
         self.pubkey = coincurve.PublicKey.from_secret(self.connprivkey.secret)
         self.expected_error = False
+        self.must_not_events: List[MustNotMsg] = []
 
     def __str__(self):
         return self.name
@@ -53,7 +54,7 @@ class Runner(object):
         if conn is None:
             raise SpecFileError(event, "Unknown conn")
         del self.conns[conn.name]
-        self.check_final_error(event, conn, conn.expected_error)
+        self.check_final_error(event, conn, conn.expected_error, conn.must_not_events)
 
     def check_error(self, event: Event, conn: Conn) -> Optional[str]:
         conn.expected_error = True
@@ -95,7 +96,7 @@ class Runner(object):
     def connect(self, event: Event, connprivkey: str) -> None:
         raise NotImplementedError()
 
-    def check_final_error(self, event: Event, conn: Conn, expected: bool) -> None:
+    def check_final_error(self, event: Event, conn: Conn, expected: bool, must_not_events: List[MustNotMsg]) -> None:
         raise NotImplementedError()
 
     def start(self) -> None:

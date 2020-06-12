@@ -4,6 +4,7 @@ from pyln.proto.message import SubtypeType, Message
 import os.path
 import io
 import functools
+import struct
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
@@ -94,6 +95,27 @@ class Connect(Event):
             raise SpecFileError(self, "Already have connection to {}"
                                 .format(self.connprivkey))
         runner.connect(self, self.connprivkey)
+
+
+class MustNotMsg(PerConnEvent):
+    """Indicate that this connection must never send any of these message types."""
+    def __init__(self, must_not: str, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
+        self.must_not = must_not
+
+    def matches(self, binmsg: bytes):
+        msgnum = struct.unpack('>H', binmsg[0:2])[0]
+        msgtype = event_namespace.get_msgtype_by_number(msgnum)
+        if msgtype:
+            name = msgtype.name
+        else:
+            name = str(msgnum)
+
+        return name == self.must_not
+
+    def action(self, runner: 'Runner') -> None:
+        super().action(runner)
+        self.find_conn(runner).must_not_events.append(self)
 
 
 class Disconnect(PerConnEvent):
@@ -204,10 +226,16 @@ for a new one.
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
+        conn = self.find_conn(runner)
         while True:
-            binmsg = runner.get_output_message(self.find_conn(runner), self)
+            binmsg = runner.get_output_message(conn, self)
             if binmsg is None:
                 raise EventError(self, "Did not receive a message from runner")
+
+            for e in conn.must_not_events:
+                if e.matches(binmsg):
+                    raise EventError(self, "Got msg banned by {}: {}"
+                                     .format(e, binmsg.hex()))
 
             # Might be completely unknown to namespace.
             try:

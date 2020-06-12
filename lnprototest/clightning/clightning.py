@@ -13,11 +13,12 @@ import subprocess
 import tempfile
 import lnprototest
 import bitcoin.core
+import struct
 
 from concurrent import futures
 from ephemeral_port_reserve import reserve
 from pyln.testing.utils import wait_for, SimpleBitcoinProxy
-from lnprototest import Event, EventError, SpecFileError, KeySet
+from lnprototest import Event, EventError, SpecFileError, KeySet, event_namespace
 
 TIMEOUT = int(os.getenv("TIMEOUT", "30"))
 LIGHTNING_SRC = os.getenv("LIGHTNING_SRC", '../lightning/')
@@ -290,13 +291,26 @@ class Runner(lnprototest.Runner):
         super().check_error(event, conn)
         return self.get_output_message(conn, event)
 
-    def check_final_error(self, event, conn, expected):
+    def check_final_error(self, event, conn, expected, must_not_events) -> None:
         if not expected:
             # Inject raw packet to ensure it hangs up *after* processing all previous ones.
             conn.connection.connection.send(bytes(18))
-            error = self.get_output_message(conn, event)
-            if error:
-                raise EventError(event, "Runner sent error after sequence: {}".format(error))
+
+            while True:
+                binmsg = self.get_output_message(conn, event)
+                if binmsg is None:
+                    break
+                for e in must_not_events:
+                    if e.matches(binmsg):
+                        raise EventError(event, "Got msg banned by {}: {}"
+                                         .format(e, binmsg.hex()))
+
+                # Don't assume it's a message type we know!
+                msgtype = struct.unpack('>H', binmsg[:2])[0]
+                if msgtype == event_namespace.get_msgtype('error').number:
+                    raise EventError(event, "Got error msg: {}"
+                                     .format(binmsg.hex()))
+
         conn.connection.connection.close()
 
     def expect_tx(self, event, txid):
