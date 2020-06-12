@@ -13,16 +13,6 @@ from .runner import Runner
 import coincurve
 
 
-def op_number(n: int) -> bytes:
-    if n <= 16:
-        return script.CScriptOp.encode_op_n(n)
-    elif n < 256:
-        return bytes([n])
-    else:
-        # Implement this if necessary
-        raise NotImplementedError()
-
-
 class Side(int):
     def __init__(self, v: int):
         self.v = int(v)
