@@ -363,7 +363,9 @@ def msg_to_stash(runner: 'Runner', event: Event, msg: Message):
     # Convert to strings.
     for f in msg.fields:
         fieldtype = msg.messagetype.find_field(f)
-        fields[f] = fieldtype.fieldtype.val_to_str(msg.fields[f], msg.fields)
+        # Optional fields don't get stashed.
+        if msg.fields[f] is not None:
+            fields[f] = fieldtype.fieldtype.val_to_str(msg.fields[f], msg.fields)
     stash = runner.get_stash(event, type(event).__name__, [])
     stash.append((msg.messagetype.name, fields))
     runner.add_stash(type(event).__name__, stash)
