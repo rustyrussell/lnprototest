@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 import traceback
-from pyln.proto.message import SubtypeType, Message
+from pyln.proto.message import Message
 import os.path
 import io
 import functools
@@ -8,6 +8,7 @@ import struct
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
+from .signature import Sig
 from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING
 if TYPE_CHECKING:
     # Otherwise a circular dependency
@@ -198,36 +199,11 @@ and query_short_channel_ids.
         self.if_match = if_match
         self.ignore = ignore
 
-    # FIXME: Put helper in Message?
-    @staticmethod
-    def _cmp_msg(subtype: SubtypeType,
-                 fieldsa: Dict[str, Any],
-                 fieldsb: Dict[str, Any],
-                 prefix: str = "") -> Optional[str]:
-        """a is a subset of b"""
-        for f in fieldsa:
-            if f not in fieldsb:
-                return "Missing field {}".format(prefix + f)
-            fieldtype = subtype.find_field(f)
-            if isinstance(fieldtype, SubtypeType):
-                ret = ExpectMsg._cmp_msg(fieldtype, fieldsa[f], fieldsb[f],
-                                         prefix + f + ".")
-                if ret:
-                    return ret
-            else:
-                if fieldsa[f] != fieldsb[f]:
-                    return "Field {}: {} != {}".format(f,
-                                                       fieldtype.fieldtype.val_to_str(fieldsb[f], fieldsb),
-                                                       fieldtype.fieldtype.val_to_str(fieldsa[f], fieldsa))
-        return None
-
     def message_match(self, runner: 'Runner', msg: Message) -> Optional[str]:
         """Does this message match what we expect?"""
-        if msg.messagetype != self.msgtype:
-            return "Expected {}, got {}".format(self.msgtype,
-                                                msg.messagetype)
         partmessage = Message(self.msgtype, **self.resolve_args(runner, self.kwargs))
-        ret = self._cmp_msg(msg.messagetype, partmessage.fields, msg.fields)
+
+        ret = cmp_msg(msg, partmessage)
         if ret is None:
             self.if_match(self, msg)
             msg_to_stash(runner, self, msg)
@@ -235,9 +211,7 @@ and query_short_channel_ids.
 
     def ignored(self, msg: Message) -> bool:
         for i in self.ignore:
-            if msg.messagetype != i.messagetype:
-                continue
-            if self._cmp_msg(msg.messagetype, i.fields, msg.fields) is None:
+            if cmp_msg(msg, i) is None:
                 return True
         return False
 
@@ -360,7 +334,7 @@ class ExpectError(PerConnEvent):
 
 class CheckEq(Event):
     """Event to check a condition is true"""
-    def __init__(self, a: ResolvableStr, b: ResolvableStr):
+    def __init__(self, a: Resolvable, b: Resolvable):
         super().__init__()
         self.a = a
         self.b = b
@@ -376,16 +350,51 @@ class CheckEq(Event):
 
 def msg_to_stash(runner: 'Runner', event: Event, msg: Message) -> None:
     """ExpectMsg and Msg save every field to the stash, in order"""
-    fields = {}
-    # Convert to strings.
-    for f in msg.fields:
-        fieldtype = msg.messagetype.find_field(f)
-        # Optional fields don't get stashed.
-        if msg.fields[f] is not None:
-            fields[f] = fieldtype.fieldtype.val_to_str(msg.fields[f], msg.fields)
+    fields = msg.to_py()
+
     stash = runner.get_stash(event, type(event).__name__, [])
     stash.append((msg.messagetype.name, fields))
     runner.add_stash(type(event).__name__, stash)
+
+
+def cmp_obj(obj: Any, expected: Any, prefix: str) -> Optional[str]:
+    """Return None if every field in expected matches a field in obj.  Otherwise return a complaint"""
+    if isinstance(expected, dict):
+        for k, v in expected.items():
+            if k not in obj:
+                return "Missing field {}".format(prefix + '.' + k)
+            diff = cmp_obj(obj[k], v, prefix + '.' + k)
+            if diff:
+                return diff
+    elif isinstance(expected, list):
+        # Should we allow expected to be shorter?
+        if len(expected) != len(obj):
+            return "Expected {} elements, got {} in {}: expected {} not {}".format(len(expected), len(obj),
+                                                                                   prefix, expected, obj)
+        for i in range(len(expected)):
+            diff = cmp_obj(obj[i], expected[i], "{}[{}]".format(prefix, i))
+            if diff:
+                return diff
+    elif isinstance(expected, str) and expected.startswith('Sig('):
+        # Special handling for signature comparisons.
+        if Sig.from_str(expected) != Sig.from_str(obj):
+            return "{}: signature mismatch {} != {}".format(prefix, obj, expected)
+    else:
+        if obj != expected:
+            return "{}: {} != {}".format(prefix, obj, expected)
+
+    return None
+
+
+def cmp_msg(msg: Message, expected: Message) -> Optional[str]:
+    """Return None if every field in expected matches a field in msg.  Otherwise return a complaint"""
+    if msg.messagetype != expected.messagetype:
+        return "Expected {}, got {}".format(expected.messagetype, msg.messagetype)
+
+    obj = msg.to_py()
+    expected_obj = expected.to_py()
+
+    return cmp_obj(obj, expected_obj, expected.messagetype.name)
 
 
 def field_from_stash(event: Event, runner: 'Runner', stashname: str, var: str) -> str:
