@@ -274,7 +274,7 @@ class Block(Event):
     """Generate a block, at blockheight, with optional txs.
 
     """
-    def __init__(self, blockheight: int, number: int = 1, txs: List[str] = []):
+    def __init__(self, blockheight: int, number: int = 1, txs: List[ResolvableStr] = []):
         super().__init__()
         self.blockheight = blockheight
         self.number = number
@@ -292,7 +292,7 @@ class Block(Event):
             runner.trim_blocks(self.blockheight - 1)
 
         # Add new one
-        runner.add_blocks(self, self.txs, self.number)
+        runner.add_blocks(self, [self.resolve_arg('tx', runner, tx) for tx in self.txs], self.number)
         assert runner.getblockheight() == self.blockheight - 1 + self.number
 
 
