@@ -191,7 +191,7 @@ class Funding(object):
 
     def channel_announcement(self,
                              short_channel_id: str,
-                             features: str) -> bytes:
+                             features: str) -> Message:
         """Produce a (signed) channel_announcement message"""
         ann = self._unsigned_channel_announcment(features, short_channel_id)
         # BOLT #7:
@@ -219,9 +219,7 @@ class Funding(object):
         ann.set_field('bitcoin_signature_1', Sig(bitcoin_privkeys[0].secret.hex(), h.hex()))
         ann.set_field('bitcoin_signature_2', Sig(bitcoin_privkeys[1].secret.hex(), h.hex()))
 
-        buf = io.BytesIO()
-        ann.write(buf)
-        return buf.getvalue()
+        return ann
 
     def channel_update(self,
                        short_channel_id: str,
@@ -232,7 +230,7 @@ class Funding(object):
                        fee_base_msat: int,
                        fee_proportional_millionths: int,
                        timestamp: int,
-                       htlc_maximum_msat: Optional[int]) -> bytes:
+                       htlc_maximum_msat: Optional[int]) -> Message:
         # BOLT #7: The `channel_flags` bitfield is used to indicate the
         # direction of the channel: it identifies the node that this update
         # originated from and signals various options concerning the
@@ -292,6 +290,4 @@ class Funding(object):
 
         update.set_field('signature', Sig(self.node_privkeys[side].secret.hex(), h.hex()))
 
-        buf = io.BytesIO()
-        update.write(buf)
-        return buf.getvalue()
+        return update

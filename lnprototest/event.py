@@ -152,14 +152,22 @@ class Msg(PerConnEvent):
 
 
 class RawMsg(PerConnEvent):
-    """Feed a raw binary message to the runner (via optional given connection)"""
-    def __init__(self, binmsg: Union[Resolvable, bytes], connprivkey: Optional[str] = None):
+    """Feed a raw binary, or raw Message to the runner (via optional given connection)"""
+    def __init__(self, message: Union[Resolvable, bytes, Message], connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
-        self.message = binmsg
+        self.message = message
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
-        runner.recv(self, self.find_conn(runner), self.resolve_arg('binmsg', runner, self.message))
+        msg = self.resolve_arg('binmsg', runner, self.message)
+        if isinstance(msg, Message):
+            buf = io.BytesIO()
+            msg.write(buf)
+            binmsg = buf.getvalue()
+        else:
+            binmsg = msg
+
+        runner.recv(self, self.find_conn(runner), binmsg)
 
 
 class ExpectMsg(PerConnEvent):
