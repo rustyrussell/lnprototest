@@ -8,8 +8,8 @@ from .bitfield import bitfield, has_bit, bitfield_len
 from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, commitsig_to_send, commitsig_to_recv, channel_id, channel_announcement, channel_update
-from .utils import REMOTE, LOCAL
-from .funding import Funding
+from .utils import REMOTE, LOCAL, regtest_hash, privkey_expand
+from .funding import AcceptFunding, CreateFunding, Funding, funding_amount, funding_pubkey, funding_txid, funding_tx, funding, funding_close_tx
 
 __version__ = '0.0.1'
 
@@ -64,5 +64,15 @@ __all__ = [
     "channel_update",
     "REMOTE",
     "LOCAL",
+    "AcceptFunding",
+    "CreateFunding",
+    "funding_amount",
+    "funding_pubkey",
+    "funding_txid",
+    "funding_tx",
+    "funding_close_tx",
+    "funding",
     "Funding",
+    "regtest_hash",
+    "privkey_expand",
 ]

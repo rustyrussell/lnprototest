@@ -7,7 +7,7 @@ import struct
 from hashlib import sha256
 from .keyset import KeySet
 from .signature import Sig
-from typing import List, Tuple, Callable, Optional
+from typing import List, Tuple, Callable, Optional, Union
 from .event import Event, ResolvableInt
 from .runner import Runner
 from pyln.proto.message import Message
@@ -272,14 +272,8 @@ class Commitment(object):
     def remote_unsigned_tx(self) -> CMutableTransaction:
         return self._unsigned_tx(REMOTE)
 
-    def input_wscript(self) -> CScript:
-        return CScript([script.OP_2]
-                       + [k.format() for k in self.funding.funding_pubkeys_for_tx()]
-                       + [script.OP_2,
-                          script.OP_CHECKMULTISIG])
-
     def _sig(self, privkey: coincurve.PrivateKey, tx: CMutableTransaction) -> Sig:
-        sighash = script.SignatureHash(self.input_wscript(), tx, inIdx=0,
+        sighash = script.SignatureHash(self.funding.redeemscript(), tx, inIdx=0,
                                        hashtype=script.SIGHASH_ALL,
                                        amount=self.funding.amount,
                                        sigversion=script.SIGVERSION_WITNESS_V0)
@@ -289,11 +283,11 @@ class Commitment(object):
         return self._sig(self.funding.bitcoin_privkeys[LOCAL], tx)
 
     def remote_sig(self, tx: CMutableTransaction) -> Sig:
-        print('Signing {} input_wscript keys {} and {}: {} amount = {}'.format(
+        print('Signing {} redeemscript keys {} and {}: {} amount = {}'.format(
             REMOTE,
             self.funding.funding_pubkey(LOCAL).format().hex(),
             self.funding.funding_pubkey(REMOTE).format().hex(),
-            self.input_wscript().hex(),
+            self.funding.redeemscript().hex(),
             self.funding.amount))
         return self._sig(self.funding.bitcoin_privkeys[REMOTE], tx)
 
@@ -301,17 +295,26 @@ class Commitment(object):
         # BOLT #3:
         # * `txin[0]` witness: `0 <signature_for_pubkey1> <signature_for_pubkey2>`
         tx = unsigned_tx.copy()
-        tx.wit = CTxWitness([CScriptWitness([script.OP_0]
-                                            + [self._sig(key, tx) for key in self.funding.funding_privkeys_for_tx()]
-                                            + [self.input_wscript()])])
+        sighash = script.SignatureHash(self.funding.redeemscript(), tx, inIdx=0,
+                                       hashtype=script.SIGHASH_ALL,
+                                       amount=self.funding.amount,
+                                       sigversion=script.SIGVERSION_WITNESS_V0)
+        sigs = [key.sign(sighash, hasher=None) for key in self.funding.funding_privkeys_for_tx()]
+        tx.wit = CTxWitness([CScriptWitness([bytes(),
+                                             sigs[0] + bytes([script.SIGHASH_ALL]),
+                                             sigs[1] + bytes([script.SIGHASH_ALL]),
+                                             self.funding.redeemscript()])])
         return tx
+
+
+ResolvableFunding = Union[Funding, Callable[['Runner', 'Event', str], Funding]]
 
 
 class Commit(Event):
     def __init__(self,
-                 funding: Funding,
                  opener: Side,
                  local_keyset: KeySet,
+                 funding: ResolvableFunding,
                  local_to_self_delay: ResolvableInt,
                  remote_to_self_delay: ResolvableInt,
                  local_amount: ResolvableInt,
@@ -336,15 +339,13 @@ class Commit(Event):
     def action(self, runner: Runner) -> None:
         super().action(runner)
 
-        # Now we can resolve any runtime fields in Funding
-        self.funding.resolve_args(self, runner)
-        commit = Commitment(funding=self.funding,
-                            local_keyset=self.local_keyset,
+        commit = Commitment(local_keyset=self.local_keyset,
                             remote_keyset=runner.get_keyset(),
                             option_static_remotekey=self.option_static_remotekey,
                             opener=self.opener,
                             **self.resolve_args(runner,
-                                                {'local_to_self_delay': self.local_to_self_delay,
+                                                {'funding': self.funding,
+                                                 'local_to_self_delay': self.local_to_self_delay,
                                                  'remote_to_self_delay': self.remote_to_self_delay,
                                                  'local_amount': self.local_amount,
                                                  'remote_amount': self.remote_amount,

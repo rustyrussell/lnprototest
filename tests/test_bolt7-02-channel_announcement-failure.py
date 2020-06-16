@@ -3,11 +3,12 @@
 
 from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, ExpectError, Funding, LOCAL, MustNotMsg, Runner, TryAll, Sig
 from fixtures import *  # noqa: F401,F403
-from blocks import BLOCK_102
 import time
 from typing import cast
+from helpers import utxo, tx_spendable
 
 
+# FIXME: Make this work in-place!
 def corrupt_sig(sig: Sig) -> Sig:
     hashval = bytearray(cast(bytes, sig.hashval))
     hashval[-1] ^= 1
@@ -17,17 +18,14 @@ def corrupt_sig(sig: Sig) -> Sig:
 def test_premature_channel_announcement(runner: Runner) -> None:
     # It's allowed (even encouraged!) to cache premature
     # channel_announcements, so we separate this from the other tests.
-    funding_tx = '020000000001016b85f654d8186f4d5dd32a977b2cf8c4b01ff4634152acba16b654c1c85a83160100000000ffffffff01c5410f0000000000220020c46bf3d1686d6dbb2d9244f8f67b90370c5aa2747045f1aeccb77d8187117382024730440220798d96d5a057b5b7797988a855217f41af05ece3ba8278366e2f69763c72e785022065d5dd7eeddc0766ddf65557c92b9c52c301f23f94d2cf681860d32153e6ae1e012102d6a3c2d0cf7904ab6af54d7c959435a452b24a63194e1c4e7c337d3ebbb3017b00000000'
 
-    funding = Funding(funding_txid='1d3160756ceeaf5474f389673aafe0484e58260927871ce92f388f72b0409c18',
-                      funding_output_index=0,
-                      funding_amount=999877,
-                      local_node_privkey='02',
-                      local_funding_privkey='10',
-                      remote_node_privkey='03',
-                      remote_funding_privkey='20')
+    funding, funding_tx = Funding.from_utxo(*utxo(0),
+                                            local_node_privkey='02',
+                                            local_funding_privkey='10',
+                                            remote_node_privkey='03',
+                                            remote_funding_privkey='20')
 
-    test = [BLOCK_102,
+    test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='03'),
             ExpectMsg('init'),
             Msg('init', globalfeatures='', features=''),
@@ -65,16 +63,11 @@ def test_premature_channel_announcement(runner: Runner) -> None:
 
 
 def test_bad_announcement(runner: Runner) -> None:
-    # Funding tx spending 16835ac8c154b616baac524163f41fb0c4f82c7b972ad35d4d6f18d854f6856b/1, feerate 253 to bitcoin privkeys 10 and 20
-    funding_tx = '020000000001016b85f654d8186f4d5dd32a977b2cf8c4b01ff4634152acba16b654c1c85a83160100000000ffffffff01c5410f0000000000220020c46bf3d1686d6dbb2d9244f8f67b90370c5aa2747045f1aeccb77d8187117382024730440220798d96d5a057b5b7797988a855217f41af05ece3ba8278366e2f69763c72e785022065d5dd7eeddc0766ddf65557c92b9c52c301f23f94d2cf681860d32153e6ae1e012102d6a3c2d0cf7904ab6af54d7c959435a452b24a63194e1c4e7c337d3ebbb3017b00000000'
-
-    funding = Funding(funding_txid='1d3160756ceeaf5474f389673aafe0484e58260927871ce92f388f72b0409c18',
-                      funding_output_index=0,
-                      funding_amount=999877,
-                      local_node_privkey='02',
-                      local_funding_privkey='10',
-                      remote_node_privkey='03',
-                      remote_funding_privkey='20')
+    funding, funding_tx = Funding.from_utxo(*utxo(0),
+                                            local_node_privkey='02',
+                                            local_funding_privkey='10',
+                                            remote_node_privkey='03',
+                                            remote_funding_privkey='20')
 
     # ### Ignored:
     ann_bad_chainhash = funding.channel_announcement('103x1x0', '')
@@ -84,17 +77,13 @@ def test_bad_announcement(runner: Runner) -> None:
 
     ann_bad_scid_out_dne = funding.channel_announcement('103x1x1', '')
 
-    ann_bad_bitcoin_key1 = Funding(funding_txid='1d3160756ceeaf5474f389673aafe0484e58260927871ce92f388f72b0409c18',
-                                   funding_output_index=0,
-                                   funding_amount=999877,
+    ann_bad_bitcoin_key1 = Funding(funding.txid, funding.output_index, funding.amount,
                                    local_node_privkey='02',
                                    local_funding_privkey='10',
                                    remote_node_privkey='03',
                                    remote_funding_privkey='21').channel_announcement('103x1x0', '')
 
-    ann_bad_bitcoin_key2 = Funding(funding_txid='1d3160756ceeaf5474f389673aafe0484e58260927871ce92f388f72b0409c18',
-                                   funding_output_index=0,
-                                   funding_amount=999877,
+    ann_bad_bitcoin_key2 = Funding(funding.txid, funding.output_index, funding.amount,
                                    local_node_privkey='02',
                                    local_funding_privkey='11',
                                    remote_node_privkey='03',
@@ -113,7 +102,7 @@ def test_bad_announcement(runner: Runner) -> None:
     ann_bad_bitcoinsig2 = funding.channel_announcement('103x1x0', '')
     ann_bad_bitcoinsig2.fields['bitcoin_signature_2'] = corrupt_sig(ann_bad_bitcoinsig2.fields['bitcoin_signature_2'])
 
-    test = [BLOCK_102,
+    test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='03'),
             ExpectMsg('init'),
             Msg('init', globalfeatures='', features=''),

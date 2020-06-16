@@ -1,7 +1,7 @@
 # Support for funding txs.
-from typing import Tuple, Union, Any, Dict, Optional
-from .utils import Side, LOCAL, REMOTE, privkey_expand
-from .event import Event, ResolvableInt, ResolvableStr, Resolvable
+from typing import Tuple, Union, Any, Optional, Callable
+from .utils import Side, LOCAL, REMOTE, privkey_expand, regtest_hash
+from .event import Event, ResolvableInt, ResolvableStr, stashed
 from .namespace import event_namespace
 from .runner import Runner
 from .signature import Sig
@@ -9,6 +9,10 @@ from pyln.proto.message import Message
 from hashlib import sha256
 import coincurve
 import io
+import functools
+from bitcoin.core import COutPoint, CScript, CTxIn, CTxOut, CMutableTransaction, CTxWitness, CTxInWitness, CScriptWitness, Hash160
+import bitcoin.core.script as script
+from bitcoin.wallet import P2WPKHBitcoinAddress
 
 
 def keyorder(key1: Union[coincurve.PublicKey, coincurve.PrivateKey], val1: Any,
@@ -33,83 +37,71 @@ def keyorder(key1: Union[coincurve.PublicKey, coincurve.PrivateKey], val1: Any,
 
 class Funding(object):
     def __init__(self,
-                 funding_txid: ResolvableStr,
-                 funding_output_index: ResolvableInt,
-                 funding_amount: ResolvableInt,
-                 local_node_privkey: ResolvableStr,
-                 local_funding_privkey: ResolvableStr,
-                 remote_node_privkey: ResolvableStr,
-                 remote_funding_privkey: ResolvableStr,
-                 # default is regtest, of course.
-                 chain_hash: str = '06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f'):
+                 funding_txid: str,
+                 funding_output_index: int,
+                 funding_amount: int,
+                 local_node_privkey: str,
+                 local_funding_privkey: str,
+                 remote_node_privkey: str,
+                 remote_funding_privkey: str,
+                 chain_hash: str = regtest_hash):
         self.chain_hash = chain_hash
-        self.unresolved: Dict[str, Resolvable] = {}
+        self.txid = funding_txid
+        self.output_index = funding_output_index
+        self.amount = funding_amount
+        self.bitcoin_privkeys = [privkey_expand(local_funding_privkey),
+                                 privkey_expand(remote_funding_privkey)]
+        self.node_privkeys = [privkey_expand(local_node_privkey),
+                              privkey_expand(remote_node_privkey)]
 
-        # These may need resolve_args.
-        self.bitcoin_privkeys = [privkey_expand('ff'), privkey_expand('ff')]
-        self.node_privkeys = [privkey_expand('ff'), privkey_expand('ff')]
+    def redeemscript(self) -> CScript:
+        return CScript([script.OP_2]
+                       + [k.format() for k in self.funding_pubkeys_for_tx()]
+                       + [script.OP_2,
+                          script.OP_CHECKMULTISIG])
 
-        if callable(funding_txid):
-            self.unresolved['funding_txid'] = funding_txid
-        else:
-            assert isinstance(funding_txid, str)
-            self.txid = funding_txid
+    @staticmethod
+    def from_utxo(txid_in: str,
+                  tx_index_in: int,
+                  sats: int,
+                  privkey: str,
+                  fee: int,
+                  local_node_privkey: str,
+                  local_funding_privkey: str,
+                  remote_node_privkey: str,
+                  remote_funding_privkey: str,
+                  chain_hash: str = regtest_hash) -> Tuple['Funding', str]:
+        """Make a funding transaction by spending this utxo using privkey: return Funding, tx."""
 
-        if callable(funding_output_index):
-            self.unresolved['funding_output_index'] = funding_output_index
-        else:
-            assert isinstance(funding_output_index, int)
-            self.output_index = funding_output_index
+        # Create dummy one to start: we will fill in txid at the end.
+        funding = Funding('', 0, sats - fee,
+                          local_node_privkey,
+                          local_funding_privkey,
+                          remote_node_privkey,
+                          remote_funding_privkey,
+                          chain_hash)
 
-        if callable(funding_amount):
-            self.unresolved['funding_amount'] = funding_amount
-        else:
-            assert isinstance(funding_amount, int)
-            self.amount = funding_amount
+        # input private key.
+        inkey = privkey_expand(privkey)
+        inkey_pub = coincurve.PublicKey.from_secret(inkey.secret)
 
-        if callable(local_node_privkey):
-            self.unresolved['local_node_privkey'] = local_node_privkey
-        else:
-            assert isinstance(local_node_privkey, str)
-            self.node_privkeys[LOCAL] = privkey_expand(local_node_privkey)
+        txin = CTxIn(COutPoint(bytes.fromhex(txid_in), tx_index_in))
+        txout = CTxOut(sats - fee, CScript([script.OP_0, sha256(funding.redeemscript()).digest()]))
+        tx = CMutableTransaction([txin], [txout])
 
-        if callable(remote_node_privkey):
-            self.unresolved['remote_node_privkey'] = remote_node_privkey
-        else:
-            assert isinstance(remote_node_privkey, str)
-            self.node_privkeys[REMOTE] = privkey_expand(remote_node_privkey)
+        # now fill in funding txid.
+        funding.txid = tx.GetTxid().hex()
 
-        if callable(local_funding_privkey):
-            self.unresolved['local_funding_privkey'] = local_funding_privkey
-        else:
-            assert isinstance(local_funding_privkey, str)
-            self.bitcoin_privkeys[LOCAL] = privkey_expand(local_funding_privkey)
+        # while we're here, sign the transaction.
+        address = P2WPKHBitcoinAddress.from_scriptPubKey(CScript([script.OP_0, Hash160(inkey_pub.format())]))
 
-        if callable(remote_funding_privkey):
-            self.unresolved['remote_funding_privkey'] = remote_funding_privkey
-        else:
-            assert isinstance(remote_funding_privkey, str)
-            self.bitcoin_privkeys[REMOTE] = privkey_expand(remote_funding_privkey)
+        sighash = script.SignatureHash(address.to_redeemScript(),
+                                       tx, 0, script.SIGHASH_ALL, amount=sats,
+                                       sigversion=script.SIGVERSION_WITNESS_V0)
+        sig = inkey.sign(sighash, hasher=None) + bytes([script.SIGHASH_ALL])
 
-    def resolve_args(self, event: Event, runner: Runner) -> None:
-        """Called at runtime when Funding is used in a Commit event"""
-        for k, v in event.resolve_args(runner, self.unresolved).items():
-            if k == 'funding_txid':
-                self.txid = v
-            elif k == 'funding_output_index':
-                self.output_index = int(v)
-            elif k == 'funding_amount':
-                self.amount = int(v)
-            elif k == 'local_node_privkey':
-                self.node_privkeys[LOCAL] = privkey_expand(v)
-            elif k == 'remote_node_privkey':
-                self.node_privkeys[REMOTE] = privkey_expand(v)
-            elif k == 'local_funding_privkey':
-                self.bitcoin_privkeys[LOCAL] = privkey_expand(v)
-            elif k == 'remote_funding_privkey':
-                self.bitcoin_privkeys[REMOTE] = privkey_expand(v)
-            else:
-                raise RuntimeError('Unexpected arg {}'.format(k))
+        tx.wit = CTxWitness([CTxInWitness(CScriptWitness([sig, inkey_pub.format()]))])
+        return funding, tx.serialize().hex()
 
     def channel_id(self) -> str:
         # BOLT #2: This message introduces the `channel_id` to identify the
@@ -319,3 +311,150 @@ class Funding(object):
 
         ann.set_field('signature', Sig(self.node_privkeys[side].secret.hex(), h.hex()))
         return ann
+
+    def close_tx(self, fee: int, privkey_dest: str) -> str:
+        """Create a (mutual) close tx"""
+        txin = CTxIn(COutPoint(bytes.fromhex(self.txid), self.output_index))
+
+        out_privkey = privkey_expand(privkey_dest)
+
+        txout = CTxOut(self.amount - fee,
+                       CScript([script.OP_0,
+                                Hash160(coincurve.PublicKey.from_secret(out_privkey.secret).format())]))
+
+        tx = CMutableTransaction(vin=[txin], vout=[txout])
+        sighash = script.SignatureHash(self.redeemscript(), tx, inIdx=0,
+                                       hashtype=script.SIGHASH_ALL,
+                                       amount=self.amount,
+                                       sigversion=script.SIGVERSION_WITNESS_V0)
+
+        sigs = [key.sign(sighash, hasher=None) for key in self.funding_privkeys_for_tx()]
+        # BOLT #3:
+        # ## Closing Transaction
+        # ...
+        #    * `txin[0]` witness: `0 <signature_for_pubkey1> <signature_for_pubkey2>`
+        witness = CScriptWitness([bytes(),
+                                  sigs[0] + bytes([script.SIGHASH_ALL]),
+                                  sigs[1] + bytes([script.SIGHASH_ALL]),
+                                  self.redeemscript()])
+        tx.wit = CTxWitness([CTxInWitness(witness)])
+        return tx.serialize().hex()
+
+
+class AcceptFunding(Event):
+    """Event to accept funding information from a peer.  Stashes 'Funding'."""
+    def __init__(self,
+                 funding_txid: ResolvableStr,
+                 funding_output_index: ResolvableInt,
+                 funding_amount: ResolvableInt,
+                 local_node_privkey: ResolvableStr,
+                 local_funding_privkey: ResolvableStr,
+                 remote_node_privkey: ResolvableStr,
+                 remote_funding_privkey: ResolvableStr,
+                 chain_hash: str = regtest_hash):
+        super().__init__()
+        self.funding_txid = funding_txid
+        self.funding_output_index = funding_output_index
+        self.funding_amount = funding_amount
+        self.local_node_privkey = local_node_privkey
+        self.local_funding_privkey = local_funding_privkey
+        self.remote_node_privkey = remote_node_privkey
+        self.remote_funding_privkey = remote_funding_privkey
+        self.chain_hash = chain_hash
+
+    def action(self, runner: Runner) -> None:
+        super().action(runner)
+
+        funding = Funding(chain_hash=self.chain_hash,
+                          **self.resolve_args(runner,
+                                              {'funding_txid': self.funding_txid,
+                                               'funding_output_index': self.funding_output_index,
+                                               'funding_amount': self.funding_amount,
+                                               'local_node_privkey': self.local_node_privkey,
+                                               'local_funding_privkey': self.local_funding_privkey,
+                                               'remote_node_privkey': self.remote_node_privkey,
+                                               'remote_funding_privkey': self.remote_funding_privkey}))
+        runner.add_stash('Funding', funding)
+
+
+class CreateFunding(Event):
+    """Event to create a funding tx from a P2WPKH UTXO.  Stashes 'Funding' and 'FundingTx'."""
+    def __init__(self,
+                 txid_in: str,
+                 tx_index_in: int,
+                 sats_in: int,
+                 spending_privkey: str,
+                 fee: int,
+                 local_node_privkey: ResolvableStr,
+                 local_funding_privkey: ResolvableStr,
+                 remote_node_privkey: ResolvableStr,
+                 remote_funding_privkey: ResolvableStr,
+                 chain_hash: str = regtest_hash):
+        super().__init__()
+        self.txid_in = txid_in
+        self.tx_index_in = tx_index_in
+        self.sats_in = sats_in
+        self.spending_privkey = spending_privkey
+        self.fee = fee
+        self.local_node_privkey = local_node_privkey
+        self.local_funding_privkey = local_funding_privkey
+        self.remote_node_privkey = remote_node_privkey
+        self.remote_funding_privkey = remote_funding_privkey
+        self.chain_hash = chain_hash
+
+    def action(self, runner: Runner) -> None:
+        super().action(runner)
+
+        funding, tx = Funding.from_utxo(self.txid_in,
+                                        self.tx_index_in,
+                                        self.sats_in,
+                                        self.spending_privkey,
+                                        self.fee,
+                                        chain_hash=self.chain_hash,
+                                        **self.resolve_args(runner,
+                                                            {'local_node_privkey': self.local_node_privkey,
+                                                             'local_funding_privkey': self.local_funding_privkey,
+                                                             'remote_node_privkey': self.remote_node_privkey,
+                                                             'remote_funding_privkey': self.remote_funding_privkey}))
+
+        runner.add_stash('Funding', funding)
+        runner.add_stash('FundingTx', tx)
+
+
+def funding_amount() -> Callable[[Runner, Event, str], int]:
+    """Get the stashed funding amount"""
+    def _funding_amount(runner: Runner, event: Event, field: str) -> int:
+        return runner.get_stash(event, 'Funding').amount
+
+    return _funding_amount
+
+
+def funding_pubkey(side: Side) -> Callable[[Runner, Event, str], str]:
+    """Get the stashed funding pubkey for side"""
+    def _funding_pubkey(side: Side, runner: Runner, event: Event, field: str) -> str:
+        return coincurve.PublicKey.from_secret(runner.get_stash(event, 'Funding').funding_privkeys[side].secret)
+
+    return functools.partial(_funding_pubkey, side)
+
+
+def funding_tx() -> Callable[[Runner, Event, str], str]:
+    """Get the funding transaction (as stashed by CreateFunding)"""
+    return stashed('FundingTx')
+
+
+def funding_txid() -> Callable[[Runner, Event, str], str]:
+    """Get the stashed funding transaction id"""
+    def _funding_txid(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_stash(event, 'Funding').txid
+    return _funding_txid
+
+
+def funding() -> Callable[[Runner, Event, str], Funding]:
+    """Get the stashed Funding (as stashed by CreateFunding or AcceptFunding)"""
+    return stashed('Funding')
+
+
+def funding_close_tx() -> Callable[[Runner, Event, str], str]:
+    def _funding_close_tx(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_stash(event, 'Funding').close_tx()
+    return _funding_close_tx

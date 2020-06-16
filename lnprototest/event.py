@@ -407,7 +407,8 @@ def field_from_stash(event: Event, runner: 'Runner', stashname: str, var: str) -
 def _get_stash(stashname: str,
                # This is the signature which Msg() expects for callable values:
                runner: 'Runner',
-               event: Event) -> Any:
+               event: Event,
+               field: str) -> Any:
     return runner.get_stash(event, stashname)
 
 

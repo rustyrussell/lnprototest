@@ -2,6 +2,9 @@
 import string
 import coincurve
 
+# regtest chain hash (hash of regtest genesis block)
+regtest_hash = '06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f'
+
 
 class Side(int):
     def __init__(self, v: int):
