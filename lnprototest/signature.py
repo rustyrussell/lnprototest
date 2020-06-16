@@ -97,7 +97,7 @@ signature of privkey over hash, they are considered "equal"
         a, b = split_field(s)
         if a.startswith('Sig('):
             privkey = a[4:]
-            a, b = split_field(b)
+            a, b = split_field(b[1:])
             # Trim ) off Sig()
             return Sig(privkey, a[:-1]), b
         return Sig(bytes.fromhex(a)), b
