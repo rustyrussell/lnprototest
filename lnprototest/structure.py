@@ -63,10 +63,10 @@ it)."""
 
 class OneOf(Event):
     """Event representing multiple possible sequences, one of which should happen"""
-    def __init__(self, sequences: List[SequenceUnion]):
+    def __init__(self, *args: SequenceUnion):
         super().__init__()
         self.sequences = []
-        for s in sequences:
+        for s in args:
             seq = Sequence(s)
             if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
@@ -116,10 +116,10 @@ class OneOf(Event):
 
 class AnyOrder(Event):
     """Event representing multiple sequences, all of which should happen, but not defined which order they would happen"""
-    def __init__(self, sequences: List[SequenceUnion]):
+    def __init__(self, *args: SequenceUnion):
         super().__init__()
         self.sequences = []
-        for s in sequences:
+        for s in args:
             seq = Sequence(s)
             if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
@@ -172,10 +172,10 @@ class AnyOrder(Event):
 
 class TryAll(Event):
     """Event representing multiple sequences, each of which should be tested"""
-    def __init__(self, sequences: List[SequenceUnion]):
+    def __init__(self, *args: SequenceUnion):
         super().__init__()
         self.sequences = []
-        for s in sequences:
+        for s in args:
             seq = Sequence(s)
             if seq.enable:
                 self.sequences.append(seq)

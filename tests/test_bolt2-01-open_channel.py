@@ -30,7 +30,7 @@ def test_open_channel(runner: Runner) -> None:
             ExpectMsg('init'),
             Msg('init', globalfeatures='', features=''),
 
-            TryAll([
+            TryAll(
                 # Accepter side: we initiate a new channel.
                 [Msg('open_channel',
                      chain_hash=chain_hash,
@@ -53,7 +53,7 @@ def test_open_channel(runner: Runner) -> None:
                      channel_flags=1),
 
                  # Ignore unknown odd messages
-                 TryAll([[], RawMsg(bytes.fromhex('270F'))]),
+                 TryAll([], RawMsg(bytes.fromhex('270F'))),
 
                  ExpectMsg('accept_channel',
                            temporary_channel_id='00' * 32,
@@ -69,7 +69,7 @@ def test_open_channel(runner: Runner) -> None:
                            channel_reserve_satoshis=9998),
 
                  # Ignore unknown odd messages
-                 TryAll([[], RawMsg(bytes.fromhex('270F'))]),
+                 TryAll([], RawMsg(bytes.fromhex('270F'))),
 
                  # FIXME: Implement funding tx in python!
                  # Funding tx is 020000000001016b85f654d8186f4d5dd32a977b2cf8c4b01ff4634152acba16b654c1c85a83160100000000ffffffff01c6410f0000000000220020c46bf3d1686d6dbb2d9244f8f67b90370c5aa2747045f1aeccb77d818711738202473044022047e9e6e798ba9adb6c84bdcd6230a96fb6de9dcca84d81103fb2bc08906cb884022027599b1e80289eaf238e9a00119a79a0ccceab7d83d54719e10bd0c3300a0d34012102d6a3c2d0cf7904ab6af54d7c959435a452b24a63194e1c4e7c337d3ebbb3017b00000000
@@ -112,7 +112,7 @@ def test_open_channel(runner: Runner) -> None:
                      next_per_commitment_point='027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d'),
 
                  # Ignore unknown odd messages
-                 TryAll([[], RawMsg(bytes.fromhex('270F'))])],
+                 TryAll([], RawMsg(bytes.fromhex('270F')))],
 
                 # Now we test the 'opener' side of an open_channel (node initiates)
                 [FundChannel(amount=999877),
@@ -153,7 +153,7 @@ def test_open_channel(runner: Runner) -> None:
                      first_per_commitment_point=local_keyset.per_commit_point(0).format().hex()),
 
                  # Ignore unknown odd messages
-                 TryAll([[], RawMsg(bytes.fromhex('270F'))]),
+                 TryAll([], RawMsg(bytes.fromhex('270F'))),
 
                  ExpectMsg('funding_created',
                            temporary_channel_id=rcvd('temporary_channel_id')),
@@ -198,7 +198,7 @@ def test_open_channel(runner: Runner) -> None:
                            next_per_commitment_point=remote_per_commitment_point(1)),
 
                  # Ignore unknown odd messages
-                 TryAll([[], RawMsg(bytes.fromhex('270F'))]),
-                 ]])]
+                 TryAll([], RawMsg(bytes.fromhex('270F'))),
+                 ])]
 
     runner.run(test)

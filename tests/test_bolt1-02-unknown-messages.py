@@ -14,7 +14,7 @@ def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
     test = [Connect(connprivkey='03'),
             ExpectMsg('init'),
             Msg('init', globalfeatures='', features=''),
-            TryAll([
+            TryAll(
                 [],
                 # BOLT #1:
                 # A receiving node:
@@ -29,7 +29,6 @@ def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
                 #     - MUST close the connection.
                 #     - MAY fail the channels.
                 [RawMsg(bytes.fromhex('2710')),
-                 ExpectError()]
-            ])]
+                 ExpectError()])]
 
     runner.run(test)

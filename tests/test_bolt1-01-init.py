@@ -39,10 +39,10 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
             Msg('init', globalfeatures='', features=''),
 
             # optionally disconnect that first one
-            TryAll([[], Disconnect()]),
+            TryAll([], Disconnect()),
 
             Connect(connprivkey='02'),
-            TryAll([
+            TryAll(
                 # Even if we don't send anything, it should send init.
                 [ExpectMsg('init')],
 
@@ -111,8 +111,6 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
 
                 # You should always handle us echoing your own features back!
                 [ExpectMsg('init'),
-                 Msg('init', globalfeatures=rcvd(), features=rcvd())],
-
-            ])]
+                 Msg('init', globalfeatures=rcvd(), features=rcvd())],)]
 
     runner.run(test)
