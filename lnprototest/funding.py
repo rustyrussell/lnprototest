@@ -247,7 +247,7 @@ class Funding(object):
         #     - MUST set the `direction` bit of `channel_flags` to 0.
         #   - otherwise:
         #     - MUST set the `direction` bit of `channel_flags` to 1.
-        if self.funding_pubkey(LOCAL) == self.funding_pubkeys_for_gossip()[0]:
+        if self.funding_pubkey(side) == self.funding_pubkeys_for_gossip()[0]:
             channel_flags = 0
         else:
             channel_flags = 1
