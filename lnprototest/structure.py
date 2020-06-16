@@ -150,7 +150,8 @@ class AnyOrder(Event):
             # Get message
             binmsg = runner.get_output_message(conn, sequences[0].events[0])
             if binmsg is None:
-                raise EventError(self, "Did not receive a message from runner")
+                raise EventError(self, "Did not receive a message from runner, still expecting {}"
+                                 .format([s.events[0] for s in sequences]))
 
             try:
                 msg = Message.read(event_namespace, io.BytesIO(binmsg))
@@ -164,10 +165,11 @@ class AnyOrder(Event):
             if seq is not None:
                 sequences.remove(seq)
                 seq.action(runner, skip_first=True)
-            else:
-                raise EventError(self,
-                                 "None of the sequences matched {}"
-                                 .format(msg.to_str()))
+                continue
+
+            raise EventError(self,
+                             "Message did not match any sequences {}: {}"
+                             .format([s.events[0] for s in sequences], msg.to_str()))
 
 
 class TryAll(Event):
