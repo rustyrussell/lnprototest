@@ -291,3 +291,31 @@ class Funding(object):
         update.set_field('signature', Sig(self.node_privkeys[side].secret.hex(), h.hex()))
 
         return update
+
+    def node_announcement(self,
+                          side: Side,
+                          features: str,
+                          rgb_color: Tuple[int, int, int],
+                          alias: str,
+                          addresses: bytes,
+                          timestamp: int) -> Message:
+        # Begin with a fake signature.
+        ann = Message(event_namespace.get_msgtype('node_announcement'),
+                      signature=Sig(bytes(64)),
+                      features=features,
+                      timestamp=timestamp,
+                      node_id=self.node_id(side).format().hex(),
+                      rgb_color=bytes(rgb_color).hex(),
+                      alias=bytes(alias, encoding='utf-8').zfill(32),
+                      addresses=addresses)
+
+        # BOLT #7:
+        #  - MUST set `signature` to the signature of the double-SHA256 of the entire
+        #  remaining packet after `signature` (using the key given by `node_id`).
+        buf = io.BytesIO()
+        ann.write(buf)
+        # Note the first two 'type' bytes!
+        h = sha256(sha256(buf.getvalue()[2 + 64:]).digest()).digest()
+
+        ann.set_field('signature', Sig(self.node_privkeys[side].secret.hex(), h.hex()))
+        return ann
