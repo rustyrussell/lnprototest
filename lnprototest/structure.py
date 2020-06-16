@@ -1,7 +1,9 @@
 #! /usr/bin/python3
 import math
+import io
 from .event import Event, ExpectMsg
 from .errors import SpecFileError, EventError
+from .namespace import event_namespace
 from pyln.proto.message import Message
 from typing import Union, List, Optional, TYPE_CHECKING, cast
 if TYPE_CHECKING:
@@ -45,12 +47,16 @@ it)."""
                 e.action(runner)
 
     @staticmethod
+    def ignored_by_all(msg: Message, sequences: List['Sequence']) -> bool:
+        return all([cast(ExpectMsg, s.events[0]).ignored(msg) for s in sequences])
+
+    @staticmethod
     def match_which_sequence(runner: 'Runner', msg: Message, sequences: List['Sequence']) -> Optional['Sequence']:
-        """Return which sequence expects this msg, or None"""
+        """Return which sequence expects this msg, or None."""
         for s in sequences:
             failreason = cast(ExpectMsg, s.events[0]).message_match(runner, msg)
-        if failreason is None:
-            return s
+            if failreason is None:
+                return s
 
         return None
 
@@ -86,17 +92,26 @@ class OneOf(Event):
                 raise SpecFileError(self, "sequences do not all use the same conn?")
         assert conn
 
-        binmsg = runner.get_output_message(conn, self.sequences[0].events[0])
-        if binmsg is None:
-            raise EventError(self, "Did not receive a message from runner")
+        while True:
+            binmsg = runner.get_output_message(conn, self.sequences[0].events[0])
+            if binmsg is None:
+                raise EventError(self, "Did not receive a message from runner")
 
-        seq = Sequence.match_which_sequence(runner, binmsg, self.sequences)
-        if seq is not None:
-            # We found the sequence, run it
-            return seq.action(runner, skip_first=True)
+            try:
+                msg = Message.read(event_namespace, io.BytesIO(binmsg))
+            except ValueError as ve:
+                raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 
-        raise EventError(self,
-                         "None of the sequences matched {}".format(binmsg.hex()))
+            if Sequence.ignored_by_all(msg, self.sequences):
+                continue
+
+            seq = Sequence.match_which_sequence(runner, msg, self.sequences)
+            if seq is not None:
+                # We found the sequence, run it
+                return seq.action(runner, skip_first=True)
+
+            raise EventError(self,
+                             "None of the sequences matched {}".format(msg.to_str()))
 
 
 class AnyOrder(Event):
@@ -137,14 +152,22 @@ class AnyOrder(Event):
             if binmsg is None:
                 raise EventError(self, "Did not receive a message from runner")
 
-            seq = Sequence.match_which_sequence(runner, binmsg, sequences)
+            try:
+                msg = Message.read(event_namespace, io.BytesIO(binmsg))
+            except ValueError as ve:
+                raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
+
+            if Sequence.ignored_by_all(msg, self.sequences):
+                continue
+
+            seq = Sequence.match_which_sequence(runner, msg, sequences)
             if seq is not None:
                 sequences.remove(seq)
                 seq.action(runner, skip_first=True)
             else:
                 raise EventError(self,
                                  "None of the sequences matched {}"
-                                 .format(binmsg.hex()))
+                                 .format(msg.to_str()))
 
 
 class TryAll(Event):

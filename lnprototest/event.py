@@ -167,21 +167,19 @@ class ExpectMsg(PerConnEvent):
 
 Args is the (usually incomplete) message which it should match.
 if_match is the function to call if it matches: should raise an
-exception if it's not satisfied.  if_nomatch is the function to all if
-it doesn't match: if this returns the message is ignored and we wait
-for a new one.
+exception if it's not satisfied.  ignore is a list of messages to
+ignore: by default, it is gossip_timestamp_filter, query_channel_range
+and query_short_channel_ids.
 
     """
-    def _default_if_match(self, msg: Message, ignore: Any) -> None:
+    def _default_if_match(self, msg: Message) -> None:
         pass
 
-    def _default_if_nomatch(self, binmsg: bytes, errstr: str, ignore: Any) -> None:
-        raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg.hex(), errstr))
-
     def __init__(self, msgtypename: str,
-                 if_match: Callable[['ExpectMsg', Message, Any], None] = _default_if_match,
-                 if_nomatch: Callable[['ExpectMsg', bytes, str, Any], None] = _default_if_nomatch,
-                 if_arg: Any = None,
+                 if_match: Callable[['ExpectMsg', Message], None] = _default_if_match,
+                 ignore: List[Message] = [Message(event_namespace.get_msgtype('gossip_timestamp_filter')),
+                                          Message(event_namespace.get_msgtype('query_channel_range')),
+                                          Message(event_namespace.get_msgtype('query_short_channel_ids'))],
                  connprivkey: Optional[str] = None,
                  **kwargs: Union[str, Resolvable]):
         super().__init__(connprivkey)
@@ -190,8 +188,7 @@ for a new one.
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
         self.kwargs = kwargs
         self.if_match = if_match
-        self.if_nomatch = if_nomatch
-        self.if_arg = if_arg
+        self.ignore = ignore
 
     # FIXME: Put helper in Message?
     @staticmethod
@@ -224,9 +221,17 @@ for a new one.
         partmessage = Message(self.msgtype, **self.resolve_args(runner, self.kwargs))
         ret = self._cmp_msg(msg.messagetype, partmessage.fields, msg.fields)
         if ret is None:
-            self.if_match(self, msg, self.if_arg)
+            self.if_match(self, msg)
             msg_to_stash(runner, self, msg)
         return ret
+
+    def ignored(self, msg: Message) -> bool:
+        for i in self.ignore:
+            if msg.messagetype != i.messagetype:
+                continue
+            if self._cmp_msg(msg.messagetype, i.fields, msg.fields) is None:
+                return True
+        return False
 
     def action(self, runner: 'Runner') -> None:
         super().action(runner)
@@ -245,14 +250,14 @@ for a new one.
             try:
                 msg = Message.read(event_namespace, io.BytesIO(binmsg))
             except ValueError as ve:
-                self.if_nomatch(self, binmsg, str(ve), self.if_arg)
+                raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg.hex(), ve))
+
+            if self.ignored(msg):
                 continue
 
             err = self.message_match(runner, msg)
             if err:
-                self.if_nomatch(self, binmsg, err, self.if_arg)
-                # If that returns, it means we try again.
-                continue
+                raise EventError(self, "{}: message was {}".format(err, msg.to_str()))
 
             break
 

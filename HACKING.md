@@ -27,9 +27,8 @@ make sure no errors occurred.
 `ExpectMsg` matches a (perhaps only partially defined) message, then
 calls its `if_match` function which can do more fine-grained matching.
 For example, it could check that a specific field is not specified, or
-a specific bit is set, etc.  There's also an `if_nomatch` which can
-ignore a message (if it returns, the message is discarded as if it had
-not been received).
+a specific bit is set, etc.  There's also `ignore` which is a list
+of Message to ignore: it defaults to common gossip queries.
 
 `ExpectMsg` also stores the received fields in the runner's `stash`:
 the convenient `rcvd` function can be used to access them for use in
