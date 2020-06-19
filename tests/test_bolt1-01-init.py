@@ -2,7 +2,8 @@
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
-from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len, rcvd
+from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len
+from lnprototest.stash import rcvd
 import pyln.spec.bolt1
 from pyln.proto.message import Message
 from typing import List, Any

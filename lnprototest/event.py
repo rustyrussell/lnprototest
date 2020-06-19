@@ -4,7 +4,6 @@ from pyln.proto.message import Message
 import collections
 import os.path
 import io
-import functools
 import struct
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
@@ -398,71 +397,8 @@ def cmp_msg(msg: Message, expected: Message) -> Optional[str]:
     return cmp_obj(obj, expected_obj, expected.messagetype.name)
 
 
-def field_from_stash(event: Event, runner: 'Runner', stashname: str, var: str) -> str:
-    """Get field from stash for ExpectMsg or Nsg"""
-    stash = runner.get_stash(event, stashname)
-    if '.' in var:
-        prevname, _, var = var.partition('.')
-    else:
-        prevname = ''
-    for name, d in reversed(stash):
-        if prevname == '' or name == prevname:
-            if var not in d:
-                raise SpecFileError(event, '{}: {} did not receive a {}'
-                                    .format(stashname, prevname, var))
-            return d[var]
-    raise SpecFileError(event, '{}: have no prior {}'.format(stashname, prevname))
-
-
-def _get_stash(stashname: str,
-               # This is the signature which Msg() expects for callable values:
-               runner: 'Runner',
-               event: Event,
-               field: str) -> Any:
-    return runner.get_stash(event, stashname)
-
-
-def _get_stashed_field(stashname: str,
-                       fieldname: Optional[str],
-                       casttype: Any,
-                       # This is the signature which Msg() expects for callable values:
-                       runner: 'Runner',
-                       event: Event,
-                       field: str) -> Any:
-    # If they don't specify fieldname, it's same as this field.
-    if fieldname is None:
-        fieldname = field
-    strval = field_from_stash(event, runner, stashname, fieldname)
-    try:
-        return casttype(strval)
-    except ValueError:
-        raise SpecFileError(event, "{}.{} is {}, not a valid {}".format(stashname, fieldname, strval, casttype))
-
-
-def stashed(stashname: str) -> functools.partial:
-    """Use an entry from the stash as a field value at runtime"""
-    return functools.partial(_get_stash, stashname)
-
-
-def rcvd(fieldname: Optional[str] = None, casttype: Any = str) -> functools.partial:
-    """Use previous ExpectMsg field (as string)
-
-fieldname can be [msg].[field] or just [field] for last ExpectMsg
-
-    """
-    return functools.partial(_get_stashed_field, 'ExpectMsg', fieldname, casttype)
-
-
-def sent(fieldname: Optional[str] = None, casttype: Any = str) -> functools.partial:
-    """Use previous Msg field (as string)
-
-fieldname can be [msg].[field] or just [field] for last Msg
-
-    """
-    return functools.partial(_get_stashed_field, 'Msg', fieldname, casttype)
-
-
 def msat(sats: ResolvableInt) -> ResolvableInt:
+    """Convert a field from statoshis to millisatoshis"""
     def _msat(runner: 'Runner', event: Event, field: str) -> int:
         if callable(sats):
             return 1000 * sats(runner, event, field)

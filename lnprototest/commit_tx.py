@@ -7,15 +7,12 @@ import struct
 from hashlib import sha256
 from .keyset import KeySet
 from .signature import Sig
-from typing import List, Tuple, Callable, Optional, Union
+from typing import List, Tuple, Callable, Union
 from .event import Event, ResolvableInt
 from .runner import Runner
-from pyln.proto.message import Message
 from .utils import Side
 from .funding import Funding
 import coincurve
-import time
-import functools
 
 
 # FIXME
@@ -353,78 +350,6 @@ class Commit(Event):
                                                  'remote_dust_limit': self.remote_dust_limit,
                                                  'feerate': self.feerate}))
         runner.add_stash('Commit', commit)
-
-
-def _commitsig_to_send(runner: Runner, event: Event, field: str) -> str:
-    """Get remote side's remote sig"""
-    tx = runner.get_stash(event, 'Commit').remote_unsigned_tx()
-    return runner.get_stash(event, 'Commit').local_sig(tx)
-
-
-def commitsig_to_send() -> Callable[[Runner, Event, str], str]:
-    """Get the appropriate signature for the local side to send to the remote"""
-    return _commitsig_to_send
-
-
-def _commitsig_to_recv(runner: Runner, event: Event, field: str) -> str:
-    """Get local side's remote sig"""
-    tx = runner.get_stash(event, 'Commit').local_unsigned_tx()
-    print('local_tx = {}'.format(tx.serialize().hex()))
-    return runner.get_stash(event, 'Commit').remote_sig(tx)
-
-
-def commitsig_to_recv() -> Callable[[Runner, Event, str], str]:
-    """Get the appropriate signature for the remote side to send to the local"""
-    return _commitsig_to_recv
-
-
-def _channel_id(runner: Runner, event: Event, field: str) -> str:
-    """Get the channel id"""
-    return runner.get_stash(event, 'Commit').funding.channel_id()
-
-
-def channel_id() -> Callable[[Runner, Event, str], str]:
-    """Get the channel_id for the current Commit"""
-    return _channel_id
-
-
-def _channel_announcement(short_channel_id: str, features: bytes, runner: Runner, event: Event, field: str) -> Message:
-    """Get the channel announcement"""
-    return runner.get_stash(event, 'Commit').channel_announcement(short_channel_id, features)
-
-
-def channel_announcement(short_channel_id: str, features: bytes) -> Callable[[Runner, Event, str], str]:
-    """Get the channel_announcement for the current Commit"""
-    return functools.partial(_channel_announcement, short_channel_id, features)
-
-
-def _channel_update(short_channel_id: str,
-                    side: Side,
-                    disable: bool,
-                    cltv_expiry_delta: int,
-                    htlc_minimum_msat: int,
-                    fee_base_msat: int,
-                    fee_proportional_millionths: int,
-                    timestamp: Optional[int],
-                    htlc_maximum_msat: Optional[int],
-                    runner: Runner, event: Event, field: str) -> Message:
-    """Get the channel_update"""
-    if timestamp is None:
-        timestamp = int(time.time())
-    return runner.get_stash(event, 'Commit').channel_update(short_channel_id, side, disable, cltv_expiry_delta, htlc_maximum_msat, fee_base_msat, fee_proportional_millionths, timestamp, htlc_maximum_msat)
-
-
-def channel_update(short_channel_id: str,
-                   side: Side,
-                   disable: bool,
-                   cltv_expiry_delta: int,
-                   htlc_minimum_msat: int,
-                   fee_base_msat: int,
-                   fee_proportional_millionths: int,
-                   htlc_maximum_msat: Optional[int],
-                   timestamp: Optional[int] = None) -> Callable[[Runner, Event, str], str]:
-    """Get a channel_update for the current Commit"""
-    return functools.partial(_channel_update, short_channel_id, side, disable, cltv_expiry_delta, htlc_minimum_msat, fee_base_msat, fee_proportional_millionths, htlc_maximum_msat, timestamp)
 
 
 def test_commitment_number() -> None:

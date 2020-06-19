@@ -1,7 +1,7 @@
 # Support for funding txs.
-from typing import Tuple, Any, Optional, Callable
+from typing import Tuple, Any, Optional
 from .utils import Side, privkey_expand, regtest_hash
-from .event import Event, ResolvableInt, ResolvableStr, stashed
+from .event import Event, ResolvableInt, ResolvableStr
 from .namespace import event_namespace
 from .runner import Runner
 from .signature import Sig
@@ -9,7 +9,6 @@ from pyln.proto.message import Message
 from hashlib import sha256
 import coincurve
 import io
-import functools
 from bitcoin.core import COutPoint, CScript, CTxIn, CTxOut, CMutableTransaction, CTxWitness, CTxInWitness, CScriptWitness, Hash160
 import bitcoin.core.script as script
 from bitcoin.wallet import P2WPKHBitcoinAddress
@@ -421,42 +420,3 @@ class CreateFunding(Event):
 
         runner.add_stash('Funding', funding)
         runner.add_stash('FundingTx', tx)
-
-
-def funding_amount() -> Callable[[Runner, Event, str], int]:
-    """Get the stashed funding amount"""
-    def _funding_amount(runner: Runner, event: Event, field: str) -> int:
-        return runner.get_stash(event, 'Funding').amount
-
-    return _funding_amount
-
-
-def funding_pubkey(side: Side) -> Callable[[Runner, Event, str], str]:
-    """Get the stashed funding pubkey for side"""
-    def _funding_pubkey(side: Side, runner: Runner, event: Event, field: str) -> str:
-        return coincurve.PublicKey.from_secret(runner.get_stash(event, 'Funding').funding_privkeys[side].secret)
-
-    return functools.partial(_funding_pubkey, side)
-
-
-def funding_tx() -> Callable[[Runner, Event, str], str]:
-    """Get the funding transaction (as stashed by CreateFunding)"""
-    return stashed('FundingTx')
-
-
-def funding_txid() -> Callable[[Runner, Event, str], str]:
-    """Get the stashed funding transaction id"""
-    def _funding_txid(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_stash(event, 'Funding').txid
-    return _funding_txid
-
-
-def funding() -> Callable[[Runner, Event, str], Funding]:
-    """Get the stashed Funding (as stashed by CreateFunding or AcceptFunding)"""
-    return stashed('Funding')
-
-
-def funding_close_tx() -> Callable[[Runner, Event, str], str]:
-    def _funding_close_tx(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_stash(event, 'Funding').close_tx()
-    return _funding_close_tx
