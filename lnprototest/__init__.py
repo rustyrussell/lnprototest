@@ -1,3 +1,15 @@
+"""lnprototest: a framework and test suite for checking lightning spec protocol compliance.
+
+This package is unusual, in that its main purpose is to carry the unit
+tests, which can be run against a Lightning node implementation, using
+an adapter called a 'Runner'.  Two runners are included: the
+DummyRunner which is the default, and mainly useful to sanity check
+the tests themselves, and clightning.Runner.
+
+The documentation for the classes themselves should cover much of the
+reference material, and the tutorial should get you started.
+
+"""
 from .errors import EventError, SpecFileError
 from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, MustNotMsg, Block, ExpectTx, FundChannel, Invoice, AddHtlc, CheckEq, ExpectError, ResolvableInt, ResolvableStr, Resolvable, msat
 from .structure import Sequence, OneOf, AnyOrder, TryAll
@@ -10,8 +22,6 @@ from .keyset import KeySet
 from .commit_tx import Commit
 from .utils import Side, regtest_hash, privkey_expand
 from .funding import AcceptFunding, CreateFunding, Funding
-
-__version__ = '0.0.1'
 
 __all__ = [
     "EventError",
