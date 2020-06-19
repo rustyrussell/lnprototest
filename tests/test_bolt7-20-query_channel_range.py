@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, LOCAL, REMOTE, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, keyorder, CheckEq, EventError, event_namespace
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, keyorder, CheckEq, EventError, event_namespace
 from fixtures import *  # noqa: F401,F403
 from helpers import tx_spendable, utxo
 from typing import Optional
@@ -160,12 +160,12 @@ def test_query_channel_range(runner: Runner) -> None:
     timestamp_109x1x0_LOCAL = timestamp_103x1x0_LOCAL - 1
     timestamp_109x1x0_REMOTE = timestamp_109x1x0_LOCAL - 1
 
-    ts_103x1x0 = encode_timestamps(*keyorder(funding1.node_id(LOCAL), timestamp_103x1x0_LOCAL,
-                                             funding1.node_id(REMOTE), 0))
-    ts_109x1x0 = encode_timestamps(*keyorder(funding2.node_id(LOCAL), timestamp_109x1x0_LOCAL,
-                                             funding2.node_id(REMOTE), timestamp_109x1x0_REMOTE))
+    ts_103x1x0 = encode_timestamps(*keyorder(funding1.node_id(Side.local), timestamp_103x1x0_LOCAL,
+                                             funding1.node_id(Side.remote), 0))
+    ts_109x1x0 = encode_timestamps(*keyorder(funding2.node_id(Side.local), timestamp_109x1x0_LOCAL,
+                                             funding2.node_id(Side.remote), timestamp_109x1x0_REMOTE))
 
-    update_103x1x0_LOCAL = funding1.channel_update(side=LOCAL,
+    update_103x1x0_LOCAL = funding1.channel_update(side=Side.local,
                                                    short_channel_id='103x1x0',
                                                    disable=False,
                                                    cltv_expiry_delta=144,
@@ -174,7 +174,7 @@ def test_query_channel_range(runner: Runner) -> None:
                                                    fee_proportional_millionths=10,
                                                    timestamp=timestamp_103x1x0_LOCAL,
                                                    htlc_maximum_msat=None)
-    update_109x1x0_LOCAL = funding2.channel_update(side=LOCAL,
+    update_109x1x0_LOCAL = funding2.channel_update(side=Side.local,
                                                    short_channel_id='109x1x0',
                                                    disable=False,
                                                    cltv_expiry_delta=144,
@@ -183,7 +183,7 @@ def test_query_channel_range(runner: Runner) -> None:
                                                    fee_proportional_millionths=10,
                                                    timestamp=timestamp_109x1x0_LOCAL,
                                                    htlc_maximum_msat=None)
-    update_109x1x0_REMOTE = funding2.channel_update(side=REMOTE,
+    update_109x1x0_REMOTE = funding2.channel_update(side=Side.remote,
                                                     short_channel_id='109x1x0',
                                                     disable=False,
                                                     cltv_expiry_delta=144,
@@ -193,10 +193,10 @@ def test_query_channel_range(runner: Runner) -> None:
                                                     timestamp=timestamp_109x1x0_REMOTE,
                                                     htlc_maximum_msat=None)
 
-    csums_103x1x0 = update_checksums(*keyorder(funding1.node_id(LOCAL), update_103x1x0_LOCAL,
-                                               funding1.node_id(REMOTE), None))
-    csums_109x1x0 = update_checksums(*keyorder(funding2.node_id(LOCAL), update_109x1x0_LOCAL,
-                                               funding2.node_id(REMOTE), update_109x1x0_REMOTE))
+    csums_103x1x0 = update_checksums(*keyorder(funding1.node_id(Side.local), update_103x1x0_LOCAL,
+                                               funding1.node_id(Side.remote), None))
+    csums_109x1x0 = update_checksums(*keyorder(funding2.node_id(Side.local), update_109x1x0_LOCAL,
+                                               funding2.node_id(Side.remote), update_109x1x0_REMOTE))
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             # Channel 103x1x0 (between 002 and 003)

@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Tests for malformed/bad channel_announcement
 
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, ExpectError, Funding, LOCAL, MustNotMsg, Runner, TryAll, Sig
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, ExpectError, Funding, Side, MustNotMsg, Runner, TryAll, Sig
 from fixtures import *  # noqa: F401,F403
 import time
 from typing import cast
@@ -43,7 +43,7 @@ def test_premature_channel_announcement(runner: Runner) -> None:
 
             # Needs a channel_update if it were to relay.
             RawMsg(funding.channel_update('103x1x0',
-                                          LOCAL,
+                                          Side.local,
                                           disable=False,
                                           cltv_expiry_delta=144,
                                           htlc_minimum_msat=0,
@@ -126,7 +126,7 @@ def test_bad_announcement(runner: Runner) -> None:
                     [RawMsg(ann_bad_scid_dne),
                      # Needs a channel_update if it were to relay.
                      RawMsg(funding.channel_update('103x2x0',
-                                                   LOCAL,
+                                                   Side.local,
                                                    disable=False,
                                                    cltv_expiry_delta=144,
                                                    htlc_minimum_msat=0,
@@ -137,7 +137,7 @@ def test_bad_announcement(runner: Runner) -> None:
                     [RawMsg(ann_bad_scid_out_dne),
                      # Needs a channel_update if it were to relay.
                      RawMsg(funding.channel_update('103x1x1',
-                                                   LOCAL,
+                                                   Side.local,
                                                    disable=False,
                                                    cltv_expiry_delta=144,
                                                    htlc_minimum_msat=0,
@@ -150,7 +150,7 @@ def test_bad_announcement(runner: Runner) -> None:
 
                  # Needs a channel_update if it were to relay.
                  RawMsg(funding.channel_update('103x1x0',
-                                               LOCAL,
+                                               Side.local,
                                                disable=False,
                                                cltv_expiry_delta=144,
                                                htlc_minimum_msat=0,

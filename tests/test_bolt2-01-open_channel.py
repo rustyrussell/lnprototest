@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Variations on open_channel, accepter + opener perspectives
 
-from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, LOCAL, REMOTE, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey, regtest_hash, funding_txid, funding_tx, funding
+from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, Side, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey, regtest_hash, funding_txid, funding_tx, funding
 from fixtures import *  # noqa: F401,F403
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
 
@@ -69,7 +69,7 @@ def test_open_channel(runner: Runner) -> None:
                                remote_funding_privkey=remote_funding_privkey()),
 
                  Commit(funding=funding(),
-                        opener=LOCAL,
+                        opener=Side.local,
                         local_keyset=local_keyset,
                         local_to_self_delay=sent('to_self_delay', int),
                         remote_to_self_delay=rcvd('to_self_delay', int),
@@ -158,7 +158,7 @@ def test_open_channel(runner: Runner) -> None:
                                remote_funding_privkey=remote_funding_privkey()),
 
                  Commit(funding=funding(),
-                        opener=REMOTE,
+                        opener=Side.remote,
                         local_keyset=local_keyset,
                         local_to_self_delay=sent('to_self_delay', int),
                         remote_to_self_delay=rcvd('open_channel.to_self_delay', int),

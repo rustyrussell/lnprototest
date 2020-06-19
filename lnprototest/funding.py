@@ -1,6 +1,6 @@
 # Support for funding txs.
 from typing import Tuple, Union, Any, Optional, Callable
-from .utils import Side, LOCAL, REMOTE, privkey_expand, regtest_hash
+from .utils import Side, privkey_expand, regtest_hash
 from .event import Event, ResolvableInt, ResolvableStr, stashed
 from .namespace import event_namespace
 from .runner import Runner
@@ -126,13 +126,13 @@ class Funding(object):
         # * Where `pubkey1` is the lexicographically lesser of the two
         #   `funding_pubkey` in compressed format, and where `pubkey2` is the
         #   lexicographically greater of the two.
-        return keyorder(self.bitcoin_privkeys[LOCAL], self.funding_pubkey(LOCAL),
-                        self.bitcoin_privkeys[REMOTE], self.funding_pubkey(REMOTE))
+        return keyorder(self.bitcoin_privkeys[Side.local], self.funding_pubkey(Side.local),
+                        self.bitcoin_privkeys[Side.remote], self.funding_pubkey(Side.remote))
 
     def funding_privkeys_for_tx(self) -> Tuple[coincurve.PrivateKey, coincurve.PrivateKey]:
         """Returns funding private keys, in tx order"""
-        return keyorder(self.bitcoin_privkeys[LOCAL], self.bitcoin_privkeys[LOCAL],
-                        self.bitcoin_privkeys[REMOTE], self.bitcoin_privkeys[REMOTE])
+        return keyorder(self.bitcoin_privkeys[Side.local], self.bitcoin_privkeys[Side.local],
+                        self.bitcoin_privkeys[Side.remote], self.bitcoin_privkeys[Side.remote])
 
     def node_id(self, side: Side) -> coincurve.PublicKey:
         return coincurve.PublicKey.from_secret(self.node_privkeys[side].secret)
@@ -144,23 +144,23 @@ class Funding(object):
         #   nodes operating the channel, such that `node_id_1` is the
         #   lexicographically-lesser of the two compressed keys sorted in
         #   ascending lexicographic order.
-        return keyorder(self.node_privkeys[LOCAL], self.node_id(LOCAL),
-                        self.node_privkeys[REMOTE], self.node_id(REMOTE))
+        return keyorder(self.node_privkeys[Side.local], self.node_id(Side.local),
+                        self.node_privkeys[Side.remote], self.node_id(Side.remote))
 
     def node_id_privkeys(self) -> Tuple[coincurve.PrivateKey, coincurve.PrivateKey]:
         """Returns node private keys, in order"""
-        return keyorder(self.node_privkeys[LOCAL], self.node_privkeys[LOCAL],
-                        self.node_privkeys[REMOTE], self.node_privkeys[REMOTE])
+        return keyorder(self.node_privkeys[Side.local], self.node_privkeys[Side.local],
+                        self.node_privkeys[Side.remote], self.node_privkeys[Side.remote])
 
     def funding_pubkeys_for_gossip(self) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         """Returns funding public keys, in gossip order"""
-        return keyorder(self.node_privkeys[LOCAL], self.funding_pubkey(LOCAL),
-                        self.node_privkeys[REMOTE], self.funding_pubkey(REMOTE))
+        return keyorder(self.node_privkeys[Side.local], self.funding_pubkey(Side.local),
+                        self.node_privkeys[Side.remote], self.funding_pubkey(Side.remote))
 
     def funding_privkeys_for_gossip(self) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         """Returns funding private keys, in gossip order"""
-        return keyorder(self.node_privkeys[LOCAL], self.bitcoin_privkeys[LOCAL],
-                        self.node_privkeys[REMOTE], self.bitcoin_privkeys[REMOTE])
+        return keyorder(self.node_privkeys[Side.local], self.bitcoin_privkeys[Side.local],
+                        self.node_privkeys[Side.remote], self.bitcoin_privkeys[Side.remote])
 
     def _unsigned_channel_announcment(self,
                                       features: str,

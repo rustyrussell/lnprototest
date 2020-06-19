@@ -1,24 +1,20 @@
 #! /usr/bin/python3
 import string
 import coincurve
+from enum import IntEnum
 
 # regtest chain hash (hash of regtest genesis block)
 regtest_hash = '06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f'
 
 
-class Side(int):
-    def __init__(self, v: int):
-        self.v = int(v)
+class Side(IntEnum):
+    local = 0
+    remote = 1
 
     def __not__(self) -> 'Side':
-        return Side(not self.v)
-
-    def __int__(self) -> int:
-        return self.v
-
-
-LOCAL = Side(0)
-REMOTE = Side(1)
+        if self == Side.local:
+            return Side.remote
+        return Side.local
 
 
 def check_hex(val: str, digits: int) -> str:

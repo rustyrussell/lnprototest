@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Simple gossip tests.
 
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, LOCAL, MustNotMsg, Disconnect, Runner
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Side, MustNotMsg, Disconnect, Runner
 from fixtures import *  # noqa: F401,F403
 from helpers import tx_spendable, utxo
 import time
@@ -32,7 +32,7 @@ def test_gossip(runner: Runner) -> None:
             Disconnect(),
 
             RawMsg(funding.channel_update('103x1x0',
-                                          LOCAL,
+                                          Side.local,
                                           disable=False,
                                           cltv_expiry_delta=144,
                                           htlc_minimum_msat=0,

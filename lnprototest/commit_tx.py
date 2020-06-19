@@ -11,7 +11,7 @@ from typing import List, Tuple, Callable, Optional, Union
 from .event import Event, ResolvableInt
 from .runner import Runner
 from pyln.proto.message import Message
-from .utils import Side, LOCAL, REMOTE
+from .utils import Side
 from .funding import Funding
 import coincurve
 import time
@@ -113,7 +113,7 @@ class Commitment(object):
             print("to-remote for side {}: self->payment = {} (local would be {}), per_commit_point = {}, keyset->self_payment_key = {}"
                   .format(side,
                           coincurve.PublicKey.from_secret(self.keyset[not side].payment_base_secret.secret).format().hex(),
-                          coincurve.PublicKey.from_secret(self.keyset[LOCAL].payment_base_secret.secret).format().hex(),
+                          coincurve.PublicKey.from_secret(self.keyset[Side.local].payment_base_secret.secret).format().hex(),
                           self.keyset[side].per_commit_point(self.commitnum).format().hex(),
                           coincurve.PublicKey.from_secret(privkey.secret).format().hex()))
         return coincurve.PublicKey.from_secret(privkey.secret)
@@ -267,10 +267,10 @@ class Commitment(object):
                                    nLockTime=0x20000000 | (ocn & 0x00FFFFFF))
 
     def local_unsigned_tx(self) -> CMutableTransaction:
-        return self._unsigned_tx(LOCAL)
+        return self._unsigned_tx(Side.local)
 
     def remote_unsigned_tx(self) -> CMutableTransaction:
-        return self._unsigned_tx(REMOTE)
+        return self._unsigned_tx(Side.remote)
 
     def _sig(self, privkey: coincurve.PrivateKey, tx: CMutableTransaction) -> Sig:
         sighash = script.SignatureHash(self.funding.redeemscript(), tx, inIdx=0,
@@ -280,16 +280,16 @@ class Commitment(object):
         return Sig(privkey.secret.hex(), sighash.hex())
 
     def local_sig(self, tx: CMutableTransaction) -> Sig:
-        return self._sig(self.funding.bitcoin_privkeys[LOCAL], tx)
+        return self._sig(self.funding.bitcoin_privkeys[Side.local], tx)
 
     def remote_sig(self, tx: CMutableTransaction) -> Sig:
         print('Signing {} redeemscript keys {} and {}: {} amount = {}'.format(
-            REMOTE,
-            self.funding.funding_pubkey(LOCAL).format().hex(),
-            self.funding.funding_pubkey(REMOTE).format().hex(),
+            Side.remote,
+            self.funding.funding_pubkey(Side.local).format().hex(),
+            self.funding.funding_pubkey(Side.remote).format().hex(),
             self.funding.redeemscript().hex(),
             self.funding.amount))
-        return self._sig(self.funding.bitcoin_privkeys[REMOTE], tx)
+        return self._sig(self.funding.bitcoin_privkeys[Side.remote], tx)
 
     def signed_tx(self, unsigned_tx: CMutableTransaction) -> CMutableTransaction:
         # BOLT #3:
@@ -462,7 +462,7 @@ def test_simple_commitment() -> None:
                                     local_funding_privkey='01',
                                     remote_node_privkey='01',
                                     remote_funding_privkey='02'),
-                    opener=LOCAL,
+                    opener=Side.local,
                     local_keyset=KeySet('02', '03', '04', '05', '06' * 32),
                     remote_keyset=KeySet('12', '13', '14', '15', '16' * 32),
                     local_to_self_delay=144,
@@ -475,6 +475,6 @@ def test_simple_commitment() -> None:
                     option_static_remotekey=False)
 
     fee = tx._fee(0)
-    out_redeemscript, sats = tx._to_local_output(fee, LOCAL)
+    out_redeemscript, sats = tx._to_local_output(fee, Side.local)
     assert sats == 6989140
-    assert out_redeemscript == bytes.fromhex('6321') + tx.revocation_pubkey(LOCAL).format() + bytes.fromhex('67029000b27521') + tx.delayed_pubkey(LOCAL).format() + bytes.fromhex('68ac')
+    assert out_redeemscript == bytes.fromhex('6321') + tx.revocation_pubkey(Side.local).format() + bytes.fromhex('67029000b27521') + tx.delayed_pubkey(Side.local).format() + bytes.fromhex('68ac')

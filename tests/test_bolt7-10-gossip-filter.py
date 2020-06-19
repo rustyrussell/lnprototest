@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, LOCAL, REMOTE, MustNotMsg, Disconnect, AnyOrder, Runner, Funding, bitfield
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Side, MustNotMsg, Disconnect, AnyOrder, Runner, Funding, bitfield
 from fixtures import *  # noqa: F401,F403
 import unittest
 import time
@@ -36,7 +36,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
             Block(blockheight=103, number=6, txs=[funding1_tx]),
 
             RawMsg(funding1.channel_announcement('103x1x0', '')),
-            RawMsg(funding1.node_announcement(LOCAL, '', (1, 2, 3), 'foobar', b'', timestamp1)),
+            RawMsg(funding1.node_announcement(Side.local, '', (1, 2, 3), 'foobar', b'', timestamp1)),
 
             # New peer connects, asks for gossip_timestamp_filter=all.  We *won't* relay channel_announcement, as there is no channel_update.
             Connect(connprivkey='05'),
@@ -52,7 +52,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
             Disconnect(),
 
             # Now, with channel update
-            RawMsg(funding1.channel_update(side=LOCAL,
+            RawMsg(funding1.channel_update(side=Side.local,
                                            short_channel_id='103x1x0',
                                            disable=False,
                                            cltv_expiry_delta=144,
@@ -132,7 +132,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
 
             RawMsg(funding2.channel_announcement('109x1x0', ''),
                    connprivkey='03'),
-            RawMsg(funding2.channel_update(side=LOCAL,
+            RawMsg(funding2.channel_update(side=Side.local,
                                            short_channel_id='109x1x0',
                                            disable=False,
                                            cltv_expiry_delta=144,
@@ -141,7 +141,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                                            fee_proportional_millionths=10,
                                            timestamp=timestamp2,
                                            htlc_maximum_msat=None)),
-            RawMsg(funding2.channel_update(side=REMOTE,
+            RawMsg(funding2.channel_update(side=Side.remote,
                                            short_channel_id='109x1x0',
                                            disable=False,
                                            cltv_expiry_delta=144,
@@ -150,7 +150,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                                            fee_proportional_millionths=10,
                                            timestamp=timestamp2,
                                            htlc_maximum_msat=None)),
-            RawMsg(funding2.node_announcement(LOCAL, '', (1, 2, 3), 'foobar2', b'', timestamp2)),
+            RawMsg(funding2.node_announcement(Side.local, '', (1, 2, 3), 'foobar2', b'', timestamp2)),
 
             # 005's filter covers this, 006's doesn't.
             ExpectMsg('channel_announcement', short_channel_id='109x1x0', connprivkey='05'),
