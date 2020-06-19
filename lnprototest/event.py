@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 import traceback
 from pyln.proto.message import Message
+import collections
 import os.path
 import io
 import functools
@@ -359,14 +360,14 @@ def msg_to_stash(runner: 'Runner', event: Event, msg: Message) -> None:
 
 def cmp_obj(obj: Any, expected: Any, prefix: str) -> Optional[str]:
     """Return None if every field in expected matches a field in obj.  Otherwise return a complaint"""
-    if isinstance(expected, dict):
+    if isinstance(expected, collections.abc.Mapping):
         for k, v in expected.items():
             if k not in obj:
                 return "Missing field {}".format(prefix + '.' + k)
             diff = cmp_obj(obj[k], v, prefix + '.' + k)
             if diff:
                 return diff
-    elif isinstance(expected, list):
+    elif not isinstance(expected, str) and isinstance(expected, collections.abc.Sequence):
         # Should we allow expected to be shorter?
         if len(expected) != len(obj):
             return "Expected {} elements, got {} in {}: expected {} not {}".format(len(expected), len(obj),
