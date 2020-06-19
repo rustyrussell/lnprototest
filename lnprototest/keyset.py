@@ -48,6 +48,8 @@ class KeySet(object):
         #             P = SHA256(P)
         #     return P
         # ```
+
+        # FIXME: This is the updated wording from PR #779
         # Where "flip(B)" alternates the (B mod 8)'th bit of the (B div 8)'th
         # byte of the value.  So, "flip(0) in e3b0..." is "e2b0...", and
         # "flip(10) in "e3b0..." is "e3b4".

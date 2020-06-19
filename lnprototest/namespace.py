@@ -1,7 +1,7 @@
 #! /usr/bin/python3
-import pyln.proto.message.bolt1
-import pyln.proto.message.bolt2
-import pyln.proto.message.bolt7
+import pyln.spec.bolt1
+import pyln.spec.bolt2
+import pyln.spec.bolt7
 from pyln.proto.message import MessageNamespace
 from .signature import SigType
 
@@ -13,9 +13,9 @@ def peer_message_namespace() -> MessageNamespace:
     # then we load in all the csv files so they use it.
     ns.fundamentaltypes['signature'] = SigType()
 
-    ns.load_csv(pyln.proto.message.bolt1.csv
-                + pyln.proto.message.bolt2.csv
-                + pyln.proto.message.bolt7.csv)
+    ns.load_csv(pyln.spec.bolt1.csv
+                + pyln.spec.bolt2.csv
+                + pyln.spec.bolt7.csv)
     return ns
 
 

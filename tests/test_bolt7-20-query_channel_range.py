@@ -9,7 +9,7 @@ import time
 import io
 import zlib
 import crc32c
-from pyln.proto.message.bolt7 import channel_update_timestamps
+from pyln.spec.bolt7 import channel_update_timestamps
 from pyln.proto.message import Message
 
 # Note for gossip_channel_range: we are *allowed* to return a superset

@@ -3,7 +3,7 @@
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
 from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len, rcvd
-import pyln.proto.message.bolt1
+import pyln.spec.bolt1
 from pyln.proto.message import Message
 from typing import List, Any
 from fixtures import *  # noqa: F401,F403
@@ -33,7 +33,7 @@ def has_feature(featurebits: List[int], event: Event, msg: Message) -> None:
 
 def test_init(runner: Runner, namespaceoverride: Any) -> None:
     # We override default namespace since we only need BOLT1
-    namespaceoverride(pyln.proto.message.bolt1.namespace)
+    namespaceoverride(pyln.spec.bolt1.namespace)
     test = [Connect(connprivkey='03'),
             ExpectMsg('init'),
             Msg('init', globalfeatures='', features=''),
