@@ -2,7 +2,6 @@
 # Tests for malformed/bad channel_announcement
 
 from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, ExpectError, Funding, Side, MustNotMsg, Runner, TryAll, Sig
-from fixtures import *  # noqa: F401,F403
 import time
 from typing import cast
 from helpers import utxo, tx_spendable

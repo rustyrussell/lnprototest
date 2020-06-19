@@ -4,7 +4,6 @@
 
 from lnprototest import (TryAll, Connect, ExpectMsg, Msg, RawMsg, ExpectError, Runner)
 import pyln.spec.bolt1
-from fixtures import *  # noqa: F401,F403
 from typing import Any
 
 

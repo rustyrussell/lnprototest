@@ -2,7 +2,6 @@
 # Simple gossip tests.
 
 from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Side, MustNotMsg, Disconnect, Runner
-from fixtures import *  # noqa: F401,F403
 from helpers import tx_spendable, utxo
 import time
 

@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
 from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Side, MustNotMsg, Disconnect, AnyOrder, Runner, Funding, bitfield
-from fixtures import *  # noqa: F401,F403
 import unittest
 import time
 from helpers import utxo, tx_spendable

@@ -2,7 +2,6 @@
 # Variations on open_channel, accepter + opener perspectives
 
 from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, sent, rcvd, Side, commitsig_to_send, commitsig_to_recv, CheckEq, msat, channel_id, remote_funding_privkey, regtest_hash, funding_txid, funding_tx, funding
-from fixtures import *  # noqa: F401,F403
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
 
 

@@ -6,7 +6,6 @@ from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, Ev
 import pyln.spec.bolt1
 from pyln.proto.message import Message
 from typing import List, Any
-from fixtures import *  # noqa: F401,F403
 import functools
 
 
