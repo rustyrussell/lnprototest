@@ -9,7 +9,7 @@ from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, commitsig_to_send, commitsig_to_recv, channel_id, channel_announcement, channel_update
 from .utils import Side, regtest_hash, privkey_expand
-from .funding import AcceptFunding, CreateFunding, Funding, funding_amount, funding_pubkey, funding_txid, funding_tx, funding, funding_close_tx, keyorder
+from .funding import AcceptFunding, CreateFunding, Funding, funding_amount, funding_pubkey, funding_txid, funding_tx, funding, funding_close_tx
 
 __version__ = '0.0.1'
 
@@ -63,7 +63,6 @@ __all__ = [
     "channel_announcement",
     "channel_update",
     "Side",
-    "keyorder",
     "AcceptFunding",
     "CreateFunding",
     "funding_amount",

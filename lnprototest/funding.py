@@ -1,5 +1,5 @@
 # Support for funding txs.
-from typing import Tuple, Union, Any, Optional, Callable
+from typing import Tuple, Any, Optional, Callable
 from .utils import Side, privkey_expand, regtest_hash
 from .event import Event, ResolvableInt, ResolvableStr, stashed
 from .namespace import event_namespace
@@ -13,26 +13,6 @@ import functools
 from bitcoin.core import COutPoint, CScript, CTxIn, CTxOut, CMutableTransaction, CTxWitness, CTxInWitness, CScriptWitness, Hash160
 import bitcoin.core.script as script
 from bitcoin.wallet import P2WPKHBitcoinAddress
-
-
-def keyorder(key1: Union[coincurve.PublicKey, coincurve.PrivateKey], val1: Any,
-             key2: Union[coincurve.PublicKey, coincurve.PrivateKey], val2: Any) -> Tuple[Any, Any]:
-    """Sorts these two items into lexicographical order, as widely used in BOLTs"""
-    if isinstance(key1, coincurve.PrivateKey):
-        pubkey1 = coincurve.PublicKey.from_secret(key1.secret)
-    else:
-        assert isinstance(key1, coincurve.PublicKey)
-        pubkey1 = key1
-
-    if isinstance(key2, coincurve.PrivateKey):
-        pubkey2 = coincurve.PublicKey.from_secret(key2.secret)
-    else:
-        assert isinstance(key2, coincurve.PublicKey)
-        pubkey2 = key2
-
-    if pubkey1.format() < pubkey2.format():
-        return val1, val2
-    return val2, val1
 
 
 class Funding(object):
@@ -53,6 +33,33 @@ class Funding(object):
                                  privkey_expand(remote_funding_privkey)]
         self.node_privkeys = [privkey_expand(local_node_privkey),
                               privkey_expand(remote_node_privkey)]
+
+    def node_id_sort(self, local: Any, remote: Any) -> Tuple[Any, Any]:
+        """Sorts these two items into lexicographical node id order"""
+        # BOLT #7:
+        # - MUST set `node_id_1` and `node_id_2` to the public keys of the two
+        #   nodes operating the channel, such that `node_id_1` is the
+        #   lexicographically-lesser of the two compressed keys sorted in
+        #   ascending lexicographic order.
+        if self.node_id(Side.local).format() < self.node_id(Side.remote).format():
+            return local, remote
+        else:
+            return remote, local
+
+    def bitcoin_key_sort(self, local: Any, remote: Any) -> Tuple[Any, Any]:
+        """Sorts these two items into lexicographical bitcoin key order"""
+        # BOLT #3:
+        # ## Funding Transaction Output
+        #
+        # * The funding output script is a P2WSH to: `2 <pubkey1> <pubkey2> 2
+        #  OP_CHECKMULTISIG`
+        # * Where `pubkey1` is the lexicographically lesser of the two
+        #   `funding_pubkey` in compressed format, and where `pubkey2` is the
+        #   lexicographically greater of the two.
+        if self.funding_pubkey(Side.local).format() < self.funding_pubkey(Side.remote).format():
+            return local, remote
+        else:
+            return remote, local
 
     def redeemscript(self) -> CScript:
         return CScript([script.OP_2]
@@ -126,41 +133,36 @@ class Funding(object):
         # * Where `pubkey1` is the lexicographically lesser of the two
         #   `funding_pubkey` in compressed format, and where `pubkey2` is the
         #   lexicographically greater of the two.
-        return keyorder(self.bitcoin_privkeys[Side.local], self.funding_pubkey(Side.local),
-                        self.bitcoin_privkeys[Side.remote], self.funding_pubkey(Side.remote))
+        return self.bitcoin_key_sort(self.funding_pubkey(Side.local),
+                                     self.funding_pubkey(Side.remote))
 
     def funding_privkeys_for_tx(self) -> Tuple[coincurve.PrivateKey, coincurve.PrivateKey]:
         """Returns funding private keys, in tx order"""
-        return keyorder(self.bitcoin_privkeys[Side.local], self.bitcoin_privkeys[Side.local],
-                        self.bitcoin_privkeys[Side.remote], self.bitcoin_privkeys[Side.remote])
+        return self.bitcoin_key_sort(self.bitcoin_privkeys[Side.local],
+                                     self.bitcoin_privkeys[Side.remote])
 
     def node_id(self, side: Side) -> coincurve.PublicKey:
         return coincurve.PublicKey.from_secret(self.node_privkeys[side].secret)
 
     def node_ids(self) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         """Returns node pubkeys, in order"""
-        # BOLT #7:
-        # - MUST set `node_id_1` and `node_id_2` to the public keys of the two
-        #   nodes operating the channel, such that `node_id_1` is the
-        #   lexicographically-lesser of the two compressed keys sorted in
-        #   ascending lexicographic order.
-        return keyorder(self.node_privkeys[Side.local], self.node_id(Side.local),
-                        self.node_privkeys[Side.remote], self.node_id(Side.remote))
+        return self.node_id_sort(self.node_id(Side.local),
+                                 self.node_id(Side.remote))
 
     def node_id_privkeys(self) -> Tuple[coincurve.PrivateKey, coincurve.PrivateKey]:
         """Returns node private keys, in order"""
-        return keyorder(self.node_privkeys[Side.local], self.node_privkeys[Side.local],
-                        self.node_privkeys[Side.remote], self.node_privkeys[Side.remote])
+        return self.node_id_sort(self.node_privkeys[Side.local],
+                                 self.node_privkeys[Side.remote])
 
     def funding_pubkeys_for_gossip(self) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         """Returns funding public keys, in gossip order"""
-        return keyorder(self.node_privkeys[Side.local], self.funding_pubkey(Side.local),
-                        self.node_privkeys[Side.remote], self.funding_pubkey(Side.remote))
+        return self.node_id_sort(self.funding_pubkey(Side.local),
+                                 self.funding_pubkey(Side.remote))
 
     def funding_privkeys_for_gossip(self) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         """Returns funding private keys, in gossip order"""
-        return keyorder(self.node_privkeys[Side.local], self.bitcoin_privkeys[Side.local],
-                        self.node_privkeys[Side.remote], self.bitcoin_privkeys[Side.remote])
+        return self.node_id_sort(self.bitcoin_privkeys[Side.local],
+                                 self.bitcoin_privkeys[Side.remote])
 
     def _unsigned_channel_announcment(self,
                                       features: str,
