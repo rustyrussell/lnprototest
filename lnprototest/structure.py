@@ -1,7 +1,6 @@
 #! /usr/bin/python3
-import math
 import io
-from .event import Event, ExpectMsg
+from .event import Event, ExpectMsg, ResolvableBool
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from pyln.proto.message import Message
@@ -18,7 +17,7 @@ class Sequence(Event):
     """A sequence of ordered events"""
     def __init__(self,
                  events: Union['Sequence', List[Event], Event],
-                 enable: bool = True):
+                 enable: ResolvableBool = True):
         """Events can be a Sequence, a single Event, or a list of Events.  If
 enable is False, this turns into a noop (e.g. if runner doesn't support
 it)."""
@@ -32,20 +31,22 @@ it)."""
         elif isinstance(events, Event):
             self.events = [events]
         else:
-            # Filter out any events which are not enabled
-            self.events = [e for e in events if (not isinstance(e, Sequence)) or e.enable]
+            self.events = events
 
-    def num_undone(self) -> int:
-        # Add one for each sub-event, so empty ones count too!
-        return sum([e.num_undone() for e in self.events]) + (not self.done)
+    def enabled(self, runner: 'Runner') -> bool:
+        return self.resolve_arg('enable', runner, self.enable)
 
-    def action(self, runner: 'Runner', skip_first: bool = False) -> None:
+    def action(self, runner: 'Runner', skip_first: bool = False) -> bool:
         super().action(runner)
+        all_done = True
         for e in self.events:
+            if not e.enabled(runner):
+                continue
             if skip_first:
                 skip_first = False
             else:
-                e.action(runner)
+                all_done &= e.action(runner)
+        return all_done
 
     @staticmethod
     def ignored_by_all(msg: Message, sequences: List['Sequence']) -> bool:
@@ -53,7 +54,8 @@ it)."""
 
     @staticmethod
     def match_which_sequence(runner: 'Runner', msg: Message, sequences: List['Sequence']) -> Optional['Sequence']:
-        """Return which sequence expects this msg, or None."""
+        """Return which sequence expects this msg, or None"""
+
         for s in sequences:
             failreason = cast(ExpectMsg, s.events[0]).message_match(runner, msg)
             if failreason is None:
@@ -71,16 +73,13 @@ class OneOf(Event):
             seq = Sequence(s)
             if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
-            if seq.enable:
-                self.sequences.append(seq)
+            self.sequences.append(seq)
 
-    def num_undone(self) -> int:
-        # Use mean, unless we're done.
-        if self.done:
-            return 0
-        return math.ceil(sum([s.num_undone() for s in self.sequences]) / len(self.sequences))
+    def enabled_sequences(self, runner: 'Runner') -> List[Sequence]:
+        """Returns all enabled sequences"""
+        return [s for s in self.sequences if s.enabled(runner)]
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
 
         # Check they all use the same conn!
@@ -103,16 +102,16 @@ class OneOf(Event):
             except ValueError as ve:
                 raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 
-            if Sequence.ignored_by_all(msg, self.sequences):
+            if Sequence.ignored_by_all(msg, self.enabled_sequences(runner)):
                 continue
 
-            seq = Sequence.match_which_sequence(runner, msg, self.sequences)
+            seq = Sequence.match_which_sequence(runner, msg, self.enabled_sequences(runner))
             if seq is not None:
                 # We found the sequence, run it
                 return seq.action(runner, skip_first=True)
 
             raise EventError(self,
-                             "None of the sequences matched {}".format(msg.to_str()))
+                             "None of the sequences {} matched {}".format(self.enabled_sequences(runner), msg.to_str()))
 
 
 class AnyOrder(Event):
@@ -124,16 +123,13 @@ class AnyOrder(Event):
             seq = Sequence(s)
             if len(seq.events) == 0:
                 raise ValueError("{} is an empty sequence".format(s))
-            if seq.enable:
-                self.sequences.append(seq)
+            self.sequences.append(seq)
 
-    def num_undone(self) -> int:
-        # Use total, unless we're done.
-        if self.done:
-            return 0
-        return sum([s.num_undone() for s in self.sequences])
+    def enabled_sequences(self, runner: 'Runner') -> List[Sequence]:
+        """Returns all enabled sequences"""
+        return [s for s in self.sequences if s.enabled(runner)]
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
 
         # Check they all use the same conn!
@@ -146,7 +142,8 @@ class AnyOrder(Event):
                 raise SpecFileError(self, "sequences do not all use the same conn?")
         assert conn
 
-        sequences = self.sequences[:]
+        all_done = True
+        sequences = self.enabled_sequences(runner)
         while sequences != []:
             # Get message
             binmsg = runner.get_output_message(conn, sequences[0].events[0])
@@ -159,42 +156,55 @@ class AnyOrder(Event):
             except ValueError as ve:
                 raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 
-            if Sequence.ignored_by_all(msg, self.sequences):
+            if Sequence.ignored_by_all(msg, sequences):
                 continue
 
             seq = Sequence.match_which_sequence(runner, msg, sequences)
             if seq is not None:
                 sequences.remove(seq)
-                seq.action(runner, skip_first=True)
+                all_done &= seq.action(runner, skip_first=True)
                 continue
 
             raise EventError(self,
                              "Message did not match any sequences {}: {}"
                              .format([s.events[0] for s in sequences], msg.to_str()))
+        return all_done
 
 
 class TryAll(Event):
     """Event representing multiple sequences, each of which should be tested"""
     def __init__(self, *args: SequenceUnion):
         super().__init__()
-        self.sequences = []
-        for s in args:
-            seq = Sequence(s)
-            if seq.enable:
-                self.sequences.append(seq)
+        self.sequences = [Sequence(s) for s in args]
+        self.done = [False] * len(self.sequences)
 
-    def num_undone(self) -> int:
-        return sum([s.num_undone() for s in self.sequences])
-
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
-        # Use least-done one, or first if all done.
-        best = self.sequences[0]
-        for s in self.sequences[1:]:
-            if s.num_undone() > best.num_undone():
-                best = s
 
-        best.action(runner)
+        # Take first undone one, or if that fails, first enabled one.
+        first_enabled = None
+        first_undone = None
+        all_done = True
+        for i, s in enumerate(self.sequences):
+            if not s.enabled(runner):
+                continue
+            if not first_enabled:
+                first_enabled = s
+            if self.done[i]:
+                continue
+            if not first_undone:
+                first_undone = s
+                self.done[i] = True
+            else:
+                all_done = False
+
+        # Note: they might *all* be disabled!
+        if first_undone:
+            first_undone.action(runner)
+        elif first_enabled:
+            first_enabled.action(runner)
+
+        return all_done
 
 
 def test_empty_sequence() -> None:
@@ -208,9 +218,5 @@ def test_empty_sequence() -> None:
 
     # This sequence should be tried twice.
     seq = Sequence(TryAll([], []))
-    assert seq.num_undone() != 0
-
-    seq.action(nullrunner())  # type: ignore
-    assert seq.num_undone() != 0
-    seq.action(nullrunner())  # type: ignore
-    assert seq.num_undone() == 0
+    assert seq.action(nullrunner()) is False  # type: ignore
+    assert seq.action(nullrunner()) is True  # type: ignore

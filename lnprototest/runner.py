@@ -79,11 +79,13 @@ require that minimum_depth be 3, just for test simplicity.
     def run(self, events: Union[Sequence, List[Event], Event]) -> None:
         sequence = Sequence(events)
         self.start()
-        while sequence.num_undone() != 0:
-            self.restart()
-            sequence.action(self)
+        while True:
+            all_done = sequence.action(self)
             self.post_check(sequence)
-        self.stop()
+            if all_done:
+                self.stop()
+                return
+            self.restart()
 
     def add_stash(self, stashname: str, vals: Any) -> None:
         """Add a dict to the stash."""

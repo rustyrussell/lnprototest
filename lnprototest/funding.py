@@ -363,7 +363,7 @@ class AcceptFunding(Event):
         self.remote_funding_privkey = remote_funding_privkey
         self.chain_hash = chain_hash
 
-    def action(self, runner: Runner) -> None:
+    def action(self, runner: Runner) -> bool:
         super().action(runner)
 
         funding = Funding(chain_hash=self.chain_hash,
@@ -376,6 +376,7 @@ class AcceptFunding(Event):
                                                'remote_node_privkey': self.remote_node_privkey,
                                                'remote_funding_privkey': self.remote_funding_privkey}))
         runner.add_stash('Funding', funding)
+        return True
 
 
 class CreateFunding(Event):
@@ -403,7 +404,7 @@ class CreateFunding(Event):
         self.remote_funding_privkey = remote_funding_privkey
         self.chain_hash = chain_hash
 
-    def action(self, runner: Runner) -> None:
+    def action(self, runner: Runner) -> bool:
         super().action(runner)
 
         funding, tx = Funding.from_utxo(self.txid_in,
@@ -420,3 +421,4 @@ class CreateFunding(Event):
 
         runner.add_stash('Funding', funding)
         runner.add_stash('FundingTx', tx)
+        return True

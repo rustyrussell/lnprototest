@@ -340,7 +340,7 @@ remote_to_self_delay is dicated by the local side!
         self.feerate = feerate
         self.static_remotekey = negotiated(local_features, remote_features, [12])
 
-    def action(self, runner: Runner) -> None:
+    def action(self, runner: Runner) -> bool:
         super().action(runner)
 
         # BOLT #9:
@@ -360,6 +360,7 @@ remote_to_self_delay is dicated by the local side!
                                                  'remote_dust_limit': self.remote_dust_limit,
                                                  'feerate': self.feerate}))
         runner.add_stash('Commit', commit)
+        return True
 
 
 def test_commitment_number() -> None:

@@ -37,18 +37,16 @@ class Event(object):
                 self.name = "{}:{}:{}".format(type(self).__name__,
                                               os.path.basename(s[0]), s[1])
                 break
-        self.done = False
 
-    def action(self, runner: 'Runner') -> None:
+    def enabled(self, runner: 'Runner') -> bool:
+        """Returns whether it should be enabled for this run.  Usually True"""
+        return True
+
+    def action(self, runner: 'Runner') -> bool:
+        """action() returns the False if it needs to be called again"""
         if runner.config.getoption('verbose'):
             print("# running {}:".format(self))
-        self.done = True
-
-    def num_undone(self) -> int:
-        """Number of actions to be done in this event; usually 1."""
-        if self.done:
-            return 0
-        return 1
+        return True
 
     def resolve_arg(self, fieldname: str, runner: 'Runner', arg: Resolvable) -> Any:
         """If this is a string, return it, otherwise call it to get result"""
@@ -92,12 +90,13 @@ class Connect(Event):
         self.connprivkey = connprivkey
         super().__init__()
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         if runner.find_conn(self.connprivkey):
             raise SpecFileError(self, "Already have connection to {}"
                                 .format(self.connprivkey))
         runner.connect(self, self.connprivkey)
+        return True
 
 
 class MustNotMsg(PerConnEvent):
@@ -116,9 +115,10 @@ class MustNotMsg(PerConnEvent):
 
         return name == self.must_not
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         self.find_conn(runner).must_not_events.append(self)
+        return True
 
 
 class Disconnect(PerConnEvent):
@@ -126,9 +126,10 @@ class Disconnect(PerConnEvent):
     def __init__(self, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         runner.disconnect(self, self.find_conn(runner))
+        return True
 
 
 class Msg(PerConnEvent):
@@ -141,7 +142,7 @@ class Msg(PerConnEvent):
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
         self.kwargs = kwargs
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         # Now we have runner, we can fill in all the message fields
         message = Message(self.msgtype, **self.resolve_args(runner, self.kwargs))
@@ -152,6 +153,7 @@ class Msg(PerConnEvent):
         message.write(binmsg)
         runner.recv(self, self.find_conn(runner), binmsg.getvalue())
         msg_to_stash(runner, self, message)
+        return True
 
 
 class RawMsg(PerConnEvent):
@@ -160,7 +162,7 @@ class RawMsg(PerConnEvent):
         super().__init__(connprivkey)
         self.message = message
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         msg = self.resolve_arg('binmsg', runner, self.message)
         if isinstance(msg, Message):
@@ -171,6 +173,7 @@ class RawMsg(PerConnEvent):
             binmsg = msg
 
         runner.recv(self, self.find_conn(runner), binmsg)
+        return True
 
 
 class ExpectMsg(PerConnEvent):
@@ -217,7 +220,7 @@ and query_short_channel_ids.
                 return True
         return False
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         conn = self.find_conn(runner)
         while True:
@@ -244,6 +247,7 @@ and query_short_channel_ids.
                 raise EventError(self, "{}: message was {}".format(err, msg.to_str()))
 
             break
+        return True
 
 
 class Block(Event):
@@ -256,7 +260,7 @@ class Block(Event):
         self.number = number
         self.txs = txs
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         # Oops, did they ask us to produce a block with no predecessor?
         if runner.getblockheight() + 1 < self.blockheight:
@@ -270,6 +274,7 @@ class Block(Event):
         # Add new one
         runner.add_blocks(self, [self.resolve_arg('tx', runner, tx) for tx in self.txs], self.number)
         assert runner.getblockheight() == self.blockheight - 1 + self.number
+        return True
 
 
 class ExpectTx(Event):
@@ -280,9 +285,10 @@ class ExpectTx(Event):
         super().__init__()
         self.txid = txid
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         runner.expect_tx(self, self.resolve_arg('txid', runner, self.txid))
+        return True
 
 
 class FundChannel(PerConnEvent):
@@ -291,11 +297,12 @@ class FundChannel(PerConnEvent):
         super().__init__(connprivkey)
         self.amount = amount
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         runner.fundchannel(self,
                            self.find_conn(runner),
                            self.resolve_arg('amount', runner, self.amount))
+        return True
 
 
 class Invoice(Event):
@@ -304,10 +311,11 @@ class Invoice(Event):
         self.preimage = preimage
         self.amount = amount
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         runner.invoice(self, self.amount,
                        check_hex(self.resolve_arg('preimage', runner, self.preimage), 64))
+        return True
 
 
 class AddHtlc(PerConnEvent):
@@ -316,22 +324,24 @@ class AddHtlc(PerConnEvent):
         self.preimage = preimage
         self.amount = amount
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         runner.addhtlc(self, self.find_conn(runner),
                        self.amount,
                        check_hex(self.resolve_arg('preimage', runner, self.preimage), 64))
+        return True
 
 
 class ExpectError(PerConnEvent):
     def __init__(self, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         error = runner.check_error(self, self.find_conn(runner))
         if error is None:
             raise EventError(self, "No error found")
+        return True
 
 
 class CheckEq(Event):
@@ -341,13 +351,14 @@ class CheckEq(Event):
         self.a = a
         self.b = b
 
-    def action(self, runner: 'Runner') -> None:
+    def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         a = self.resolve_arg('a', runner, self.a)
         b = self.resolve_arg('b', runner, self.b)
         # dummy runner generates dummy fields.
         if a != b and not runner._is_dummy():
             raise EventError(self, "{} != {}".format(a, b))
+        return True
 
 
 def msg_to_stash(runner: 'Runner', event: Event, msg: Message) -> None:

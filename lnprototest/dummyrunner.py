@@ -34,7 +34,7 @@ class DummyRunner(Runner):
         return None
 
     def start(self) -> None:
-        pass
+        self.blockheight = 102
 
     def stop(self) -> None:
         pass
