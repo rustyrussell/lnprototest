@@ -25,7 +25,12 @@ trivial values for private keys, so we simply left-pad with zeroes"""
 
 
 class Runner(object):
-    """Abstract base class for runners"""
+    """Abstract base class for runners.
+
+Most of the runner parameters can be extracted at runtime, but we do
+require that minimum_depth be 3, just for test simplicity.
+
+    """
     def __init__(self, config: Any):
         self.config = config
         # key == connprivkey, value == Conn

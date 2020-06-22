@@ -320,6 +320,12 @@ class Commit(Event):
                  remote_dust_limit: ResolvableInt,
                  feerate: ResolvableInt,
                  option_static_remotekey: bool = False):
+        """Stashes a commitment transaction as 'Commit'.
+
+Note that local_to_self_delay is dictated by the remote side, and
+remote_to_self_delay is dicated by the local side!
+
+        """
         super().__init__()
         self.funding = funding
         self.opener = opener

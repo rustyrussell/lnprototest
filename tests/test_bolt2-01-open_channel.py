@@ -24,7 +24,7 @@ def test_open_channel(runner: Runner) -> None:
                 # Accepter side: we initiate a new channel.
                 [Msg('open_channel',
                      chain_hash=regtest_hash,
-                     temporary_channel_id='0000000000000000000000000000000000000000000000000000000000000000',
+                     temporary_channel_id='00' * 32,
                      funding_satoshis=funding_amount_for_utxo(0),
                      push_msat=0,
                      dust_limit_satoshis=546,
@@ -32,7 +32,8 @@ def test_open_channel(runner: Runner) -> None:
                      channel_reserve_satoshis=9998,
                      htlc_minimum_msat=0,
                      feerate_per_kw=253,
-                     to_self_delay=6,
+                     # We use 5, because c-lightning runner uses 6, so this is different.
+                     to_self_delay=5,
                      max_accepted_htlcs=483,
                      funding_pubkey=pubkey_of(local_funding_privkey),
                      revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
@@ -46,7 +47,7 @@ def test_open_channel(runner: Runner) -> None:
                  TryAll([], RawMsg(bytes.fromhex('270F'))),
 
                  ExpectMsg('accept_channel',
-                           temporary_channel_id='00' * 32,
+                           temporary_channel_id=sent(),
                            funding_pubkey=remote_funding_pubkey(),
                            revocation_basepoint=remote_revocation_basepoint(),
                            payment_basepoint=remote_payment_basepoint(),
@@ -54,8 +55,6 @@ def test_open_channel(runner: Runner) -> None:
                            htlc_basepoint=remote_htlc_basepoint(),
                            first_per_commitment_point=remote_per_commitment_point(0),
                            minimum_depth=3,
-                           # If this is different, the commitment tx will be different!
-                           to_self_delay=6,
                            channel_reserve_satoshis=9998),
 
                  # Ignore unknown odd messages
@@ -71,8 +70,8 @@ def test_open_channel(runner: Runner) -> None:
                  Commit(funding=funding(),
                         opener=Side.local,
                         local_keyset=local_keyset,
-                        local_to_self_delay=sent('to_self_delay', int),
-                        remote_to_self_delay=rcvd('to_self_delay', int),
+                        local_to_self_delay=rcvd('to_self_delay', int),
+                        remote_to_self_delay=sent('to_self_delay', int),
                         local_amount=msat(sent('funding_satoshis', int)),
                         remote_amount=0,
                         local_dust_limit=546,
@@ -133,8 +132,8 @@ def test_open_channel(runner: Runner) -> None:
                      htlc_minimum_msat=0,
                      minimum_depth=3,
                      max_accepted_htlcs=483,
-                     # If these are different, the commitment tx will be different!
-                     to_self_delay=6,
+                     # We use 5, because c-lightning runner uses 6, so this is different.
+                     to_self_delay=5,
                      funding_pubkey=pubkey_of(local_funding_privkey),
                      revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
                      payment_basepoint=local_keyset.payment_basepoint().format().hex(),
@@ -160,8 +159,8 @@ def test_open_channel(runner: Runner) -> None:
                  Commit(funding=funding(),
                         opener=Side.remote,
                         local_keyset=local_keyset,
-                        local_to_self_delay=sent('to_self_delay', int),
-                        remote_to_self_delay=rcvd('open_channel.to_self_delay', int),
+                        local_to_self_delay=rcvd('open_channel.to_self_delay', int),
+                        remote_to_self_delay=sent('accept_channel.to_self_delay', int),
                         local_amount=0,
                         remote_amount=msat(rcvd('open_channel.funding_satoshis', int)),
                         local_dust_limit=sent('accept_channel.dust_limit_satoshis', int),
