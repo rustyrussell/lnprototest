@@ -14,20 +14,20 @@ import functools
 # ...
 # - SHOULD NOT set features greater than 13 in `globalfeatures`.
 def no_gf13(event: Event, msg: Message) -> None:
-    for i in range(14, bitfield_len(msg, 'globalfeatures')):
-        if has_bit(msg, 'globalfeatures', i):
+    for i in range(14, bitfield_len(msg.fields['globalfeatures'])):
+        if has_bit(msg.fields['globalfeatures'], i):
             raise EventError(event, "globalfeatures bit {} set".format(i))
 
 
 def no_feature(featurebits: List[int], event: Event, msg: Message) -> None:
     for bit in featurebits:
-        if has_bit(msg, 'features', bit):
-            raise EventError(event, "features set bit {} unexpected: {}".format(bit, msg))
+        if has_bit(msg.fields['features'], bit):
+            raise EventError(event, "features set bit {} unexpected: {}".format(bit, msg.to_str()))
 
 
 def has_feature(featurebits: List[int], event: Event, msg: Message) -> None:
     for bit in featurebits:
-        if not has_bit(msg, 'features', bit):
+        if not has_bit(msg.fields['features'], bit):
             raise EventError(event, "features set bit {} unset: {}".format(bit, msg.to_str()))
 
 

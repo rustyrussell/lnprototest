@@ -9,6 +9,7 @@ from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
 from .signature import Sig
+from .bitfield import has_bit
 from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING
 if TYPE_CHECKING:
     # Otherwise a circular dependency
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 # Type for arguments: either strings, or functions to call at runtime
 ResolvableStr = Union[str, Callable[['Runner', 'Event', str], str]]
 ResolvableInt = Union[int, Callable[['Runner', 'Event', str], int]]
+ResolvableBool = Union[int, Callable[['Runner', 'Event', str], bool]]
 Resolvable = Union[Any, Callable[['Runner', 'Event', str], Any]]
 
 
@@ -405,3 +407,29 @@ def msat(sats: ResolvableInt) -> ResolvableInt:
         else:
             return 1000 * sats
     return _msat
+
+
+def negotiated(a_features: ResolvableStr,
+               b_features: ResolvableStr,
+               included: List[int] = [],
+               excluded: List[int] = []) -> ResolvableBool:
+    def has_feature(fbit: int, featurebits: str) -> bool:
+        # Feature bits go in optional/compulsory pairs.
+        altfbit = fbit ^ 1
+        return has_bit(featurebits, fbit) or has_bit(featurebits, altfbit)
+
+    def _negotiated(runner: 'Runner', event: Event, field: str) -> bool:
+        a = event.resolve_arg('features', runner, a_features)
+        b = event.resolve_arg('features', runner, b_features)
+
+        for i in included:
+            if not has_feature(i, a) or not has_feature(i, b):
+                return False
+
+        for e in excluded:
+            if has_feature(e, a) or has_feature(e, b):
+                return False
+
+        return True
+
+    return _negotiated
