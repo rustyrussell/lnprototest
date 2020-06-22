@@ -36,7 +36,8 @@ it)."""
             self.events = [e for e in events if (not isinstance(e, Sequence)) or e.enable]
 
     def num_undone(self) -> int:
-        return sum([e.num_undone() for e in self.events])
+        # Add one for each sub-event, so empty ones count too!
+        return sum([e.num_undone() for e in self.events]) + (not self.done)
 
     def action(self, runner: 'Runner', skip_first: bool = False) -> None:
         super().action(runner)
@@ -194,3 +195,22 @@ class TryAll(Event):
                 best = s
 
         best.action(runner)
+
+
+def test_empty_sequence() -> None:
+    class nullrunner(object):
+        class dummyconfig(object):
+            def getoption(self, name: str) -> bool:
+                return False
+
+        def __init__(self) -> None:
+            self.config = self.dummyconfig()
+
+    # This sequence should be tried twice.
+    seq = Sequence(TryAll([], []))
+    assert seq.num_undone() != 0
+
+    seq.action(nullrunner())  # type: ignore
+    assert seq.num_undone() != 0
+    seq.action(nullrunner())  # type: ignore
+    assert seq.num_undone() == 0
