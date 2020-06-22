@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Variations on open_channel, accepter + opener perspectives
 
-from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash
+from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash, bitfield
 from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
 
@@ -18,7 +18,13 @@ def test_open_channel(runner: Runner) -> None:
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='02'),
             ExpectMsg('init'),
-            Msg('init', globalfeatures='', features=''),
+
+            TryAll(
+                # BOLT #9:
+                # | 12/13 | `option_static_remotekey`        | Static key for remote output
+                Msg('init', globalfeatures='', features=bitfield(13)),
+                # And not.
+                Msg('init', globalfeatures='', features='')),
 
             TryAll(
                 # Accepter side: we initiate a new channel.
@@ -77,7 +83,8 @@ def test_open_channel(runner: Runner) -> None:
                         local_dust_limit=546,
                         remote_dust_limit=546,
                         feerate=253,
-                        option_static_remotekey=False),
+                        local_features=sent('init.features'),
+                        remote_features=rcvd('init.features')),
 
                  Msg('funding_created',
                      temporary_channel_id=rcvd(),
@@ -166,7 +173,8 @@ def test_open_channel(runner: Runner) -> None:
                         local_dust_limit=sent('accept_channel.dust_limit_satoshis', int),
                         remote_dust_limit=rcvd('open_channel.dust_limit_satoshis', int),
                         feerate=rcvd('open_channel.feerate_per_kw', int),
-                        option_static_remotekey=False),
+                        local_features=sent('init.features'),
+                        remote_features=rcvd('init.features')),
 
                  # Now we've created commit, we can check sig is valid!
                  CheckEq(rcvd('funding_created.signature'), commitsig_to_recv()),

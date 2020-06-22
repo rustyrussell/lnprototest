@@ -8,7 +8,7 @@ from hashlib import sha256
 from .keyset import KeySet
 from .signature import Sig
 from typing import List, Tuple, Callable, Union
-from .event import Event, ResolvableInt
+from .event import Event, ResolvableInt, ResolvableStr, negotiated
 from .runner import Runner
 from .utils import Side
 from .funding import Funding
@@ -319,7 +319,8 @@ class Commit(Event):
                  local_dust_limit: ResolvableInt,
                  remote_dust_limit: ResolvableInt,
                  feerate: ResolvableInt,
-                 option_static_remotekey: bool = False):
+                 local_features: ResolvableStr,
+                 remote_features: ResolvableStr):
         """Stashes a commitment transaction as 'Commit'.
 
 Note that local_to_self_delay is dictated by the remote side, and
@@ -337,14 +338,17 @@ remote_to_self_delay is dicated by the local side!
         self.local_dust_limit = local_dust_limit
         self.remote_dust_limit = remote_dust_limit
         self.feerate = feerate
-        self.option_static_remotekey = option_static_remotekey
+        self.static_remotekey = negotiated(local_features, remote_features, [12])
 
     def action(self, runner: Runner) -> None:
         super().action(runner)
 
+        # BOLT #9:
+        # | 12/13 | `option_static_remotekey`        | Static key for remote output
         commit = Commitment(local_keyset=self.local_keyset,
                             remote_keyset=runner.get_keyset(),
-                            option_static_remotekey=self.option_static_remotekey,
+                            option_static_remotekey=self.resolve_arg('option_static_remotekey',
+                                                                     runner, self.static_remotekey),
                             opener=self.opener,
                             **self.resolve_args(runner,
                                                 {'funding': self.funding,
