@@ -66,14 +66,22 @@ def channel_update(short_channel_id: str,
     return functools.partial(_channel_update, short_channel_id, side, disable, cltv_expiry_delta, htlc_minimum_msat, fee_base_msat, fee_proportional_millionths, htlc_maximum_msat, timestamp)
 
 
-def get_member(event: Event, runner: 'Runner', stashname: str, var: str) -> str:
-    """Get member field from stash for ExpectMsg or Msg"""
+def get_member(event: Event, runner: 'Runner', stashname: str, var: str, last: bool = True) -> str:
+    """Get member field from stash for ExpectMsg or Msg.
+
+If var contains a '.' then we look for that message to extract the field.  If last is True, we get the last message, otherwise the first.
+"""
     stash = runner.get_stash(event, stashname)
     if '.' in var:
         prevname, _, var = var.partition('.')
     else:
         prevname = ''
-    for name, d in reversed(stash):
+    if last:
+        seq = reversed(stash)
+    else:
+        seq = stash
+
+    for name, d in seq:
         if prevname == '' or name == prevname:
             if var not in d:
                 raise SpecFileError(event, '{}: {} did not receive a {}'
