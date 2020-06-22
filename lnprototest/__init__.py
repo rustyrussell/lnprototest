@@ -75,5 +75,4 @@ __all__ = [
     "Funding",
     "regtest_hash",
     "privkey_expand",
-    "msat",
 ]

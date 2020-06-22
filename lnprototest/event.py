@@ -10,7 +10,7 @@ from .namespace import event_namespace
 from .utils import check_hex
 from .signature import Sig
 from .bitfield import has_bit
-from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING
+from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING, overload
 if TYPE_CHECKING:
     # Otherwise a circular dependency
     from .runner import Runner, Conn
@@ -399,6 +399,16 @@ def cmp_msg(msg: Message, expected: Message) -> Optional[str]:
     return cmp_obj(obj, expected_obj, expected.messagetype.name)
 
 
+@overload
+def msat(sats: int) -> int:
+    ...
+
+
+@overload
+def msat(sats: Callable[['Runner', 'Event', str], int]) -> Callable[['Runner', 'Event', str], int]:
+    ...
+
+
 def msat(sats: ResolvableInt) -> ResolvableInt:
     """Convert a field from statoshis to millisatoshis"""
     def _msat(runner: 'Runner', event: Event, field: str) -> int:
@@ -406,7 +416,10 @@ def msat(sats: ResolvableInt) -> ResolvableInt:
             return 1000 * sats(runner, event, field)
         else:
             return 1000 * sats
-    return _msat
+    if callable(sats):
+        return _msat
+    else:
+        return 1000 * sats
 
 
 def negotiated(a_features: ResolvableStr,
