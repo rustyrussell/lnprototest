@@ -181,19 +181,63 @@ class ExpectMsg(PerConnEvent):
 
 Args is the (usually incomplete) message which it should match.
 if_match is the function to call if it matches: should raise an
-exception if it's not satisfied.  ignore is a list of messages to
-ignore: by default, it is gossip_timestamp_filter, query_channel_range
-and query_short_channel_ids.
+exception if it's not satisfied.  ignore function to ignore unexpected
+messages: it returns a list of messages to reply with, or None if the
+message should not be ignored: by default, it is ignore_gossip_queries.
 
     """
     def _default_if_match(self, msg: Message) -> None:
         pass
 
+    @staticmethod
+    def ignore_pings(msg: Message) -> Optional[List[Message]]:
+        """Function to ignore pings (and respond with pongs appropriately)"""
+        if msg.messagetype.name != 'ping':
+            return None
+
+        # BOLT #1:
+        # A node receiving a `ping` message:
+        # ...
+        #  - if `num_pong_bytes` is less than 65532:
+        #    - MUST respond by sending a `pong` message, with `byteslen` equal
+        #     to `num_pong_bytes`.
+        #  - otherwise (`num_pong_bytes` is **not** less than 65532):
+        #    - MUST ignore the `ping`.
+        if msg.fields['num_pong_bytes'] >= 65532:
+            return []
+
+        # A node sending a `pong` message:
+        #  - SHOULD set `ignored` to 0s.
+        #  - MUST NOT set `ignored` to sensitive data such as secrets or
+        #    portions of initialized
+        outmsg = Message(event_namespace.get_msgtype('pong'),
+                         ignored='00' * msg.fields['num_pong_bytes'])
+        return [outmsg]
+
+    @staticmethod
+    def ignore_gossip_queries(msg: Message) -> Optional[List[Message]]:
+        """Ignore gossip_timestamp_filter, query_channel_range and query_short_channel_ids.  Respond to pings."""
+        if msg.messagetype.name in ('gossip_timestamp_filter',
+                                    'query_channel_range',
+                                    'query_short_channel_ids'):
+            return []
+        return ExpectMsg.ignore_pings(msg)
+
+    @staticmethod
+    def ignore_all_gossip(msg: Message) -> Optional[List[Message]]:
+        """Ignore any gossip messages.  Respond to pings."""
+        # BOLT #1: The messages are grouped logically into five
+        # groups, ordered by the most significant bit that is set: ...
+        #   - Routing (types `256`-`511`): messages containing node and channel
+        #     announcements, as well as any active route exploration (described
+        #     in [BOLT #7](07-routing-gossip.md))
+        if msg.messagetype.number in range(256, 512):
+            return []
+        return ExpectMsg.ignore_pings(msg)
+
     def __init__(self, msgtypename: str,
                  if_match: Callable[['ExpectMsg', Message], None] = _default_if_match,
-                 ignore: List[Message] = [Message(event_namespace.get_msgtype('gossip_timestamp_filter')),
-                                          Message(event_namespace.get_msgtype('query_channel_range')),
-                                          Message(event_namespace.get_msgtype('query_short_channel_ids'))],
+                 ignore: Optional[Callable[[Message], Optional[List[Message]]]] = None,
                  connprivkey: Optional[str] = None,
                  **kwargs: Union[str, Resolvable]):
         super().__init__(connprivkey)
@@ -202,6 +246,9 @@ and query_short_channel_ids.
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
         self.kwargs = kwargs
         self.if_match = if_match
+        # Assigning this in the __init__ line doesn't work!
+        if ignore is None:
+            ignore = self.ignore_gossip_queries
         self.ignore = ignore
 
     def message_match(self, runner: 'Runner', msg: Message) -> Optional[str]:
@@ -213,12 +260,6 @@ and query_short_channel_ids.
             self.if_match(self, msg)
             msg_to_stash(runner, self, msg)
         return ret
-
-    def ignored(self, msg: Message) -> bool:
-        for i in self.ignore:
-            if cmp_msg(msg, i) is None:
-                return True
-        return False
 
     def action(self, runner: 'Runner') -> bool:
         super().action(runner)
@@ -239,7 +280,13 @@ and query_short_channel_ids.
             except ValueError as ve:
                 raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg.hex(), ve))
 
-            if self.ignored(msg):
+            # Ignore function may tell us to respond.
+            response = self.ignore(msg)
+            if response is not None:
+                for msg in response:
+                    binm = io.BytesIO()
+                    msg.write(binm)
+                    runner.recv(self, conn, binm.getvalue())
                 continue
 
             err = self.message_match(runner, msg)

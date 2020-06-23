@@ -49,8 +49,12 @@ it)."""
         return all_done
 
     @staticmethod
-    def ignored_by_all(msg: Message, sequences: List['Sequence']) -> bool:
-        return all([cast(ExpectMsg, s.events[0]).ignored(msg) for s in sequences])
+    def ignored_by_all(msg: Message, sequences: List['Sequence']) -> Optional[List[Message]]:
+        # If they all say the same thing, that's the answer.
+        rets = [cast(ExpectMsg, s.events[0]).ignore(msg) for s in sequences]
+        if all([ignored == rets[0] for ignored in rets[1:]]):
+            return rets[0]
+        return None
 
     @staticmethod
     def match_which_sequence(runner: 'Runner', msg: Message, sequences: List['Sequence']) -> Optional['Sequence']:
@@ -102,7 +106,14 @@ class OneOf(Event):
             except ValueError as ve:
                 raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 
-            if Sequence.ignored_by_all(msg, self.enabled_sequences(runner)):
+            ignored = Sequence.ignored_by_all(msg,
+                                              self.enabled_sequences(runner))
+            # If they gave us responses, send those now.
+            if ignored is not None:
+                for msg in ignored:
+                    binm = io.BytesIO()
+                    msg.write(binm)
+                    runner.recv(self, conn, binm.getvalue())
                 continue
 
             seq = Sequence.match_which_sequence(runner, msg, self.enabled_sequences(runner))
