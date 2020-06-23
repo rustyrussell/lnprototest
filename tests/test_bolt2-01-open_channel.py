@@ -42,11 +42,11 @@ def test_open_channel(runner: Runner) -> None:
                      to_self_delay=5,
                      max_accepted_htlcs=483,
                      funding_pubkey=pubkey_of(local_funding_privkey),
-                     revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
-                     payment_basepoint=local_keyset.payment_basepoint().format().hex(),
-                     delayed_payment_basepoint=local_keyset.delayed_payment_basepoint().format().hex(),
-                     htlc_basepoint=local_keyset.htlc_basepoint().format().hex(),
-                     first_per_commitment_point=local_keyset.per_commit_point(0).format().hex(),
+                     revocation_basepoint=local_keyset.revocation_basepoint(),
+                     payment_basepoint=local_keyset.payment_basepoint(),
+                     delayed_payment_basepoint=local_keyset.delayed_payment_basepoint(),
+                     htlc_basepoint=local_keyset.htlc_basepoint(),
+                     first_per_commitment_point=local_keyset.per_commit_point(0),
                      channel_flags=1),
 
                  # Ignore unknown odd messages
@@ -142,11 +142,11 @@ def test_open_channel(runner: Runner) -> None:
                      # We use 5, because c-lightning runner uses 6, so this is different.
                      to_self_delay=5,
                      funding_pubkey=pubkey_of(local_funding_privkey),
-                     revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
-                     payment_basepoint=local_keyset.payment_basepoint().format().hex(),
-                     delayed_payment_basepoint=local_keyset.delayed_payment_basepoint().format().hex(),
-                     htlc_basepoint=local_keyset.htlc_basepoint().format().hex(),
-                     first_per_commitment_point=local_keyset.per_commit_point(0).format().hex()),
+                     revocation_basepoint=local_keyset.revocation_basepoint(),
+                     payment_basepoint=local_keyset.payment_basepoint(),
+                     delayed_payment_basepoint=local_keyset.delayed_payment_basepoint(),
+                     htlc_basepoint=local_keyset.htlc_basepoint(),
+                     first_per_commitment_point=local_keyset.per_commit_point(0)),
 
                  # Ignore unknown odd messages
                  TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -191,7 +191,7 @@ def test_open_channel(runner: Runner) -> None:
 
                  Msg('funding_locked',
                      channel_id=sent(),
-                     next_per_commitment_point=local_keyset.per_commit_point(1).format().hex()),
+                     next_per_commitment_point=local_keyset.per_commit_point(1)),
 
                  ExpectMsg('funding_locked',
                            channel_id=sent(),

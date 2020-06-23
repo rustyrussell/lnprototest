@@ -47,11 +47,11 @@ def test_reestablish(runner: Runner) -> None:
                 to_self_delay=5,
                 max_accepted_htlcs=483,
                 funding_pubkey=pubkey_of(local_funding_privkey),
-                revocation_basepoint=local_keyset.revocation_basepoint().format().hex(),
-                payment_basepoint=local_keyset.payment_basepoint().format().hex(),
-                delayed_payment_basepoint=local_keyset.delayed_payment_basepoint().format().hex(),
-                htlc_basepoint=local_keyset.htlc_basepoint().format().hex(),
-                first_per_commitment_point=local_keyset.per_commit_point(0).format().hex(),
+                revocation_basepoint=local_keyset.revocation_basepoint(),
+                payment_basepoint=local_keyset.payment_basepoint(),
+                delayed_payment_basepoint=local_keyset.delayed_payment_basepoint(),
+                htlc_basepoint=local_keyset.htlc_basepoint(),
+                first_per_commitment_point=local_keyset.per_commit_point(0),
                 channel_flags=1),
 
             ExpectMsg('accept_channel',
@@ -103,7 +103,7 @@ def test_reestablish(runner: Runner) -> None:
 
             Msg('funding_locked',
                 channel_id=channel_id(),
-                next_per_commitment_point=local_keyset.per_commit_point(1).format().hex()),
+                next_per_commitment_point=local_keyset.per_commit_point(1)),
 
             Disconnect(),
             Connect(connprivkey='02'),
@@ -149,7 +149,7 @@ def test_reestablish(runner: Runner) -> None:
                 next_commitment_number=1,
                 next_revocation_number=0,
                 your_last_per_commitment_secret='00' * 32,
-                my_current_per_commitment_point=local_keyset.per_commit_point(0).format().hex()),
+                my_current_per_commitment_point=local_keyset.per_commit_point(0)),
 
             # FIXME: Check that they error and unilateral close if we give
             # the wrong info!

@@ -96,9 +96,9 @@ class Commitment(object):
         # `revocation_basepoint` and the remote node's `per_commitment_point`
         # to derive a new `revocationpubkey` for the commitment.
         revocation_basepoint_secret = self.keyset[not side].revocation_base_secret
-        revocation_basepoint = self.keyset[not side].revocation_basepoint()
-        per_commitment_secret = self.keyset[side].per_commit_secret(self.commitnum)
-        per_commitment_point = self.keyset[side].per_commit_point(self.commitnum)
+        revocation_basepoint = self.keyset[not side].raw_revocation_basepoint()
+        per_commitment_secret = self.keyset[side].raw_per_commit_secret(self.commitnum)
+        per_commitment_point = self.keyset[side].raw_per_commit_point(self.commitnum)
 
         # BOLT #3:
         # ...
@@ -129,7 +129,7 @@ class Commitment(object):
         # `localpubkey`, `local_htlcpubkey`, and `local_delayedpubkey` only):
         #
         #    privkey = basepoint_secret + SHA256(per_commitment_point || basepoint)
-        per_commit_point = self.keyset[side].per_commit_point(self.commitnum)
+        per_commit_point = self.keyset[side].raw_per_commit_point(self.commitnum)
         basepoint = coincurve.PublicKey.from_secret(basesecret.secret)
 
         tweak = sha256(per_commit_point.format() + basepoint.format()).digest()
@@ -154,7 +154,7 @@ class Commitment(object):
                   .format(side,
                           coincurve.PublicKey.from_secret(self.keyset[not side].payment_base_secret.secret).format().hex(),
                           coincurve.PublicKey.from_secret(self.keyset[Side.local].payment_base_secret.secret).format().hex(),
-                          self.keyset[side].per_commit_point(self.commitnum).format().hex(),
+                          self.keyset[side].per_commit_point(self.commitnum),
                           coincurve.PublicKey.from_secret(privkey.secret).format().hex()))
         return coincurve.PublicKey.from_secret(privkey.secret)
 
@@ -412,8 +412,8 @@ class Commitment(object):
 Returns it and a list of matching HTLCs for each output
 
         """
-        ocn = self.obscured_commit_num(self.keyset[self.opener].payment_basepoint(),
-                                       self.keyset[not self.opener].payment_basepoint(),
+        ocn = self.obscured_commit_num(self.keyset[self.opener].raw_payment_basepoint(),
+                                       self.keyset[not self.opener].raw_payment_basepoint(),
                                        self.commitnum)
 
         # BOLT #3:

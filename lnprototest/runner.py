@@ -159,7 +159,7 @@ require that minimum_depth be 3, just for test simplicity.
 def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote revocation basepoint"""
     def _remote_revocation_basepoint(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().revocation_basepoint().format().hex()
+        return runner.get_keyset().revocation_basepoint()
 
     return _remote_revocation_basepoint
 
@@ -167,21 +167,21 @@ def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
 def remote_payment_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote payment basepoint"""
     def _remote_payment_basepoint(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().payment_basepoint().format().hex()
+        return runner.get_keyset().payment_basepoint()
     return _remote_payment_basepoint
 
 
 def remote_delayed_payment_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote delayed_payment basepoint"""
     def _remote_delayed_payment_basepoint(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().delayed_payment_basepoint().format().hex()
+        return runner.get_keyset().delayed_payment_basepoint()
     return _remote_delayed_payment_basepoint
 
 
 def remote_htlc_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote htlc basepoint"""
     def _remote_htlc_basepoint(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().htlc_basepoint().format().hex()
+        return runner.get_keyset().htlc_basepoint()
     return _remote_htlc_basepoint
 
 
@@ -202,12 +202,12 @@ def remote_funding_privkey() -> Callable[[Runner, Event, str], str]:
 def remote_per_commitment_point(n: int) -> Callable[[Runner, Event, str], str]:
     """Get the n'th remote per-commitment point"""
     def _remote_per_commitment_point(n: int, runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().per_commit_point(n).format().hex()
+        return runner.get_keyset().per_commit_point(n)
     return functools.partial(_remote_per_commitment_point, n)
 
 
 def remote_per_commitment_secret(n: int) -> Callable[[Runner, Event, str], str]:
     """Get the n'th remote per-commitment secret"""
     def _remote_per_commitment_secret(runner: Runner, event: Event, field: str) -> str:
-        return runner.get_keyset().per_commit_secret(n).hex()
+        return runner.get_keyset().per_commit_secret(n)
     return _remote_per_commitment_secret
