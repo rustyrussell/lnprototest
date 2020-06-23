@@ -9,12 +9,14 @@ non-Pythony) test authors, they are always called as (), even if they
 simply return another function.
 
 """
-from .stash import commitsig_to_send, commitsig_to_recv, channel_id, channel_announcement, channel_update, get_member, rcvd, sent, funding_amount, funding_pubkey, funding_tx, funding_txid, funding, funding_close_tx
+from .stash import commitsig_to_send, commitsig_to_recv, channel_id, channel_announcement, channel_update, get_member, rcvd, sent, funding_amount, funding_pubkey, funding_tx, funding_txid, funding, funding_close_tx, htlc_sigs_to_send, htlc_sigs_to_recv
 
 
 __all__ = [
     "commitsig_to_send",
     "commitsig_to_recv",
+    "htlc_sigs_to_send",
+    "htlc_sigs_to_recv",
     "channel_id",
     "channel_announcement",
     "channel_update",

@@ -204,3 +204,10 @@ def remote_per_commitment_point(n: int) -> Callable[[Runner, Event, str], str]:
     def _remote_per_commitment_point(n: int, runner: Runner, event: Event, field: str) -> str:
         return runner.get_keyset().per_commit_point(n).format().hex()
     return functools.partial(_remote_per_commitment_point, n)
+
+
+def remote_per_commitment_secret(n: int) -> Callable[[Runner, Event, str], str]:
+    """Get the n'th remote per-commitment secret"""
+    def _remote_per_commitment_secret(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_keyset().per_commit_secret(n).hex()
+    return _remote_per_commitment_secret

@@ -4,20 +4,57 @@ from bitcoin.core import COutPoint, CTxOut, CTxIn, Hash160, CMutableTransaction,
 import bitcoin.core.script as script
 from bitcoin.core.script import CScript
 import struct
+import hashlib
 from hashlib import sha256
 from .keyset import KeySet
+from .errors import SpecFileError
 from .signature import Sig
-from typing import List, Tuple, Callable, Union
-from .event import Event, ResolvableInt, ResolvableStr, negotiated
+from typing import List, Tuple, Callable, Union, Optional, Dict
+from .event import Event, ResolvableInt, ResolvableStr, negotiated, msat
 from .runner import Runner
-from .utils import Side
+from .utils import Side, check_hex
 from .funding import Funding
 import coincurve
 
 
-# FIXME
 class HTLC(object):
-    pass
+    def __init__(self,
+                 owner: Side,
+                 amount_msat: int,
+                 payment_secret: str,
+                 cltv_expiry: int,
+                 onion_routing_packet: str):
+        """A HTLC offered by @owner"""
+        self.owner = owner
+        self.amount_msat = amount_msat
+        self.payment_secret = check_hex(payment_secret, 64)
+        self.cltv_expiry = cltv_expiry
+        self.onion_routing_packet = check_hex(onion_routing_packet, 1366 * 2)
+
+    def raw_payment_hash(self) -> bytes:
+        return sha256(bytes.fromhex(self.payment_secret)).digest()
+
+    def payment_hash(self) -> str:
+        return self.raw_payment_hash().hex()
+
+    def __str__(self) -> str:
+        return "htlc({},{},{})".format(self.owner, self.amount_msat, self.payment_hash())
+
+    @staticmethod
+    def htlc_timeout_fee(feerate_per_kw: int) -> int:
+        # BOLT #3:
+        # The fee for an HTLC-timeout transaction:
+        #   - MUST BE calculated to match:
+        #     1. Multiply `feerate_per_kw` by 663 and divide by 1000 (rounding down).
+        return feerate_per_kw * 663 // 1000
+
+    @staticmethod
+    def htlc_success_fee(feerate_per_kw: int) -> int:
+        # BOLT #3:
+        # The fee for an HTLC-success transaction:
+        #   - MUST BE calculated to match:
+        #     1. Multiply `feerate_per_kw` by 703 and divide by 1000 (rounding down).
+        return feerate_per_kw * 703 // 1000
 
 
 class Commitment(object):
@@ -41,9 +78,15 @@ class Commitment(object):
         self.self_delay = (local_to_self_delay, remote_to_self_delay)
         self.amounts = [local_amount, remote_amount]
         self.dust_limit = (local_dust_limit, remote_dust_limit)
-        self.htlcs: List[HTLC] = []
+        self.htlcs: Dict[int, HTLC] = {}
         self.commitnum = 0
         self.option_static_remotekey = option_static_remotekey
+
+    @staticmethod
+    def ripemd160(b: bytes) -> bytes:
+        hasher = hashlib.new('ripemd160')
+        hasher.update(b)
+        return hasher.digest()
 
     def revocation_privkey(self, side: Side) -> coincurve.PrivateKey:
         """Derive the privkey used for the revocation of side's commitment transaction."""
@@ -115,11 +158,32 @@ class Commitment(object):
                           coincurve.PublicKey.from_secret(privkey.secret).format().hex()))
         return coincurve.PublicKey.from_secret(privkey.secret)
 
-    def add_htlc(self, tba: HTLC) -> None:
-        raise NotImplementedError()
+    def local_htlc_pubkey(self, side: Side) -> coincurve.PublicKey:
+        privkey = self._basepoint_tweak(self.keyset[side].htlc_base_secret, side)
+        return coincurve.PublicKey.from_secret(privkey.secret)
 
-    def del_htlc(self, tba: HTLC) -> None:
-        raise NotImplementedError()
+    def remote_htlc_pubkey(self, side: Side) -> coincurve.PublicKey:
+        privkey = self._basepoint_tweak(self.keyset[not side].htlc_base_secret, side)
+        return coincurve.PublicKey.from_secret(privkey.secret)
+
+    def add_htlc(self, htlc: HTLC, htlc_id: int) -> bool:
+        if htlc_id in self.htlcs:
+            return False
+        self.htlcs[htlc_id] = htlc
+        self.amounts[htlc.owner] -= htlc.amount_msat
+        return True
+
+    def del_htlc(self, htlc: HTLC, xfer_funds: bool) -> bool:
+        for k, v in self.htlcs.items():
+            if v == htlc:
+                if xfer_funds:
+                    gains_to = not htlc.owner
+                else:
+                    gains_to = htlc.owner  # type: ignore
+                self.amounts[gains_to] += htlc.amount_msat
+                del self.htlcs[k]
+                return True
+        return False
 
     def inc_commitnum(self) -> None:
         self.commitnum += 1
@@ -188,14 +252,169 @@ class Commitment(object):
 
         return to_self_script, amount_to_self
 
-    def _unsigned_tx(self, side: Side) -> CMutableTransaction:
+    def _offered_htlc_output(self, htlc: HTLC, side: Side) -> Tuple[script.CScript, int]:
+        # BOLT #3: This output sends funds to either an HTLC-timeout
+        # transaction after the HTLC-timeout or to the remote node
+        # using the payment preimage or the revocation key. The output
+        # is a P2WSH, with a witness script:
+        #
+        # # To remote node with revocation key
+        # OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
+        # OP_IF
+        #     OP_CHECKSIG
+        # OP_ELSE
+        #     <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL
+        #     OP_NOTIF
+        #         # To local node via HTLC-timeout transaction (timelocked).
+        #         OP_DROP 2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG
+        #     OP_ELSE
+        #         # To remote node with preimage.
+        #         OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY
+        #         OP_CHECKSIG
+        #     OP_ENDIF
+        # OP_ENDIF
+        htlc_script = script.CScript([script.OP_DUP,
+                                      script.OP_HASH160,
+                                      Hash160(self.revocation_pubkey(side).format()),
+                                      script.OP_EQUAL,
+                                      script.OP_IF,
+                                      script.OP_CHECKSIG,
+                                      script.OP_ELSE,
+                                      self.remote_htlc_pubkey(side).format(),
+                                      script.OP_SWAP,
+                                      script.OP_SIZE,
+                                      32,
+                                      script.OP_EQUAL,
+                                      script.OP_NOTIF,
+                                      script.OP_DROP,
+                                      2,
+                                      script.OP_SWAP,
+                                      self.local_htlc_pubkey(side).format(),
+                                      2,
+                                      script.OP_CHECKMULTISIG,
+                                      script.OP_ELSE,
+                                      script.OP_HASH160,
+                                      self.ripemd160(htlc.raw_payment_hash()),
+                                      script.OP_EQUALVERIFY,
+                                      script.OP_CHECKSIG,
+                                      script.OP_ENDIF,
+                                      script.OP_ENDIF])
+
+        # BOLT #3: The amounts for each output MUST be rounded down to whole
+        # satoshis.
+        return htlc_script, htlc.amount_msat // 1000
+
+    def _received_htlc_output(self, htlc: HTLC, side: Side) -> Tuple[script.CScript, int]:
+        # BOLT #3: This output sends funds to either the remote node after the
+        # HTLC-timeout or using the revocation key, or to an HTLC-success
+        # transaction with a successful payment preimage. The output is a
+        # P2WSH, with a witness script:
+        #
+        # # To remote node with revocation key
+        # OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
+        # OP_IF
+        #     OP_CHECKSIG
+        # OP_ELSE
+        #     <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL
+        #     OP_IF
+        #         # To local node via HTLC-success transaction.
+        #         OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY
+        #         2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG
+        #     OP_ELSE
+        #         # To remote node after timeout.
+        #         OP_DROP <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP
+        #         OP_CHECKSIG
+        #     OP_ENDIF
+        # OP_ENDIF
+        htlc_script = script.CScript([script.OP_DUP,
+                                      script.OP_HASH160,
+                                      Hash160(self.revocation_pubkey(side).format()),
+                                      script.OP_EQUAL,
+                                      script.OP_IF,
+                                      script.OP_CHECKSIG,
+                                      script.OP_ELSE,
+                                      self.remote_htlc_pubkey(side).format(),
+                                      script.OP_SWAP,
+                                      script.OP_SIZE,
+                                      32,
+                                      script.OP_EQUAL,
+                                      script.OP_IF,
+                                      script.OP_HASH160,
+                                      self.ripemd160(htlc.raw_payment_hash()),
+                                      script.OP_EQUALVERIFY,
+                                      2,
+                                      script.OP_SWAP,
+                                      self.local_htlc_pubkey(side).format(),
+                                      2,
+                                      script.OP_CHECKMULTISIG,
+                                      script.OP_ELSE,
+                                      script.OP_DROP,
+                                      htlc.cltv_expiry,
+                                      script.OP_CHECKLOCKTIMEVERIFY,
+                                      script.OP_DROP,
+                                      script.OP_CHECKSIG,
+                                      script.OP_ENDIF,
+                                      script.OP_ENDIF])
+
+        # BOLT #3: The amounts for each output MUST be rounded down to whole
+        # satoshis.
+        return htlc_script, htlc.amount_msat // 1000
+
+    def untrimmed_htlcs(self, side: Side) -> List[HTLC]:
+        htlcs = []
+        for _, htlc in self.htlcs.items():
+            # BOLT #3:
+            #   - for every offered HTLC:
+            #     - if the HTLC amount minus the HTLC-timeout fee would be less than
+            #     `dust_limit_satoshis` set by the transaction owner:
+            #       - MUST NOT contain that output.
+            #     - otherwise:
+            #       - MUST be generated as specified in
+            #       [Offered HTLC Outputs](#offered-htlc-outputs).
+            if htlc.owner == side:
+                # FIXME: Use Millisatoshi type?
+                if htlc.amount_msat - msat(htlc.htlc_timeout_fee(self.feerate)) < msat(self.dust_limit[side]):
+                    continue
+            else:
+                # BOLT #3:
+                #   - for every received HTLC:
+                #     - if the HTLC amount minus the HTLC-success fee would be less
+                #      than `dust_limit_satoshis` set by the transaction owner:
+                #       - MUST NOT contain that output.
+                #     - otherwise:
+                #       - MUST be generated as specified in
+                #       [Received HTLC Outputs](#received-htlc-outputs).
+                if htlc.amount_msat - msat(htlc.htlc_success_fee(self.feerate)) < msat(self.dust_limit[side]):
+                    continue
+            htlcs.append(htlc)
+
+        return htlcs
+
+    def htlc_outputs(self, side: Side) -> List[Tuple[HTLC, int, bytes]]:
+        """Give CTxOut, cltv_expiry, redeemscript for each non-trimmed HTLC"""
+        ret: List[Tuple[CTxOut, int, bytes]] = []
+
+        for htlc in self.untrimmed_htlcs(side):
+            if htlc.owner == side:
+                redeemscript, sats = self._offered_htlc_output(htlc, side)
+            else:
+                redeemscript, sats = self._received_htlc_output(htlc, side)
+            ret.append((CTxOut(sats,
+                               CScript([script.OP_0, sha256(redeemscript).digest()])),
+                        htlc.cltv_expiry,
+                        redeemscript))
+
+        return ret
+
+    def _unsigned_tx(self, side: Side) -> Tuple[CMutableTransaction, List[Optional[HTLC]]]:
+        """Create the commitment transaction.
+
+Returns it and a list of matching HTLCs for each output
+
+        """
         ocn = self.obscured_commit_num(self.keyset[self.opener].payment_basepoint(),
                                        self.keyset[not self.opener].payment_basepoint(),
                                        self.commitnum)
-        print("ocn = {} ({} + {} num {})".format(ocn,
-                                                 self.keyset[self.opener].payment_basepoint().format().hex(),
-                                                 self.keyset[not self.opener].payment_basepoint().format().hex(),
-                                                 self.commitnum))
 
         # BOLT #3:
         # ## Commitment Transaction
@@ -208,12 +427,19 @@ class Commitment(object):
         txin = CTxIn(COutPoint(bytes.fromhex(self.funding.txid), self.funding.output_index),
                      nSequence=0x80000000 | (ocn >> 24))
 
-        # txouts, with ctlv_timeouts for htlc output tiebreak
-        txouts: List[Tuple[CTxOut, int]] = []
+        # txouts, with ctlv_timeouts (for htlc output tiebreak) and htlc
+        txouts: List[Tuple[CTxOut, int, Optional[HTLC]]] = []
 
-        # Add in untrimmed HTLC outputs.
-        if len(self.htlcs) != 0:
-            raise NotImplementedError()
+        for htlc in self.untrimmed_htlcs(side):
+            if htlc.owner == side:
+                redeemscript, sats = self._offered_htlc_output(htlc, side)
+            else:
+                redeemscript, sats = self._received_htlc_output(htlc, side)
+            print("*** Got htlc redeemscript {} / {}".format(redeemscript, redeemscript.hex()))
+            txouts.append((CTxOut(sats,
+                                  CScript([script.OP_0, sha256(redeemscript).digest()])),
+                           htlc.cltv_expiry,
+                           htlc))
 
         num_untrimmed_htlcs = len(txouts)
         fee = self._fee(num_untrimmed_htlcs)
@@ -222,7 +448,8 @@ class Commitment(object):
         if sats >= self.dust_limit[side]:
             txouts.append((CTxOut(sats,
                                   CScript([script.OP_0, sha256(out_redeemscript).digest()])),
-                           0))
+                           0,
+                           None))
 
         # BOLT #3:
         # #### `to_remote` Output
@@ -237,7 +464,8 @@ class Commitment(object):
             txouts.append((CTxOut(amount_to_other,
                                   CScript([script.OP_0,
                                            Hash160(self.to_remote_pubkey(side).format())])),
-                           0))
+                           0,
+                           None))
 
         # BOLT #3:
         # ## Transaction Input and Output Ordering
@@ -250,7 +478,7 @@ class Commitment(object):
         # First sort by cltv_expiry
         txouts.sort(key=lambda txout: txout[1])
         # Now sort by BIP69
-        txouts.sort(key=lambda txout: txout[0].scriptPubKey)
+        txouts.sort(key=lambda txout: txout[0].serialize())
 
         # BOLT #3:
         # ## Commitment Transaction
@@ -258,16 +486,84 @@ class Commitment(object):
         # * version: 2
         # * locktime: upper 8 bits are 0x20, lower 24 bits are the
         #   lower 24 bits of the obscured commitment number
+        return (CMutableTransaction(vin=[txin],
+                                    vout=[txout[0] for txout in txouts],
+                                    nVersion=2,
+                                    nLockTime=0x20000000 | (ocn & 0x00FFFFFF)),
+                [txout[2] for txout in txouts])
+
+    def htlc_tx(self,
+                commit_tx: CMutableTransaction,
+                outnum: int,
+                side: Side,
+                amount_sat: int,
+                locktime: int) -> CMutableTransaction:
+        # BOLT #3:
+        # ## HTLC-Timeout and HTLC-Success Transactions
+        #
+        # These HTLC transactions are almost identical, except the
+        # HTLC-timeout transaction is timelocked. Both
+        # HTLC-timeout/HTLC-success transactions can be spent by a valid
+        # penalty transaction.
+
+        # BOLT #3:
+        # ## HTLC-Timeout and HTLC-Success Transactions
+        # ...
+        # * txin count: 1
+        # * `txin[0]` outpoint: `txid` of the commitment transaction and
+        #    `output_index` of the matching HTLC output for the HTLC transaction
+        # * `txin[0]` sequence: `0`
+        # * `txin[0]` script bytes: `0`
+        txin = CTxIn(COutPoint(commit_tx.GetTxid(), outnum),
+                     nSequence=0x0)
+
+        # BOLT #3:
+        # ## HTLC-Timeout and HTLC-Success Transactions
+        # ...
+        # * txout count: 1
+        # * `txout[0]` amount: the HTLC amount minus fees (see [Fee
+        #    Calculation](#fee-calculation))
+        # * `txout[0]` script: version-0 P2WSH with witness script as shown below
+        #
+        # The witness script for the output is:
+        # OP_IF
+        #     # Penalty transaction
+        #     <revocationpubkey>
+        # OP_ELSE
+        #     `to_self_delay`
+        #     OP_CHECKSEQUENCEVERIFY
+        #     OP_DROP
+        #     <local_delayedpubkey>
+        # OP_ENDIF
+        # OP_CHECKSIG
+        redeemscript = script.CScript([script.OP_IF,
+                                       self.revocation_pubkey(side).format(),
+                                       script.OP_ELSE,
+                                       self.self_delay[side],
+                                       script.OP_CHECKSEQUENCEVERIFY,
+                                       script.OP_DROP,
+                                       self.delayed_pubkey(side).format(),
+                                       script.OP_ENDIF,
+                                       script.OP_CHECKSIG])
+        print("htlc redeemscript = {}".format(redeemscript.hex()))
+        txout = CTxOut(amount_sat,
+                       CScript([script.OP_0, sha256(redeemscript).digest()]))
+
+        # BOLT #3:
+        # ## HTLC-Timeout and HTLC-Success Transactions
+        # ...
+        # * version: 2
+        # * locktime: `0` for HTLC-success, `cltv_expiry` for HTLC-timeout
         return CMutableTransaction(vin=[txin],
-                                   vout=[txout[0] for txout in txouts],
+                                   vout=[txout],
                                    nVersion=2,
-                                   nLockTime=0x20000000 | (ocn & 0x00FFFFFF))
+                                   nLockTime=locktime)
 
     def local_unsigned_tx(self) -> CMutableTransaction:
-        return self._unsigned_tx(Side.local)
+        return self._unsigned_tx(Side.local)[0]
 
     def remote_unsigned_tx(self) -> CMutableTransaction:
-        return self._unsigned_tx(Side.remote)
+        return self._unsigned_tx(Side.remote)[0]
 
     def _sig(self, privkey: coincurve.PrivateKey, tx: CMutableTransaction) -> Sig:
         sighash = script.SignatureHash(self.funding.redeemscript(), tx, inIdx=0,
@@ -287,6 +583,47 @@ class Commitment(object):
             self.funding.redeemscript().hex(),
             self.funding.amount))
         return self._sig(self.funding.bitcoin_privkeys[Side.remote], tx)
+
+    def htlc_sigs(self, signer: Side, side: Side) -> List[Sig]:
+        """Produce the signer's signatures for the dest's HTLC transactions"""
+        # BOLT #2:
+        # - MUST include one `htlc_signature` for every HTLC transaction
+        #   corresponding to the ordering of the commitment transaction (see
+        #   [BOLT
+        #   #3](03-transactions.md#transaction-input-and-output-ordering)).
+
+        # So we need the HTLCs in output order, which is why we had _unsigned_tx
+        # return them.
+        commit_tx, htlcs = self._unsigned_tx(side)
+
+        sigs: List[Sig] = []
+        for outnum, htlc in enumerate(htlcs):
+            # to_local or to_remote output?
+            if htlc is None:
+                continue
+            if htlc.owner == side:
+                redeemscript, sats = self._offered_htlc_output(htlc, side)
+                fee = htlc.htlc_timeout_fee(self.feerate)
+                # BOLT #3:
+                # * locktime: `0` for HTLC-success, `cltv_expiry` for HTLC-timeout
+                locktime = htlc.cltv_expiry
+            else:
+                redeemscript, sats = self._received_htlc_output(htlc, side)
+                fee = htlc.htlc_success_fee(self.feerate)
+                locktime = 0
+
+            htlc_tx = self.htlc_tx(commit_tx, outnum, side,
+                                   (htlc.amount_msat - msat(fee)) // 1000,
+                                   locktime)
+            print("htlc_tx = {}".format(htlc_tx.serialize().hex()))
+            sighash = script.SignatureHash(redeemscript, htlc_tx, inIdx=0,
+                                           hashtype=script.SIGHASH_ALL,
+                                           amount=htlc.amount_msat // 1000,
+                                           sigversion=script.SIGVERSION_WITNESS_V0)
+            privkey = self._basepoint_tweak(self.keyset[signer].htlc_base_secret, side)
+            sigs.append(Sig(privkey.secret.hex(), sighash.hex()))
+
+        return sigs
 
     def signed_tx(self, unsigned_tx: CMutableTransaction) -> CMutableTransaction:
         # BOLT #3:
@@ -360,6 +697,39 @@ remote_to_self_delay is dicated by the local side!
                                                  'remote_dust_limit': self.remote_dust_limit,
                                                  'feerate': self.feerate}))
         runner.add_stash('Commit', commit)
+        return True
+
+
+class UpdateCommit(Event):
+    def __init__(self,
+                 new_htlcs: List[Tuple[HTLC, int]] = [],
+                 resolved_htlcs: List[HTLC] = [],
+                 failed_htlcs: List[HTLC] = [],
+                 new_feerate: Optional[ResolvableInt] = None):
+        super().__init__()
+        self.new_htlcs = new_htlcs
+        self.resolved_htlcs = resolved_htlcs
+        self.failed_htlcs = failed_htlcs
+        self.new_feerate = new_feerate
+
+    def action(self, runner: Runner) -> bool:
+        super().action(runner)
+
+        commit: Commitment = runner.get_stash(self, 'Commit')
+        for htlc, htlc_id in self.new_htlcs:
+            if not commit.add_htlc(htlc, htlc_id):
+                raise SpecFileError(self, "Already have htlc id {}".format(htlc_id))
+        for htlc in self.resolved_htlcs:
+            if not commit.del_htlc(htlc, xfer_funds=True):
+                raise SpecFileError(self, "Cannot resolve missing htlc {}".format(htlc))
+        for htlc in self.failed_htlcs:
+            if not commit.del_htlc(htlc, xfer_funds=False):
+                raise SpecFileError(self, "Cannot resolve missing htlc {}".format(htlc))
+
+        if self.new_feerate is not None:
+            commit.feerate = self.resolve_arg('feerate', runner, self.new_feerate)
+
+        commit.inc_commitnum()
         return True
 
 

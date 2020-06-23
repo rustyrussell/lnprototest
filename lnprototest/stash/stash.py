@@ -24,6 +24,21 @@ def commitsig_to_recv() -> Callable[[Runner, Event, str], str]:
     return _commitsig_to_recv
 
 
+def _htlc_sigs(signer: Side, runner: Runner, event: Event, field: str) -> str:
+    sigs = runner.get_stash(event, 'Commit').htlc_sigs(signer, not signer)
+    return '[' + ','.join([sig.to_str() for sig in sigs]) + ']'
+
+
+def htlc_sigs_to_send() -> Callable[[Runner, Event, str], str]:
+    """Get the HTLC signatures for local side to send to the remote"""
+    return functools.partial(_htlc_sigs, Side.local)
+
+
+def htlc_sigs_to_recv() -> Callable[[Runner, Event, str], str]:
+    """Get the HTLC signatures for remote side to send to the local"""
+    return functools.partial(_htlc_sigs, Side.remote)
+
+
 def channel_id() -> Callable[[Runner, Event, str], str]:
     """Get the channel_id for the current Commit"""
     def _channel_id(runner: Runner, event: Event, field: str) -> str:
