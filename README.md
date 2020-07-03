@@ -27,7 +27,8 @@ Here are some other useful pytest options:
 6. `tests/test_bolt1-01-init.py` to only run tests in that file.
 7. `tests/test_bolt1-01-init.py::test_init` to only run that test.
 
-If you want to write new tests or new backends, see [HACKING.md].
+If you want to write new tests or new backends, see [HACKING.md](HACKING.md).
 
-I look forward to hearing about your progress!
+Let's keep the sats flowing!
+
 Rusty.
