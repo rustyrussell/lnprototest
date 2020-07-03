@@ -22,7 +22,10 @@ signature of privkey over hash, they are considered "equal"
             else:
                 if type(args[0]) is not str:
                     raise TypeError('Expected hexsig or Privkey, hash')
-                self.sigval = bytes.fromhex(check_hex(cast(str, args[0]), 128))
+                if len(args[0]) != 128:
+                    self.sigval = Sig.from_der(bytes.fromhex(args[0]))
+                else:
+                    self.sigval = bytes.fromhex(args[0])
         elif len(args) == 2:
             self.sigval = None
             self.privkey = privkey_expand(args[0])
@@ -56,9 +59,13 @@ signature of privkey over hash, they are considered "equal"
     @staticmethod
     def from_der(b: bytes) -> bytes:
         """Sigh.  Seriously, WTF is it with DER encoding?"""
+        if b[0] != 0x30 or b[1] != len(b) - 2 or b[2] != 0x02:
+            raise ValueError("{} is not a DER signature?".format(b.hex()))
         rlen = b[3]
         r = b[4:4 + rlen].rjust(32, bytes(1))[-32:]
         assert(len(r) == 32)
+        if b[4 + rlen] != 0x02:
+            raise ValueError("{} is not a DER signature?".format(b.hex()))
         s = b[4 + rlen + 1 + 1:].rjust(32, bytes(1))[-32:]
         assert(len(s) == 32)
         return r + s
