@@ -7,7 +7,7 @@ import struct
 import hashlib
 from hashlib import sha256
 from .keyset import KeySet
-from .errors import SpecFileError
+from .errors import SpecFileError, EventError
 from .signature import Sig
 from typing import List, Tuple, Callable, Union, Optional, Dict
 from .event import Event, ResolvableInt, ResolvableStr, negotiated, msat
@@ -41,20 +41,28 @@ class HTLC(object):
         return "htlc({},{},{})".format(self.owner, self.amount_msat, self.payment_hash())
 
     @staticmethod
-    def htlc_timeout_fee(feerate_per_kw: int) -> int:
-        # BOLT #3:
+    def htlc_timeout_fee(feerate_per_kw: int, option_anchor_outputs: bool) -> int:
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
         # The fee for an HTLC-timeout transaction:
         #   - MUST BE calculated to match:
-        #     1. Multiply `feerate_per_kw` by 663 and divide by 1000 (rounding down).
-        return feerate_per_kw * 663 // 1000
+        #     1. Multiply `feerate_per_kw` by 663 (666 if `option_anchor_outputs`) and divide by 1000 (rounding down).
+        if option_anchor_outputs:
+            base = 666
+        else:
+            base = 663
+        return feerate_per_kw * base // 1000
 
     @staticmethod
-    def htlc_success_fee(feerate_per_kw: int) -> int:
-        # BOLT #3:
+    def htlc_success_fee(feerate_per_kw: int, option_anchor_outputs: bool) -> int:
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
         # The fee for an HTLC-success transaction:
         #   - MUST BE calculated to match:
-        #     1. Multiply `feerate_per_kw` by 703 and divide by 1000 (rounding down).
-        return feerate_per_kw * 703 // 1000
+        #     1. Multiply `feerate_per_kw` by 703 and (706 if `option_anchor_outputs`) divide by 1000 (rounding down).
+        if option_anchor_outputs:
+            base = 706
+        else:
+            base = 703
+        return feerate_per_kw * base // 1000
 
 
 class Commitment(object):
@@ -70,7 +78,8 @@ class Commitment(object):
                  local_dust_limit: int,
                  remote_dust_limit: int,
                  feerate: int,
-                 option_static_remotekey: bool = False):
+                 option_static_remotekey: bool,
+                 option_anchor_outputs: bool):
         self.opener = opener
         self.funding = funding
         self.feerate = feerate
@@ -81,6 +90,9 @@ class Commitment(object):
         self.htlcs: Dict[int, HTLC] = {}
         self.commitnum = 0
         self.option_static_remotekey = option_static_remotekey
+        self.option_anchor_outputs = option_anchor_outputs
+        if self.option_anchor_outputs:
+            assert self.option_static_remotekey
 
     @staticmethod
     def ripemd160(b: bytes) -> bytes:
@@ -142,8 +154,9 @@ class Commitment(object):
 
     def to_remote_pubkey(self, side: Side) -> coincurve.PublicKey:
         """Generate remote payment key for this side"""
-        # BOLT #3: If `option_static_remotekey` is negotiated the
-        # `remotepubkey` is simply the remote node's `payment_basepoint`,
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3: If
+        # `option_static_remotekey` or `option_static_remotekey` is negotiated
+        # the `remotepubkey` is simply the remote node's `payment_basepoint`,
         # otherwise it is calculated as above using the remote node's
         # `payment_basepoint`.
         if self.option_static_remotekey:
@@ -202,13 +215,25 @@ class Commitment(object):
         return commitnum ^ obscurer
 
     def _fee(self, num_untrimmed_htlcs: int) -> int:
-        # BOLT #3: The base fee for a commitment transaction:
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        # The base fee for a commitment transaction:
         #  - MUST be calculated to match:
-        #      1. Start with `weight` = 724.
+        #      1. Start with `weight` = 724 (1124 if `option_anchor_outputs`).
         #      2. For each committed HTLC, if that output is not trimmed as specified in
         #      [Trimmed Outputs](#trimmed-outputs), add 172 to `weight`.
         #      3. Multiply `feerate_per_kw` by `weight`, divide by 1000 (rounding down).
-        return ((724 + 172 * num_untrimmed_htlcs) * self.feerate) // 1000
+
+        if self.option_anchor_outputs:
+            base = 1124
+        else:
+            base = 724
+        fee = ((base + 172 * num_untrimmed_htlcs) * self.feerate) // 1000
+        # FIXME-BOLT_QUOTE:
+        #    4. If `option_anchor_outputs` applies to the commitment transaction:
+        #      - Add an additional 660 satoshis for the two anchor outputs.
+        if self.option_anchor_outputs:
+            fee += 660
+        return fee
 
     def _to_local_output(self, fee: int, side: Side) -> Tuple[script.CScript, int]:
         # BOLT #3:
@@ -252,11 +277,42 @@ class Commitment(object):
 
         return to_self_script, amount_to_self
 
+    def _to_remote_output(self, fee: int, side: Side) -> Tuple[script.CScript, int]:
+        """Returns the scriptpubkey and amount"""
+
+        amount_to_other = self.amounts[not side] // 1000
+        if not side == self.opener:
+            amount_to_other -= fee
+
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        # If `option_anchor_outputs` applies to the commitment transaction, the
+        # `to_remote` output is encumbered by a one block csv lock.
+        #
+        #    <remote_pubkey> OP_CHECKSIGVERIFY 1 OP_CHECKSEQUENCEVERIFY
+        #
+        # The output is spent by a transaction with `nSequence` field set to
+        # `1` and witness:
+        #
+        #    <remote_sig>
+        #
+        # Otherwise, this output is a simple P2WPKH to `remotepubkey`.
+        if self.option_anchor_outputs:
+            redeemscript = script.CScript([self.to_remote_pubkey(side).format(),
+                                           script.OP_CHECKSIGVERIFY,
+                                           1,
+                                           script.OP_CHECKSEQUENCEVERIFY])
+            cscript = script.CScript([script.OP_0,
+                                      sha256(redeemscript).digest()])
+        else:
+            cscript = CScript([script.OP_0,
+                               Hash160(self.to_remote_pubkey(side).format())])
+        return cscript, amount_to_other
+
     def _offered_htlc_output(self, htlc: HTLC, side: Side) -> Tuple[script.CScript, int]:
-        # BOLT #3: This output sends funds to either an HTLC-timeout
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3: This output sends funds to either an HTLC-timeout
         # transaction after the HTLC-timeout or to the remote node
         # using the payment preimage or the revocation key. The output
-        # is a P2WSH, with a witness script:
+        # is a P2WSH, with a witness script (no option_anchor_outputs):
         #
         # # To remote node with revocation key
         # OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
@@ -273,6 +329,31 @@ class Commitment(object):
         #         OP_CHECKSIG
         #     OP_ENDIF
         # OP_ENDIF
+
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        # Or, with `option_anchor_outputs`:
+        #
+        #    # To remote node with revocation key
+        #    OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
+        #    OP_IF
+        #        OP_CHECKSIG
+        #    OP_ELSE
+        #        <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL
+        #        OP_NOTIF
+        #            # To local node via HTLC-timeout transaction (timelocked).
+        #            OP_DROP 2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG
+        #        OP_ELSE
+        #            # To remote node with preimage.
+        #            OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY
+        #            OP_CHECKSIG
+        #        OP_ENDIF
+        #        1 OP_CHECKSEQUENCEVERIFY OP_DROP
+        #    OP_ENDIF
+
+        if self.option_anchor_outputs:
+            csvcheck = [1, script.OP_CHECKSEQUENCEVERIFY, script.OP_DROP]
+        else:
+            csvcheck = []
         htlc_script = script.CScript([script.OP_DUP,
                                       script.OP_HASH160,
                                       Hash160(self.revocation_pubkey(side).format()),
@@ -297,18 +378,20 @@ class Commitment(object):
                                       self.ripemd160(htlc.raw_payment_hash()),
                                       script.OP_EQUALVERIFY,
                                       script.OP_CHECKSIG,
-                                      script.OP_ENDIF,
-                                      script.OP_ENDIF])
+                                      script.OP_ENDIF]
+                                     + csvcheck
+                                     + [script.OP_ENDIF])
 
         # BOLT #3: The amounts for each output MUST be rounded down to whole
         # satoshis.
         return htlc_script, htlc.amount_msat // 1000
 
     def _received_htlc_output(self, htlc: HTLC, side: Side) -> Tuple[script.CScript, int]:
-        # BOLT #3: This output sends funds to either the remote node after the
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        # This output sends funds to either the remote node after the
         # HTLC-timeout or using the revocation key, or to an HTLC-success
         # transaction with a successful payment preimage. The output is a
-        # P2WSH, with a witness script:
+        # P2WSH, with a witness script (no option_anchor_outputs):
         #
         # # To remote node with revocation key
         # OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
@@ -326,6 +409,32 @@ class Commitment(object):
         #         OP_CHECKSIG
         #     OP_ENDIF
         # OP_ENDIF
+
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        #  Or, with `option_anchor_outputs`:
+        #
+        #     # To remote node with revocation key
+        #     OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
+        #     OP_IF
+        #         OP_CHECKSIG
+        #     OP_ELSE
+        #         <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL
+        #         OP_IF
+        #             # To local node via HTLC-success transaction.
+        #             OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY
+        #             2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG
+        #         OP_ELSE
+        #             # To remote node after timeout.
+        #             OP_DROP <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP
+        #             OP_CHECKSIG
+        #         OP_ENDIF
+        #         1 OP_CHECKSEQUENCEVERIFY OP_DROP
+        #     OP_ENDIF
+        if self.option_anchor_outputs:
+            csvcheck = [1, script.OP_CHECKSEQUENCEVERIFY, script.OP_DROP]
+        else:
+            csvcheck = []
+
         htlc_script = script.CScript([script.OP_DUP,
                                       script.OP_HASH160,
                                       Hash160(self.revocation_pubkey(side).format()),
@@ -353,12 +462,33 @@ class Commitment(object):
                                       script.OP_CHECKLOCKTIMEVERIFY,
                                       script.OP_DROP,
                                       script.OP_CHECKSIG,
-                                      script.OP_ENDIF,
-                                      script.OP_ENDIF])
+                                      script.OP_ENDIF]
+                                     + csvcheck
+                                     + [script.OP_ENDIF])
 
         # BOLT #3: The amounts for each output MUST be rounded down to whole
         # satoshis.
         return htlc_script, htlc.amount_msat // 1000
+
+    def _anchor_out(self, side: Side) -> CTxOut:
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        # #### `to_local_anchor` and `to_remote_anchor` Output (option_anchor_outputs)
+        # ...
+        #    <local_funding_pubkey/remote_funding_pubkey> OP_CHECKSIG OP_IFDUP
+        #    OP_NOTIF
+        #        OP_16 OP_CHECKSEQUENCEVERIFY
+        #    OP_ENDIF
+        # ...
+        # The amount of the output is fixed at 330 sats
+        redeemscript = CScript([self.funding.funding_pubkey(side).format(),
+                                script.OP_CHECKSIG,
+                                script.OP_IFDUP,
+                                script.OP_NOTIF,
+                                16,
+                                script.OP_CHECKSEQUENCEVERIFY,
+                                script.OP_ENDIF])
+        return CTxOut(330,
+                      CScript([script.OP_0, sha256(redeemscript).digest()]))
 
     def untrimmed_htlcs(self, side: Side) -> List[HTLC]:
         htlcs = []
@@ -373,7 +503,7 @@ class Commitment(object):
             #       [Offered HTLC Outputs](#offered-htlc-outputs).
             if htlc.owner == side:
                 # FIXME: Use Millisatoshi type?
-                if htlc.amount_msat - msat(htlc.htlc_timeout_fee(self.feerate)) < msat(self.dust_limit[side]):
+                if htlc.amount_msat - msat(htlc.htlc_timeout_fee(self.feerate, self.option_anchor_outputs)) < msat(self.dust_limit[side]):
                     continue
             else:
                 # BOLT #3:
@@ -384,7 +514,7 @@ class Commitment(object):
                 #     - otherwise:
                 #       - MUST be generated as specified in
                 #       [Received HTLC Outputs](#received-htlc-outputs).
-                if htlc.amount_msat - msat(htlc.htlc_success_fee(self.feerate)) < msat(self.dust_limit[side]):
+                if htlc.amount_msat - msat(htlc.htlc_success_fee(self.feerate, self.option_anchor_outputs)) < msat(self.dust_limit[side]):
                     continue
             htlcs.append(htlc)
 
@@ -430,6 +560,7 @@ Returns it and a list of matching HTLCs for each output
         # txouts, with ctlv_timeouts (for htlc output tiebreak) and htlc
         txouts: List[Tuple[CTxOut, int, Optional[HTLC]]] = []
 
+        have_htlcs = False
         for htlc in self.untrimmed_htlcs(side):
             if htlc.owner == side:
                 redeemscript, sats = self._offered_htlc_output(htlc, side)
@@ -440,32 +571,44 @@ Returns it and a list of matching HTLCs for each output
                                   CScript([script.OP_0, sha256(redeemscript).digest()])),
                            htlc.cltv_expiry,
                            htlc))
+            have_htlcs = True
 
         num_untrimmed_htlcs = len(txouts)
         fee = self._fee(num_untrimmed_htlcs)
 
+        have_outputs = [False, False]
         out_redeemscript, sats = self._to_local_output(fee, side)
         if sats >= self.dust_limit[side]:
             txouts.append((CTxOut(sats,
                                   CScript([script.OP_0, sha256(out_redeemscript).digest()])),
                            0,
                            None))
+            have_outputs[side] = True
 
-        # BOLT #3:
-        # #### `to_remote` Output
-        #
-        # This output sends funds to the other peer and thus is a simple
-        # P2WPKH to `remotepubkey`.
-        amount_to_other = self.amounts[not side] // 1000
-        if not side == self.opener:
-            amount_to_other -= fee
-
-        if amount_to_other >= self.dust_limit[side]:
-            txouts.append((CTxOut(amount_to_other,
-                                  CScript([script.OP_0,
-                                           Hash160(self.to_remote_pubkey(side).format())])),
+        cscript, sats = self._to_remote_output(fee, side)
+        if sats >= self.dust_limit[side]:
+            txouts.append((CTxOut(sats, cscript),
                            0,
                            None))
+            have_outputs[not side] = True
+
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+        # ## Commitment Transaction Construction
+        # ...
+        # 8. If `option_anchor_outputs` applies to the commitment transaction:
+        #   * if `lo_local` exists and/or there are HTLCs, add a
+        #     `to_local_anchor` output
+        #   * if `to_remote` exists and/or there are HTLCs, add a
+        #     `to_remote_anchor` output
+        if self.option_anchor_outputs:
+            if have_htlcs or have_outputs[side]:
+                txouts.append((self._anchor_out(side),
+                               0,
+                               None))
+            if have_htlcs or have_outputs[not side]:
+                txouts.append((self._anchor_out(not side),  # type: ignore
+                               0,
+                               None))
 
         # BOLT #3:
         # ## Transaction Input and Output Ordering
@@ -498,7 +641,8 @@ Returns it and a list of matching HTLCs for each output
                 outnum: int,
                 side: Side,
                 amount_sat: int,
-                locktime: int) -> CMutableTransaction:
+                locktime: int,
+                option_anchor_outputs: bool) -> CMutableTransaction:
         # BOLT #3:
         # ## HTLC-Timeout and HTLC-Success Transactions
         #
@@ -507,16 +651,21 @@ Returns it and a list of matching HTLCs for each output
         # HTLC-timeout/HTLC-success transactions can be spent by a valid
         # penalty transaction.
 
-        # BOLT #3:
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
         # ## HTLC-Timeout and HTLC-Success Transactions
         # ...
         # * txin count: 1
         # * `txin[0]` outpoint: `txid` of the commitment transaction and
         #    `output_index` of the matching HTLC output for the HTLC transaction
-        # * `txin[0]` sequence: `0`
+        # * `txin[0]` sequence: `0` (set to `1` for `option_anchor_outputs`)
         # * `txin[0]` script bytes: `0`
+        if option_anchor_outputs:
+            sequence = 1
+        else:
+            sequence = 0
+
         txin = CTxIn(COutPoint(commit_tx.GetTxid(), outnum),
-                     nSequence=0x0)
+                     nSequence=sequence)
 
         # BOLT #3:
         # ## HTLC-Timeout and HTLC-Success Transactions
@@ -525,7 +674,7 @@ Returns it and a list of matching HTLCs for each output
         # * `txout[0]` amount: the HTLC amount minus fees (see [Fee
         #    Calculation](#fee-calculation))
         # * `txout[0]` script: version-0 P2WSH with witness script as shown below
-        #
+        # ...
         # The witness script for the output is:
         # OP_IF
         #     # Penalty transaction
@@ -604,21 +753,33 @@ Returns it and a list of matching HTLCs for each output
                 continue
             if htlc.owner == side:
                 redeemscript, sats = self._offered_htlc_output(htlc, side)
-                fee = htlc.htlc_timeout_fee(self.feerate)
+                fee = htlc.htlc_timeout_fee(self.feerate, self.option_anchor_outputs)
                 # BOLT #3:
                 # * locktime: `0` for HTLC-success, `cltv_expiry` for HTLC-timeout
                 locktime = htlc.cltv_expiry
             else:
                 redeemscript, sats = self._received_htlc_output(htlc, side)
-                fee = htlc.htlc_success_fee(self.feerate)
+                fee = htlc.htlc_success_fee(self.feerate, self.option_anchor_outputs)
                 locktime = 0
 
             htlc_tx = self.htlc_tx(commit_tx, outnum, side,
                                    (htlc.amount_msat - msat(fee)) // 1000,
-                                   locktime)
+                                   locktime,
+                                   self.option_anchor_outputs)
             print("htlc_tx = {}".format(htlc_tx.serialize().hex()))
+
+            # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
+            # ## HTLC-Timeout and HTLC-Success Transactions
+            #
+            # if `option_anchor_outputs` applies to this commitment transaction,
+            # `SIGHASH_SINGLE|SIGHASH_ANYONECANPAY` is used.
+            if self.option_anchor_outputs:
+                hashtype = script.SIGHASH_SINGLE | script.SIGHASH_ANYONECANPAY
+            else:
+                hashtype = script.SIGHASH_ALL
+
             sighash = script.SignatureHash(redeemscript, htlc_tx, inIdx=0,
-                                           hashtype=script.SIGHASH_ALL,
+                                           hashtype=hashtype,
                                            amount=htlc.amount_msat // 1000,
                                            sigversion=script.SIGVERSION_WITNESS_V0)
             privkey = self._basepoint_tweak(self.keyset[signer].htlc_base_secret, side)
@@ -676,18 +837,31 @@ remote_to_self_delay is dicated by the local side!
         self.local_dust_limit = local_dust_limit
         self.remote_dust_limit = remote_dust_limit
         self.feerate = feerate
+        # BOLT #9:
+        # | 12/13 | `option_static_remotekey`        | Static key for remote output
         self.static_remotekey = negotiated(local_features, remote_features, [12])
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
+        # | 20/21 | `option_anchor_outputs`          | Anchor outputs
+        self.anchor_outputs = negotiated(local_features, remote_features, [20])
 
     def action(self, runner: Runner) -> bool:
         super().action(runner)
 
-        # BOLT #9:
-        # | 12/13 | `option_static_remotekey`        | Static key for remote output
+        static_remotekey = self.resolve_arg('option_static_remotekey', runner, self.static_remotekey)
+        anchor_outputs = self.resolve_arg('option_anchor_outputs', runner, self.anchor_outputs)
+
+        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
+        # | Bits  | Name                     | Description    | Context  | Dependencies
+        # ...
+        # | 20/21 | `option_anchor_outputs`  | Anchor outputs | IN       | `option_static_remotekey` |
+        if anchor_outputs and not static_remotekey:
+            raise EventError(self, "Cannot have option_anchor_outputs without option_static_remotekey")
+
         commit = Commitment(local_keyset=self.local_keyset,
                             remote_keyset=runner.get_keyset(),
-                            option_static_remotekey=self.resolve_arg('option_static_remotekey',
-                                                                     runner, self.static_remotekey),
                             opener=self.opener,
+                            option_static_remotekey=static_remotekey,
+                            option_anchor_outputs=anchor_outputs,
                             **self.resolve_args(runner,
                                                 {'funding': self.funding,
                                                  'local_to_self_delay': self.local_to_self_delay,
@@ -804,7 +978,8 @@ def test_simple_commitment() -> None:
                    local_dust_limit=546,
                    remote_dust_limit=546,
                    feerate=15000,
-                   option_static_remotekey=False)
+                   option_static_remotekey=False,
+                   option_anchor_outputs=False)
 
     # Make sure undefined field are not used.
     c.keyset[Side.local].revocation_base_secret = None
@@ -840,6 +1015,10 @@ def test_simple_commitment() -> None:
     out_redeemscript, sats = c._to_local_output(fee, Side.local)
     assert sats == 6989140
     assert out_redeemscript == bytes.fromhex('63210212a140cd0c6539d07cd08dfe09984dec3251ea808b892efeac3ede9402bf2b1967029000b2752103fd5960528dc152014952efdb702a88f71e3c1653b2314431701ec77e57fde83c68ac')
+
+    out_redeemscript, sats = c._to_remote_output(fee, Side.local)
+    assert sats == 3000000
+    assert out_redeemscript == CScript([script.OP_0, Hash160(bytes.fromhex('0394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b'))])
 
     # FIXME: We don't yet have a routine to fill the witness, so we cmp txid.
     tx, _ = c._unsigned_tx(Side.local)
