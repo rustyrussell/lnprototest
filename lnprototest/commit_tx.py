@@ -477,8 +477,9 @@ Returns it and a list of matching HTLCs for each output
 
         # First sort by cltv_expiry
         txouts.sort(key=lambda txout: txout[1])
-        # Now sort by BIP69
-        txouts.sort(key=lambda txout: txout[0].serialize())
+        # Now sort by BIP69: lexical key, then amount
+        txouts.sort(key=lambda txout: txout[0].scriptPubKey)
+        txouts.sort(key=lambda txout: txout[0].nValue)
 
         # BOLT #3:
         # ## Commitment Transaction
