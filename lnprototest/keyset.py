@@ -18,6 +18,10 @@ class KeySet(object):
         self.delayed_payment_base_secret = privkey_expand(delayed_payment_base_secret)
         self.shachain_seed = bytes.fromhex(check_hex(shachain_seed, 64))
 
+        # Test vectors don't actually derive the per-commit secrets, they just
+        # declare them :(
+        self.per_commit_secret_override = None
+
     def raw_payment_basepoint(self) -> coincurve.PublicKey:
         return coincurve.PublicKey.from_secret(self.payment_base_secret.secret)
 
@@ -50,6 +54,9 @@ class KeySet(object):
         if n > 281474976710655:
             raise ValueError("48 bits is all you get!")
         index = 281474976710655 - n
+
+        if self.per_commit_secret_override:
+            return self.per_commit_secret_override
 
         # BOLT #3:
         # generate_from_seed(seed, I):
