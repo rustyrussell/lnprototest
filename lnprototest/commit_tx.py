@@ -990,7 +990,8 @@ def test_simple_commitment() -> None:
 
     # BOLT #3:
     # x_local_per_commitment_secret: 1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a0908070605040302010001
-    c.keyset[Side.local].per_commit_secret_override = coincurve.PrivateKey(bytes.fromhex('1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100'))
+    # This is not derived as expected, but defined :(
+    c.keyset[Side.local].raw_per_commit_secret = lambda _: coincurve.PrivateKey(bytes.fromhex('1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100'))
 
     # BOLT #3:
     # commitment_number: 42
@@ -1605,7 +1606,8 @@ def test_anchor_commitment() -> None:
 
     # BOLT #3:
     # x_local_per_commitment_secret: 1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a0908070605040302010001
-    c.keyset[Side.local].per_commit_secret_override = coincurve.PrivateKey(bytes.fromhex('1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100'))
+    # This is not derived as expected, but defined :(
+    c.keyset[Side.local].raw_per_commit_secret = lambda _: coincurve.PrivateKey(bytes.fromhex('1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100'))
 
     # BOLT #3:
     # commitment_number: 42
