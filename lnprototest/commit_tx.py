@@ -1672,8 +1672,12 @@ def test_anchor_commitment() -> None:
         assert tx.GetTxid() == CMutableTransaction.deserialize(bytes.fromhex(test['ExpectedCommitmentTxHex'])).GetTxid()
         assert c.remote_sig(tx) == Sig(test['RemoteSigHex'])
 
+        # This is tx, redeemscript, sats for each HTLC.
+        htlc_info = c.htlc_txs(Side.local)
         sigs = c.htlc_sigs(Side.remote, Side.local)
+        assert len(htlc_info) == len(sigs)
         assert len(sigs) == len(test['HtlcDescs'])
 
-        for sig, desc in zip(sigs, test['HtlcDescs']):
+        for sig, htlc, desc in zip(sigs, htlc_info, test['HtlcDescs']):
+            assert htlc[0].GetTxid() == CMutableTransaction.deserialize(bytes.fromhex(desc['ResolutionTxHex'])).GetTxid()
             assert sig == Sig(desc['RemoteSigHex'])
