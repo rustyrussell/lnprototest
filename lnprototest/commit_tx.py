@@ -15,7 +15,7 @@ from .runner import Runner
 from .utils import Side, check_hex
 from .funding import Funding
 import coincurve
-import yaml
+import json
 
 
 class HTLC(object):
@@ -1554,7 +1554,7 @@ def test_anchor_commitment() -> None:
 """
     # Skip over yaml start and end marker, remove '#'
     yamlstr = "\n".join([l[1:] for l in boltquote.splitlines()[3:-1]])
-    tests = yaml.load(yamlstr, Loader=yaml.Loader)
+    tests = json.loads(yamlstr)
 
     # We use '99' where the results shouldn't matter.
     c = Commitment(funding=Funding(funding_txid=revhex('8984484a580b825b9972d7adb15050b3ab624ccd731946b3eeddb92f4e7ef6be'),
