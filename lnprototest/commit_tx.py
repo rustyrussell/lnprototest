@@ -735,19 +735,13 @@ Returns it and a list of matching HTLCs for each output
             self.funding.amount))
         return self._sig(self.funding.bitcoin_privkeys[Side.remote], tx)
 
-    def htlc_sigs(self, signer: Side, side: Side) -> List[Sig]:
-        """Produce the signer's signatures for the dest's HTLC transactions"""
-        # BOLT #2:
-        # - MUST include one `htlc_signature` for every HTLC transaction
-        #   corresponding to the ordering of the commitment transaction (see
-        #   [BOLT
-        #   #3](03-transactions.md#transaction-input-and-output-ordering)).
-
+    def htlc_txs(self, side: Side) -> List[Tuple[CMutableTransaction, script.CScript, int]]:
+        """Return unsigned HTLC txs (+ redeemscript, input sats) in output order"""
         # So we need the HTLCs in output order, which is why we had _unsigned_tx
         # return them.
         commit_tx, htlcs = self._unsigned_tx(side)
 
-        sigs: List[Sig] = []
+        ret: List[Tuple[CMutableTransaction, script.CScript, int]] = []
         for outnum, htlc in enumerate(htlcs):
             # to_local or to_remote output?
             if htlc is None:
@@ -763,12 +757,23 @@ Returns it and a list of matching HTLCs for each output
                 fee = htlc.htlc_success_fee(self.feerate, self.option_anchor_outputs)
                 locktime = 0
 
-            htlc_tx = self.htlc_tx(commit_tx, outnum, side,
-                                   (htlc.amount_msat - msat(fee)) // 1000,
-                                   locktime,
-                                   self.option_anchor_outputs)
-            print("htlc_tx = {}".format(htlc_tx.serialize().hex()))
+            ret.append((self.htlc_tx(commit_tx, outnum, side,
+                                     (htlc.amount_msat - msat(fee)) // 1000,
+                                     locktime,
+                                     self.option_anchor_outputs),
+                        redeemscript, sats))
 
+        return ret
+
+    def htlc_sigs(self, signer: Side, side: Side) -> List[Sig]:
+        """Produce the signer's signatures for the dest's HTLC transactions"""
+        # BOLT #2:
+        # - MUST include one `htlc_signature` for every HTLC transaction
+        #   corresponding to the ordering of the commitment transaction (see
+        #   [BOLT
+        #   #3](03-transactions.md#transaction-input-and-output-ordering)).
+        sigs: List[Sig] = []
+        for htlc_tx, redeemscript, sats in self.htlc_txs(side):
             # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #3:
             # ## HTLC-Timeout and HTLC-Success Transactions
             #
@@ -781,7 +786,7 @@ Returns it and a list of matching HTLCs for each output
 
             sighash = script.SignatureHash(redeemscript, htlc_tx, inIdx=0,
                                            hashtype=hashtype,
-                                           amount=htlc.amount_msat // 1000,
+                                           amount=sats,
                                            sigversion=script.SIGVERSION_WITNESS_V0)
             privkey = self._basepoint_tweak(self.keyset[signer].htlc_base_secret, side)
             sigs.append(Sig(privkey.secret.hex(), sighash.hex()))
