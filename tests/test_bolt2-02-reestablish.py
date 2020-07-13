@@ -14,6 +14,10 @@ static_remotekey = 13
 # | 0/1   | `option_data_loss_protect`       | Requires or supports extra `channel_reestablish` fields
 data_loss_protect = 1
 
+# BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
+# | 20/21 | `option_anchor_outputs`          | Anchor outputs
+anchor_outputs = 21
+
 
 def test_reestablish(runner: Runner) -> None:
     local_funding_privkey = '20'
@@ -29,6 +33,9 @@ def test_reestablish(runner: Runner) -> None:
                     features=bitfield(data_loss_protect)),
                 Msg('init',
                     globalfeatures='', features=bitfield(static_remotekey)),
+                Msg('init',
+                    globalfeatures='', features=bitfield(static_remotekey,
+                                                         anchor_outputs)),
                 # And nothing.
                 Msg('init', globalfeatures='',
                     features='')),

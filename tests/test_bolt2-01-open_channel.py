@@ -20,6 +20,9 @@ def test_open_channel(runner: Runner) -> None:
             ExpectMsg('init'),
 
             TryAll(
+                # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
+                # | 20/21 | `option_anchor_outputs`          | Anchor outputs
+                Msg('init', globalfeatures='', features=bitfield(13, 21)),
                 # BOLT #9:
                 # | 12/13 | `option_static_remotekey`        | Static key for remote output
                 Msg('init', globalfeatures='', features=bitfield(13)),
