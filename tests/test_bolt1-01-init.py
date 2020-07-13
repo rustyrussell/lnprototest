@@ -31,6 +31,16 @@ def has_feature(featurebits: List[int], event: Event, msg: Message) -> None:
             raise EventError(event, "features set bit {} unset: {}".format(bit, msg.to_str()))
 
 
+def has_one_feature(featurebits: List[int], event: Event, msg: Message) -> None:
+    has_any = False
+    for bit in featurebits:
+        if has_bit(msg.fields['features'], bit):
+            has_any = True
+
+    if not has_any:
+        raise EventError(event, "none of {} set: {}".format(featurebits, msg.to_str()))
+
+
 def test_init(runner: Runner, namespaceoverride: Any) -> None:
     # We override default namespace since we only need BOLT1
     namespaceoverride(pyln.spec.bolt1.namespace)
@@ -108,6 +118,39 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
                 # If you require `option_data_loss_protect`, you will advertize it even.
                 Sequence([ExpectMsg('init', if_match=functools.partial(has_feature, [0]))],
                          enable=(runner.has_option('option_data_loss_protect') == 'even')),
+
+                # If you don't support `option_anchor_outputs`, you will be ok if
+                # we ask for it.
+                Sequence([ExpectMsg('init', if_match=functools.partial(no_feature, [20, 21])),
+                          Msg('init', globalfeatures='', features=bitfield(21))],
+                         enable=not runner.has_option('option_anchor_outputs')),
+
+                # If you don't support `option_anchor_outputs`, you will error if
+                # we require it.
+                Sequence([ExpectMsg('init', if_match=functools.partial(no_feature, [20, 21])),
+                          Msg('init', globalfeatures='', features=bitfield(20)),
+                          ExpectError()],
+                         enable=not runner.has_option('option_anchor_outputs')),
+
+                # If you support `option_anchor_outputs`, you will advertize it odd.
+                Sequence([ExpectMsg('init', if_match=functools.partial(has_feature, [21]))],
+                         enable=(runner.has_option('option_anchor_outputs') == 'odd')),
+
+                # If you require `option_anchor_outputs`, you will advertize it even.
+                Sequence([ExpectMsg('init', if_match=functools.partial(has_feature, [20]))],
+                         enable=(runner.has_option('option_anchor_outputs') == 'even')),
+
+                # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
+                # | Bits  | Name                    | ... | Dependencies
+                # ...
+                # | 12/13 | `option_static_remotekey` |
+                # ...
+                # | 20/21 | `option_anchor_outputs` | ... | `option_static_remotekey` |
+
+                # If you support `option_anchor_outputs`, you will
+                # advertize option_static_remotekey.
+                Sequence([ExpectMsg('init', if_match=functools.partial(has_one_feature, [12, 13]))],
+                         enable=(runner.has_option('option_anchor_outputs') is not None)),
 
                 # You should always handle us echoing your own features back!
                 [ExpectMsg('init'),
