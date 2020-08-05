@@ -72,8 +72,8 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
                  #  - upon receiving unknown _odd_ feature bits that are non-zero:
                  #    - MUST ignore the bit.
 
-                 # init msg with unknown odd global bit (19): no error
-                 Msg('init', globalfeatures=bitfield(19), features='')],
+                 # init msg with unknown odd global bit (99): no error
+                 Msg('init', globalfeatures=bitfield(99), features='')],
 
                 # Sanity check that bits 34 and 35 are not used!
                 [ExpectMsg('init', if_match=functools.partial(no_feature, [34, 35])),
@@ -82,8 +82,8 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
                  #  - upon receiving unknown _odd_ feature bits that are non-zero:
                  #    - MUST ignore the bit.
 
-                 # init msg with unknown odd local bit (19): no error
-                 Msg('init', globalfeatures='', features=bitfield(19))],
+                 # init msg with unknown odd local bit (99): no error
+                 Msg('init', globalfeatures='', features=bitfield(99))],
 
                 # BOLT #1:
                 # The receiving node: ...
