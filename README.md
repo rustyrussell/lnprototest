@@ -4,6 +4,24 @@ lnprototest is a set of test helpers written in Python3, designed to
 make it easy to write new tests when you propose changes to the
 lightning network protocol, as well as test existing implementations.
 
+## Install requirements
+
+To installe the necessary dependences
+
+```bash
+pip3 install -r requirements.txt 
+```
+
+To install lnprototest
+
+```bash
+pip3 install -e .
+```
+
+Well, now we can run the test
+
+## Running test
+
 The simplest way to run is with the "dummy" runner:
 
 	make check
