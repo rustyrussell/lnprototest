@@ -42,9 +42,10 @@ The more useful way to run is to use an existing implementation.  So
 far, c-lightning is supported.  You will need:
 
 1. `bitcoind` installed, and in your path.
-2. `lightningd` compiled with `--enable-developer`.  By default the source
-    directory should be `../lightningd` relative to this directory, otherwise
-	use `export LIGHTNING_SRC=dirname`.
+2. [`lightningd`](https://github.com/ElementsProject/lightning/) compiled with
+   `--enable-developer`.  By default the source directory should be
+   `../lightning` relative to this directory, otherwise use
+   `export LIGHTNING_SRC=dirname`.
 3. Install any python requirements by
    `pip3 install lnprototest/clightning/requirements.txt`.
 
