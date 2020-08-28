@@ -185,6 +185,12 @@ def funding() -> Callable[[Runner, Event, str], Funding]:
     return _funding
 
 
+def locking_script() -> Callable[[Runner, Event, str], str]:
+    def _locking_script(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_stash(event, 'Funding').locking_script().hex()
+    return _locking_script
+
+
 def funding_close_tx() -> Callable[[Runner, Event, str], str]:
     def _funding_close_tx(runner: Runner, event: Event, field: str) -> str:
         return runner.get_stash(event, 'Funding').close_tx()

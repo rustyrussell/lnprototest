@@ -33,20 +33,10 @@ class Funding(object):
         self.node_privkeys = [privkey_expand(local_node_privkey),
                               privkey_expand(remote_node_privkey)]
 
-    def node_id_sort(self, local: Any, remote: Any) -> Tuple[Any, Any]:
-        """Sorts these two items into lexicographical node id order"""
-        # BOLT #7:
-        # - MUST set `node_id_1` and `node_id_2` to the public keys of the two
-        #   nodes operating the channel, such that `node_id_1` is the
-        #   lexicographically-lesser of the two compressed keys sorted in
-        #   ascending lexicographic order.
-        if self.node_id(Side.local).format() < self.node_id(Side.remote).format():
-            return local, remote
-        else:
-            return remote, local
 
-    def bitcoin_key_sort(self, local: Any, remote: Any) -> Tuple[Any, Any]:
-        """Sorts these two items into lexicographical bitcoin key order"""
+
+    @staticmethod
+    def key_sort(key_one: coincurve.PublicKey, key_two: coincurve.PublicKey) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         # BOLT #3:
         # ## Funding Transaction Output
         #
@@ -55,16 +45,41 @@ class Funding(object):
         # * Where `pubkey1` is the lexicographically lesser of the two
         #   `funding_pubkey` in compressed format, and where `pubkey2` is the
         #   lexicographically greater of the two.
-        if self.funding_pubkey(Side.local).format() < self.funding_pubkey(Side.remote).format():
-            return local, remote
+        if key_one.format() < key_two.format():
+            return key_one, key_two
         else:
-            return remote, local
+            return key_two, key_one
 
-    def redeemscript(self) -> CScript:
+    def node_id_sort(self, local: Any, remote: Any) -> Tuple[Any, Any]:
+        """Sorts these two items into lexicographical node id order"""
+        # BOLT #7:
+        # - MUST set `node_id_1` and `node_id_2` to the public keys of the two
+        #   nodes operating the channel, such that `node_id_1` is the
+        #   lexicographically-lesser of the two compressed keys sorted in
+        #   ascending lexicographic order.
+        return self.key_sort(self.node_id(Side.local), self.node_id(Side.remote))
+
+    def bitcoin_key_sort(self, local: Any, remote: Any) -> Tuple[Any, Any]:
+        return self.key_sort(self.funding_pubkey(Side.local), self.funding_pubkey(Side.remote))
+
+    @staticmethod
+    def redeemscript_keys(key_one: coincurve.PublicKey, key_two: coincurve.PublicKey) -> CScript:
         return CScript([script.OP_2]
-                       + [k.format() for k in self.funding_pubkeys_for_tx()]
+                       + [k.format() for k in Funding.key_sort(key_one, key_two)]
                        + [script.OP_2,
                           script.OP_CHECKMULTISIG])
+
+    def redeemscript(self) -> CScript:
+        key_a, key_b = self.funding_pubkeys_for_tx()
+        return self.redeemscript_keys(key_a, key_b)
+
+    @staticmethod
+    def locking_script_keys(key_one: coincurve.PublicKey, key_two: coincurve.PublicKey) -> CScript:
+        return CScript([script.OP_0, sha256(Funding.redeemscript_keys(key_one, key_two)).digest()])
+
+    def locking_script(self) -> CScript:
+        a, b = self.funding_pubkeys_for_tx()
+        return self.locking_script_keys(a, b)
 
     @staticmethod
     def from_utxo(txid_in: str,
@@ -119,8 +134,12 @@ class Funding(object):
         chanid[-2] ^= self.output_index // 256
         return chanid.hex()
 
+    @staticmethod
+    def funding_pubkey_key(privkey: coincurve.PrivateKey) -> coincurve.PublicKey:
+        return coincurve.PublicKey.from_secret(privkey.secret)
+
     def funding_pubkey(self, side: Side) -> coincurve.PublicKey:
-        return coincurve.PublicKey.from_secret(self.bitcoin_privkeys[side].secret)
+        return self.funding_pubkey_key(self.bitcoin_privkeys[side])
 
     def funding_pubkeys_for_tx(self) -> Tuple[coincurve.PublicKey, coincurve.PublicKey]:
         """Returns funding pubkeys, in tx order"""
