@@ -1,5 +1,5 @@
 # Support for funding txs.
-from typing import Tuple, Any, Optional
+from typing import Tuple, Any, Optional, Union, Callable
 from .utils import Side, privkey_expand, regtest_hash
 from .event import Event, ResolvableInt, ResolvableStr
 from .namespace import event_namespace
@@ -9,9 +9,15 @@ from pyln.proto.message import Message
 from hashlib import sha256
 import coincurve
 import io
-from bitcoin.core import COutPoint, CScript, CTxIn, CTxOut, CMutableTransaction, CTxWitness, CTxInWitness, CScriptWitness, Hash160
+from bitcoin.core import COutPoint, CScript, CTxIn, CTxOut, CMutableTransaction, CTxWitness, CTxInWitness, CScriptWitness, Hash160, CTransaction
 import bitcoin.core.script as script
 from bitcoin.wallet import P2WPKHBitcoinAddress
+
+ResolvableFunding = Union['Funding', Callable[['Runner', 'Event', str], 'Funding']]
+
+def txid_raw(tx: str) -> str:
+    """Helper to get the txid of a tx: note this is in wire protocol order, not bitcoin order!"""
+    return CTransaction.deserialize(bytes.fromhex(tx)).GetTxid().hex()
 
 
 class Funding(object):
@@ -23,7 +29,8 @@ class Funding(object):
                  local_funding_privkey: str,
                  remote_node_privkey: str,
                  remote_funding_privkey: str,
-                 chain_hash: str = regtest_hash):
+                 chain_hash: str = regtest_hash,
+                 locktime: int = 0):
         self.chain_hash = chain_hash
         self.txid = funding_txid
         self.output_index = funding_output_index
@@ -32,7 +39,15 @@ class Funding(object):
                                  privkey_expand(remote_funding_privkey)]
         self.node_privkeys = [privkey_expand(local_node_privkey),
                               privkey_expand(remote_node_privkey)]
+        self.tx = None
+        self.locktime = locktime
+        self.outputs = []
+        self.inputs = []
 
+    def tx_hex(self) -> str:
+        if not self.tx:
+            return ''
+        return self.tx.serialize().hex()
 
 
     @staticmethod
@@ -80,6 +95,108 @@ class Funding(object):
     def locking_script(self) -> CScript:
         a, b = self.funding_pubkeys_for_tx()
         return self.locking_script_keys(a, b)
+
+    @staticmethod
+    def start(local_node_privkey: str,
+              local_funding_privkey: str,
+              remote_node_privkey: str,
+              remote_funding_privkey: str,
+              funding_sats: int,
+              locktime: int,
+              chain_hash: str = regtest_hash) -> 'Funding':
+
+        # Create dummy one to start: we will fill in txid at the end
+        return Funding('', 0, funding_sats,
+                       local_node_privkey,
+                       local_funding_privkey,
+                       remote_node_privkey,
+                       remote_funding_privkey,
+                       chain_hash, locktime)
+
+    def add_input(self,
+                  serial_id: int,
+                  prevtx: str,
+                  prevtx_vout: int,
+                  max_witness_len: int,
+                  script: str,
+                  sequence: int,
+                  privkey: str = None) -> None:
+        # Find the txid of the transaction
+        prev_tx = CTransaction.deserialize(bytes.fromhex(prevtx))
+        txin = CTxIn(COutPoint(prev_tx.GetTxid(), prevtx_vout),
+                     nSequence=sequence)
+
+        # Get the previous output for its outscript + value
+        prev_vout = prev_tx.vout[prevtx_vout]
+
+        self.inputs.append({'input': txin,
+                            'serial_id': serial_id,
+                            'sats': prev_vout.nValue,
+                            'prev_outscript': prev_vout.scriptPubKey.hex(),
+                            'redeemscript': script,
+                            'max_witness_len': max_witness_len,
+                            'privkey': privkey,
+                           })
+
+    def add_output(self,
+                   serial_id: int,
+                   script: str,
+                   sats: int) -> None:
+        txout = CTxOut(sats, CScript(bytes.fromhex(script)))
+        self.outputs.append({'output': txout,
+                             'serial_id': serial_id})
+
+
+    def add_witnesses(self,
+                      witness_stack) -> str:
+        wits = []
+        for idx, _in in enumerate(self.inputs):
+            privkey = _in['privkey']
+            serial_id = _in['serial_id']
+
+            if privkey:
+                inkey = privkey_expand(privkey)
+                inkey_pub = coincurve.PublicKey.from_secret(inkey.secret)
+
+                address = P2WPKHBitcoinAddress.from_scriptPubKey(CScript([script.OP_0, Hash160(inkey_pub.format())]))
+
+                sighash = script.SignatureHash(address.to_redeemScript(),
+                                               self.tx, idx, script.SIGHASH_ALL,
+                                               amount=_in['sats'],
+                                               sigversion=script.SIGVERSION_WITNESS_V0)
+                sig = inkey.sign(sighash, hasher=None) + bytes([script.SIGHASH_ALL])
+
+                wits.append(CTxInWitness(CScriptWitness([sig, inkey_pub.format()])))
+                continue
+
+            # Every input from the witness stack will be the accepter's
+            # which is always an odd serial
+            assert(serial_id % 2 == 1)
+            elems = witness_stack.pop(0)['witness_element']
+
+            stack = []
+            for elem in elems:
+                stack.append(bytes.fromhex(elem['witness']))
+
+            wits.append(CTxInWitness(CScriptWitness(stack)))
+
+        self.tx.wit = CTxWitness(wits)
+        return self.tx.serialize().hex()
+
+    def build_tx(self) -> str:
+        # Sort inputs by serial number
+        ins = [x['input'] for x in
+               sorted(self.inputs, key=lambda k: k['serial_id'])]
+
+        # Sort outputs by serial number
+        outs = [x['output'] for x in
+               sorted(self.outputs, key=lambda k: k['serial_id'])]
+
+        self.tx = CMutableTransaction(ins, outs, nVersion=2, nLockTime=self.locktime)
+        self.txid = self.tx.GetTxid().hex()
+
+        return self.tx.serialize().hex()
+
 
     @staticmethod
     def from_utxo(txid_in: str,
@@ -440,4 +557,136 @@ class CreateFunding(Event):
 
         runner.add_stash('Funding', funding)
         runner.add_stash('FundingTx', tx)
+        return True
+
+
+class CreateDualFunding(Event):
+    """Event to create a 'dual-funded' funding tx. Stashes 'Funding' and 'FundingTx'."""
+    def __init__(self,
+                 local_in_txid: str,
+                 local_in_outnum: int,
+                 local_in_sats: int,
+                 spending_privkey: str,
+                 fee: int,
+                 funding_sats: ResolvableInt,
+                 locktime: ResolvableInt,
+                 local_node_privkey: str,
+                 local_funding_privkey: str,
+                 remote_node_privkey: str,
+                 remote_funding_privkey: ResolvableStr,
+                 chain_hash: str = regtest_hash):
+        super().__init__()
+
+        self.funding_sats = funding_sats
+        self.locktime = locktime
+        self.spending_privkey = spending_privkey
+        self.local_node_privkey = local_node_privkey
+        self.local_funding_privkey = local_funding_privkey
+        self.remote_node_privkey = remote_node_privkey
+        self.remote_funding_privkey = remote_funding_privkey
+        self.chain_hash = chain_hash
+
+    def action(self, runner: Runner) -> bool:
+        super().action(runner)
+
+        funding = Funding.start(local_node_privkey=self.local_node_privkey,
+                                local_funding_privkey=self.local_funding_privkey,
+                                chain_hash=self.chain_hash,
+                                **self.resolve_args(runner,
+                                                    {
+                                                        'funding_sats': self.funding_sats,
+                                                        'remote_funding_privkey': self.remote_funding_privkey,
+                                                        'remote_node_privkey': self.remote_node_privkey,
+                                                        'locktime': self.locktime
+                                                    }))
+
+        runner.add_stash('Funding', funding)
+
+        return True
+
+
+class AddInput(Event):
+    def __init__(self,
+                 funding: ResolvableFunding,
+                 serial_id: ResolvableInt,
+                 prevtx: ResolvableStr,
+                 prevtx_vout: ResolvableInt,
+                 max_witness_len: ResolvableInt,
+                 script: ResolvableStr,
+                 sequence: ResolvableInt = 0xFFFFFFFD,
+                 privkey: str = None):
+        super().__init__()
+        self.funding = funding
+        self.privkey = privkey
+        self.serial_id = serial_id
+        self.prevtx = prevtx
+        self.prevtx_vout = prevtx_vout
+        self.max_witness_len = max_witness_len
+        self.script = script
+        self.sequence = sequence
+
+    def action(self, runner: Runner) -> bool:
+        super().action(runner)
+        funding = self.resolve_arg('funding', runner, self.funding)
+        funding.add_input(**self.resolve_args(runner,
+                                              {'serial_id': self.serial_id,
+                                               'prevtx': self.prevtx,
+                                               'prevtx_vout': self.prevtx_vout,
+                                               'max_witness_len': self.max_witness_len,
+                                               'script': self.script,
+                                               'sequence': self.sequence,
+                                               'privkey': self.privkey}))
+        return True
+
+
+class AddOutput(Event):
+    def __init__(self,
+                 funding: ResolvableFunding,
+                 serial_id: ResolvableInt,
+                 sats: ResolvableInt,
+                 script: ResolvableStr):
+        super().__init__()
+        self.funding = funding
+        self.serial_id = serial_id
+        self.sats = sats
+        self.script = script
+
+    def action(self, runner: Runner) -> bool:
+        super().action(runner)
+        funding = self.resolve_arg('funding', runner, self.funding)
+        funding.add_output(**self.resolve_args(runner,
+                                               {'serial_id': self.serial_id,
+                                                'sats' : self.sats,
+                                                'script': self.script}))
+        return True
+
+
+class FinalizeFunding(Event):
+    def __init__(self, funding: ResolvableFunding):
+        self.funding = funding
+
+    def action(self, runner: Runner) -> bool:
+        funding = self.resolve_arg('funding', runner, self.funding)
+
+        tx = funding.build_tx()
+        # FIXME: sanity checks?
+        print(tx)
+        return True
+
+
+class AddWitnesses(Event):
+    def __init__(self,
+                 funding: ResolvableFunding,
+                 witness_stack: Any): # FIXME what's the type here?
+        self.funding = funding
+        self.witness_stack = witness_stack
+
+    def action(self, runner: Runner) -> bool:
+        funding = self.resolve_arg('funding', runner, self.funding)
+        stack = self.resolve_arg('witness_stack', runner, self.witness_stack)
+        # FIXME: is there a way to resolve this more .. nicely?
+        # Convert from string to python obj
+        wit_stack = eval(stack)
+        tx_hex = funding.add_witnesses(wit_stack)
+        runner.add_stash('FundingTx', tx_hex)
         return True

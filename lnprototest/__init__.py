@@ -21,7 +21,7 @@ from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
 from .utils import Side, regtest_hash, privkey_expand
-from .funding import AcceptFunding, CreateFunding, Funding
+from .funding import AcceptFunding, CreateFunding, CreateDualFunding, Funding, AddInput, AddOutput, FinalizeFunding, AddWitnesses
 
 __all__ = [
     "EventError",
@@ -34,6 +34,11 @@ __all__ = [
     "Connect",
     "Disconnect",
     "DualFundAccept",
+    "CreateDualFunding",
+    "AddInput",
+    "AddOutput",
+    "FinalizeFunding",
+    "AddWitnesses",
     "Msg",
     "RawMsg",
     "ExpectMsg",
