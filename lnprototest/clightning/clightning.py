@@ -277,6 +277,10 @@ class Runner(lnprototest.Runner):
                          description='invoice from {}'.format(event),
                          preimage=preimage)
 
+    def accept_add_fund(self, event: Event) -> None:
+        plugin = os.path.join(LIGHTNING_SRC, 'tests', 'plugins', 'df_accepter.py')
+        self.rpc.plugin_start(plugin)
+
     def addhtlc(self, event: Event, conn: Conn,
                 amount: int, preimage: str) -> None:
         payhash = hashlib.sha256(bytes.fromhex(preimage)).hexdigest()

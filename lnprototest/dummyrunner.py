@@ -85,6 +85,10 @@ class DummyRunner(Runner):
             print("[INVOICE for {} with PREIMAGE {}]"
                   .format(amount, preimage))
 
+    def accept_add_fund(self, event: Event) -> None:
+        if self.config.getoption('verbose'):
+            print("[ACCEPT_ADD_FUND]")
+
     def addhtlc(self, event: Event, conn: Conn,
                 amount: int, preimage: str) -> None:
         if self.config.getoption('verbose'):

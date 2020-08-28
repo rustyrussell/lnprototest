@@ -133,6 +133,9 @@ require that minimum_depth be 3, just for test simplicity.
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
         raise NotImplementedError()
 
+    def accept_add_fund(self, event:Event) -> None:
+        raise NotImplementedError()
+
     def fundchannel(self,
                     event: Event,
                     conn: Conn,
