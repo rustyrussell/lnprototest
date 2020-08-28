@@ -22,7 +22,7 @@ from lnprototest import Event, EventError, SpecFileError, KeySet, Conn, event_na
 from typing import Dict, Any, Callable, List, Optional, cast
 
 TIMEOUT = int(os.getenv("TIMEOUT", "30"))
-LIGHTNING_SRC = os.getenv("LIGHTNING_SRC", '../lightning/')
+LIGHTNING_SRC = os.path.join(os.getcwd(), os.getenv("LIGHTNING_SRC", '../lightning/'))
 
 
 class Bitcoind(object):
