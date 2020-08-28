@@ -80,6 +80,15 @@ def utxo(index: int = 0) -> Tuple[str, int, int, str, int]:
 
     return txid_raw(tx_spendable), txout, amount, key, reasonable_funding_fee
 
+def tx_out_for_index(index: int = 0) -> int:
+    _, txout, _, _, _ = utxo(index)
+    return txout
+
+
+def privkey_for_index(index: int = 0) -> str:
+    _, _, _, privkey, _ = utxo(index)
+    return privkey
+
 
 
 def funding_amount_for_utxo(index: int = 0) -> int:
