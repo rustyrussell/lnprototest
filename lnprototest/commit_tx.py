@@ -202,6 +202,21 @@ class Commitment(object):
     def inc_commitnum(self) -> None:
         self.commitnum += 1
 
+    def channel_id_v2(self) -> str:
+        # BOLT-0eebb43e32a513f3b4dd9ced72ad1e915aefdd25 #2:
+        #
+        # For channels established using the v2 protocol, the `channel_id` is the
+        # SHA256(lesser-revocation-basepoint || greater-revocation-basepoint),
+        # where the lesser and greater is based off the order of the
+        # basepoint. The basepoints are compact DER-encoded public keys.
+        remote_key = self.keyset[Side.remote].raw_revocation_basepoint()
+        local_key = self.keyset[Side.local].raw_revocation_basepoint()
+        if remote_key.format() < local_key.format():
+            return sha256(remote_key.format() + local_key.format()).digest().hex()
+        else:
+            return sha256(local_key.format() + remote_key.format()).digest().hex()
+
+
     @staticmethod
     def obscured_commit_num(opener_payment_basepoint: coincurve.PublicKey,
                             non_opener_payment_basepoint: coincurve.PublicKey,

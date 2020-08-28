@@ -47,6 +47,14 @@ def channel_id() -> Callable[[Runner, Event, str], str]:
     return _channel_id
 
 
+def channel_id_v2() -> Callable[[Runner, Event, str], str]:
+    """ Get the channel_id for the current Commit for a v2 channel open"""
+    def _channel_id(runner: Runner, event: Event, field: str) -> str:
+        return runner.get_stash(event, 'Commit').channel_id_v2()
+
+    return _channel_id
+
+
 def channel_announcement(short_channel_id: str, features: bytes) -> Callable[[Runner, Event, str], str]:
     """Get the channel_announcement for the current Commit"""
     def _channel_announcement(short_channel_id: str, features: bytes, runner: Runner, event: Event, field: str) -> Message:
