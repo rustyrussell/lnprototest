@@ -223,12 +223,14 @@ class Funding(object):
         inkey = privkey_expand(privkey)
         inkey_pub = coincurve.PublicKey.from_secret(inkey.secret)
 
-        txin = CTxIn(COutPoint(bytes.fromhex(txid_in), tx_index_in))
+        # use RBF'able input (requirement for dual-funded things)
+        txin = CTxIn(COutPoint(bytes.fromhex(txid_in), tx_index_in), nSequence=0xFFFFFFFD)
         txout = CTxOut(sats - fee, CScript([script.OP_0, sha256(funding.redeemscript()).digest()]))
-        tx = CMutableTransaction([txin], [txout])
+        tx = CMutableTransaction([txin], [txout], nVersion=2, nLockTime=funding.locktime)
 
         # now fill in funding txid.
         funding.txid = tx.GetTxid().hex()
+        funding.tx = tx
 
         # while we're here, sign the transaction.
         address = P2WPKHBitcoinAddress.from_scriptPubKey(CScript([script.OP_0, Hash160(inkey_pub.format())]))
