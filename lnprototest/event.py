@@ -379,6 +379,16 @@ class AddHtlc(PerConnEvent):
         return True
 
 
+class DualFundAccept(Event):
+    def __init__(self):
+        super().__init__()
+
+    def action(self, runner: 'Runner') -> bool:
+        super().action(runner)
+        runner.accept_add_fund(self)
+        return True
+
+
 class ExpectError(PerConnEvent):
     def __init__(self, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
