@@ -8,6 +8,7 @@ from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_o
 from typing import Callable
 import coincurve
 import functools
+import pyln.spec.bolt2
 
 
 def channel_id_v2(local_keyset: KeySet) -> Callable[[Runner, Event, str], str]:
@@ -30,6 +31,10 @@ def channel_id_v2(local_keyset: KeySet) -> Callable[[Runner, Event, str], str]:
 
 
 def test_open_accepter_channel(runner: Runner) -> None:
+    # Needs modified spec, so don't even try unless we have that!
+    if not 'open_channel2' in pyln.spec.bolt2.__dict__:
+        return
+
     local_funding_privkey = '20'
 
     local_keyset = KeySet(revocation_base_secret='21',
@@ -196,6 +201,10 @@ def funding_lockscript(our_privkey: str) -> Callable[[Runner, Event, str], str]:
 
 
 def test_open_dual_accepter_channel(runner: Runner) -> None:
+    # Needs modified spec, so don't even try unless we have that!
+    if not 'open_channel2' in pyln.spec.bolt2.__dict__:
+        return
+
     local_funding_privkey = '20'
 
     local_keyset = KeySet(revocation_base_secret='21',
