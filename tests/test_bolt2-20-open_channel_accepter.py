@@ -116,7 +116,6 @@ def test_open_accepter_channel(runner: Runner) -> None:
                 serial_id=2,
                 prevtx=tx_spendable,
                 prevtx_vout=tx_out_for_index(input_index),
-                max_witness_len=135,
                 sequence=0xfffffffd,
                 script=''),
 
@@ -219,7 +218,6 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
     # we must specify this as ok!
     expected_add_input = ExpectMsg('tx_add_input',
         channel_id=rcvd('accept_channel2.channel_id'),
-        max_witness_len=106,
         sequence=0xfffffffd,
         script='',
         if_match=odd_serial)
@@ -291,7 +289,6 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
                 sequence=0xfffffffd,
                 prevtx=tx_spendable,
                 prevtx_vout=tx_out_for_index(input_index),
-                max_witness_len=135,
                 script=''),
 
             AddInput(funding=funding(),
@@ -299,7 +296,6 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
                      serial_id=sent('tx_add_input.serial_id', int),
                      prevtx=sent(),
                      prevtx_vout=sent('tx_add_input.prevtx_vout', int),
-                     max_witness_len=sent('tx_add_input.max_witness_len', int),
                      script=sent()),
 
             OneOf([expected_add_input,
@@ -321,7 +317,6 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
                     serial_id=rcvd('tx_add_input.serial_id', int),
                     prevtx=rcvd('tx_add_input.prevtx'),
                     prevtx_vout=rcvd('tx_add_input.prevtx_vout', int),
-                    max_witness_len=rcvd('tx_add_input.max_witness_len', int),
                     script=rcvd('tx_add_input.script')),
 
            AddOutput(funding=funding(),
