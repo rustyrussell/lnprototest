@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-# Variations on open_channel, accepter perspective
+# Variations on open_channel
 
 from hashlib import sha256
 from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, namespace
@@ -200,6 +200,11 @@ def test_open_accepter_channel(runner: Runner, with_proposal: Any) -> None:
 def odd_serial(event: Event, msg: Msg) -> None:
     if msg.fields['serial_id'] % 2 == 0:
         raise EventError(event, "Received **even** serial {}, expected odd".format(msg.fields['serial_id']))
+
+
+def even_serial(event: Event, msg: Msg) -> None:
+    if msg.fields['serial_id'] % 2 == 1:
+        raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
 
 
 def agreed_funding() -> Callable[[Runner, Event, str], int]:
@@ -412,5 +417,179 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
            # Ignore unknown odd messages
            TryAll([], RawMsg(bytes.fromhex('270F')))
         ]
+
+    runner.run(test)
+
+
+def test_open_opener_channel(runner: Runner, with_proposal: Any) -> None:
+    with_proposal(dual_fund_csv)
+
+    local_funding_privkey = '20'
+
+    local_keyset = KeySet(revocation_base_secret='21',
+                          payment_base_secret='22',
+                          htlc_base_secret='24',
+                          delayed_payment_base_secret='23',
+                          shachain_seed='00' * 32)
+
+    input_index = 0
+
+    test = [Block(blockheight=102, txs=[tx_spendable]),
+            Connect(connprivkey='02'),
+            ExpectMsg('init'),
+
+            # BOLT-f53ca2301232db780843e894f55d95d512f297f9 #9:
+            # | 28/29 | `option_dual_fund`             | Use v2 of channel open, enables dual funding              | IN9      | `option_anchor_outputs`, `option_static_remotekey`   | [BOLT #2](02-peer-protocol.md)        |
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
+
+            FundChannel(amount=999877),
+
+            ExpectMsg('open_channel2',
+                      channel_id=channel_id_tmp(local_keyset, Side.remote),
+                      chain_hash=regtest_hash,
+                      funding_satoshis=999877,
+                      dust_limit_satoshis=546,
+                      htlc_minimum_msat=0,
+                      to_self_delay=6,
+                      funding_pubkey=remote_funding_pubkey(),
+                      revocation_basepoint=remote_revocation_basepoint(),
+                      payment_basepoint=remote_payment_basepoint(),
+                      delayed_payment_basepoint=remote_delayed_payment_basepoint(),
+                      htlc_basepoint=remote_htlc_basepoint(),
+                      first_per_commitment_point=remote_per_commitment_point(0),
+                      channel_flags='01'),
+
+            Msg('accept_channel2',
+                channel_id=channel_id_v2(local_keyset),
+                dust_limit_satoshis=550,
+                funding_satoshis=0,
+                max_htlc_value_in_flight_msat=4294967295,
+                htlc_minimum_msat=0,
+                minimum_depth=3,
+                max_accepted_htlcs=483,
+                # We use 5, to be different from c-lightning runner who uses 6
+                to_self_delay=5,
+                funding_pubkey=pubkey_of(local_funding_privkey),
+                revocation_basepoint=local_keyset.revocation_basepoint(),
+                payment_basepoint=local_keyset.payment_basepoint(),
+                delayed_payment_basepoint=local_keyset.delayed_payment_basepoint(),
+                htlc_basepoint=local_keyset.htlc_basepoint(),
+                first_per_commitment_point=local_keyset.per_commit_point(0)),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+            # Create and stash Funding object and FundingTx
+            CreateDualFunding(*utxo(input_index),
+                              funding_sats=agreed_funding(Side.remote),
+                              locktime=rcvd('open_channel2.locktime', int),
+                              local_node_privkey='02',
+                              local_funding_privkey=local_funding_privkey,
+                              remote_node_privkey=runner.get_node_privkey(),
+                              remote_funding_privkey=remote_funding_privkey()),
+
+            ExpectMsg('tx_add_input',
+                      channel_id=sent('accept_channel2.channel_id'),
+                      if_match=even_serial,
+                      prevtx=tx_spendable,
+                      sequence=0xfffffffd,
+                      script_sig=''),
+
+            AddInput(funding=funding(),
+                     serial_id=rcvd('tx_add_input.serial_id', int),
+                     prevtx=rcvd('tx_add_input.prevtx'),
+                     prevtx_vout=rcvd('tx_add_input.prevtx_vout', int),
+                     script_sig=rcvd('tx_add_input.script_sig')),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+            Msg('tx_complete',
+                channel_id=sent('accept_channel2.channel_id')),
+
+            # The funding output
+            ExpectMsg('tx_add_output',
+                      channel_id=sent('accept_channel2.channel_id'),
+                      sats=agreed_funding(Side.remote),
+                      if_match=even_serial),
+            # FIXME: They may send us the funding output second,
+            # if there's also a change output
+            AddOutput(funding=funding(),
+                      serial_id=rcvd('tx_add_output.serial_id', int),
+                      sats=rcvd('tx_add_output.sats', int),
+                      script=rcvd('tx_add_output.script')),
+
+            Msg('tx_complete', channel_id=sent('accept_channel2.channel_id')),
+
+            # Their change if they have one!
+            OneOf([ExpectMsg('tx_add_output',
+                             if_match=even_serial,
+                             channel_id=sent('accept_channel2.channel_id')),
+                   Msg('tx_complete',
+                       channel_id=sent('accept_channel2.channel_id')),
+                   ExpectMsg('tx_complete',
+                             channel_id=sent('accept_channel2.channel_id')),
+                   AddOutput(funding=funding(),
+                             serial_id=rcvd('tx_add_output.serial_id', int),
+                             sats=rcvd('tx_add_output.sats', int),
+                             script=rcvd('tx_add_output.script'))],
+                  [ExpectMsg('tx_complete',
+                             channel_id=sent('accept_channel2.channel_id'))]),
+
+            FinalizeFunding(funding=funding()),
+
+            Commit(funding=funding(),
+                   opener=Side.remote,
+                   local_keyset=local_keyset,
+                   local_to_self_delay=rcvd('open_channel2.to_self_delay', int),
+                   remote_to_self_delay=sent('accept_channel2.to_self_delay', int),
+                   local_amount=msat(sent('accept_channel2.funding_satoshis', int)),
+                   remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
+                   local_dust_limit=550,
+                   remote_dust_limit=546,
+                   feerate=rcvd('open_channel2.funding_feerate_perkw', int),
+                   local_features=sent('init.features'),
+                   remote_features=rcvd('init.features')),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+            ExpectMsg('commitment_signed',
+                      channel_id=sent('accept_channel2.channel_id'),
+                      signature=commitsig_to_recv()),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+            Msg('commitment_signed',
+                channel_id=sent('accept_channel2.channel_id'),
+                signature=commitsig_to_send(),
+                htlc_signature='[]'),
+
+            Msg('tx_signatures',
+                channel_id=sent('accept_channel2.channel_id'),
+                txid=funding_txid(),
+                witness_stack=witnesses()),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+            ExpectMsg('tx_signatures',
+                      channel_id=sent('accept_channel2.channel_id'),
+                      txid=funding_txid()),
+
+            AddWitnesses(funding=funding(),
+                         witness_stack=rcvd('witness_stack')),
+
+            # Mine the block!
+            Block(blockheight=103, number=3, txs=[funding_tx()]),
+
+            ExpectMsg('funding_locked',
+                      channel_id=sent('accept_channel2.channel_id'),
+                      next_per_commitment_point=remote_per_commitment_point(1)),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            ]
 
     runner.run(test)
