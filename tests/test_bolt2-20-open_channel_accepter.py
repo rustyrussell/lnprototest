@@ -51,7 +51,7 @@ def test_open_accepter_channel(runner: Runner) -> None:
 
             # BOLT-ff9a3470f5a0f475dc0909bf153620a73ca7b21e #9:
             # | 222/223 | `option_dual_fund`          | Use v2 channel open
-            Msg('init', globalfeatures='', features=bitfield(12, 223)),
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 223)),
 
             # Accepter side: we initiate a new channel.
             Msg('open_channel2',
@@ -232,7 +232,7 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
 
             # BOLT-ff9a3470f5a0f475dc0909bf153620a73ca7b21e #9:
             # | 222/223 | `option_dual_fund`          | Use v2 channel open
-            Msg('init', globalfeatures='', features=bitfield(12, 223)),
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 223)),
 
             DualFundAccept(),
 
