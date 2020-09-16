@@ -118,7 +118,6 @@ class Funding(object):
                   serial_id: int,
                   prevtx: str,
                   prevtx_vout: int,
-                  max_witness_len: int,
                   script: str,
                   sequence: int,
                   privkey: str = None) -> None:
@@ -135,7 +134,6 @@ class Funding(object):
                             'sats': prev_vout.nValue,
                             'prev_outscript': prev_vout.scriptPubKey.hex(),
                             'redeemscript': script,
-                            'max_witness_len': max_witness_len,
                             'privkey': privkey,
                            })
 
@@ -618,7 +616,6 @@ class AddInput(Event):
                  serial_id: ResolvableInt,
                  prevtx: ResolvableStr,
                  prevtx_vout: ResolvableInt,
-                 max_witness_len: ResolvableInt,
                  script: ResolvableStr,
                  sequence: ResolvableInt = 0xFFFFFFFD,
                  privkey: str = None):
@@ -628,7 +625,6 @@ class AddInput(Event):
         self.serial_id = serial_id
         self.prevtx = prevtx
         self.prevtx_vout = prevtx_vout
-        self.max_witness_len = max_witness_len
         self.script = script
         self.sequence = sequence
 
@@ -639,7 +635,6 @@ class AddInput(Event):
                                               {'serial_id': self.serial_id,
                                                'prevtx': self.prevtx,
                                                'prevtx_vout': self.prevtx_vout,
-                                               'max_witness_len': self.max_witness_len,
                                                'script': self.script,
                                                'sequence': self.sequence,
                                                'privkey': self.privkey}))
