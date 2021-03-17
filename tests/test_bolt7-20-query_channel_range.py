@@ -256,7 +256,7 @@ def test_query_channel_range(runner: Runner) -> None:
                  OneOf(ExpectMsg('reply_channel_range',
                                  chain_hash=regtest_hash,
                                  first_blocknum=109,
-                                 number_of_blocks=4294967295),
+                                 number_of_blocks=4294967186),
                        # Could truncate number_of_blocks.
                        ExpectMsg('reply_channel_range',
                                  chain_hash=regtest_hash,
