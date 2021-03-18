@@ -66,9 +66,10 @@ def test_open_accepter_channel(runner: Runner) -> None:
             Connect(connprivkey='02'),
             ExpectMsg('init'),
 
-            # BOLT-ff9a3470f5a0f475dc0909bf153620a73ca7b21e #9:
-            # | 222/223 | `option_dual_fund`          | Use v2 channel open
-            Msg('init', globalfeatures='', features=bitfield(12, 20, 223)),
+            # BOLT-f53ca2301232db780843e894f55d95d512f297f9 #9:
+            # | 28/29 | `option_dual_fund`             | Use v2 of channel open, enables dual funding              | IN9      | `option_anchor_outputs`, `option_static_remotekey`   | [BOLT #2](02-peer-protocol.md)        |
+
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
 
             # Accepter side: we initiate a new channel.
             Msg('open_channel2',
@@ -247,9 +248,9 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
             Connect(connprivkey='02'),
             ExpectMsg('init'),
 
-            # BOLT-ff9a3470f5a0f475dc0909bf153620a73ca7b21e #9:
-            # | 222/223 | `option_dual_fund`          | Use v2 channel open
-            Msg('init', globalfeatures='', features=bitfield(12, 20, 223)),
+            # BOLT-f53ca2301232db780843e894f55d95d512f297f9 #9:
+            # | 28/29 | `option_dual_fund`             | Use v2 of channel open, enables dual funding              | IN9      | `option_anchor_outputs`, `option_static_remotekey`   | [BOLT #2](02-peer-protocol.md)        |
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
 
             DualFundAccept(),
 
