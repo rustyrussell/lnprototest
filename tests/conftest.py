@@ -2,8 +2,8 @@
 import pytest
 import importlib
 import lnprototest
-import pyln.proto.message
-from typing import Any, Generator, Callable
+from pyln.proto.message import MessageNamespace
+from typing import Any, Callable, Generator
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -18,11 +18,11 @@ def runner(pytestconfig: Any) -> Any:
 
 
 @pytest.fixture()
-def namespaceoverride(pytestconfig: Any) -> Generator[Callable[[pyln.proto.message.MessageNamespace], None], None, None]:
-    """Use this if you want to override the event_namespace"""
-    def _setter(newns: pyln.proto.message.MessageNamespace) -> None:
-        lnprototest.event_namespace = newns
+def namespaceoverride(pytestconfig: Any) -> Generator[Callable[[MessageNamespace], None], None, None]:
+    """Use this if you want to override the message namespace"""
+    def _setter(newns: MessageNamespace) -> None:
+        lnprototest.assign_namespace(newns)
 
     yield _setter
     # Restore it
-    lnprototest.event_namespace = lnprototest.peer_message_namespace()
+    lnprototest.assign_namespace(lnprototest.peer_message_namespace())

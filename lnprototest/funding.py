@@ -2,7 +2,7 @@
 from typing import Tuple, Any, Optional, Union, Callable
 from .utils import Side, privkey_expand, regtest_hash
 from .event import Event, ResolvableInt, ResolvableStr
-from .namespace import event_namespace
+from .namespace import namespace
 from .runner import Runner
 from .signature import Sig
 from pyln.proto.message import Message
@@ -312,7 +312,7 @@ class Funding(object):
         """Produce a channel_announcement message with dummy sigs"""
         node_ids = self.node_ids()
         bitcoin_keys = self.funding_pubkeys_for_gossip()
-        return Message(event_namespace.get_msgtype('channel_announcement'),
+        return Message(namespace().get_msgtype('channel_announcement'),
                        node_signature_1=Sig(bytes(64)),
                        node_signature_2=Sig(bytes(64)),
                        bitcoin_signature_1=Sig(bytes(64)),
@@ -402,7 +402,7 @@ class Funding(object):
             message_flags |= 1
 
         # Begin with a fake signature.
-        update = Message(event_namespace.get_msgtype('channel_update'),
+        update = Message(namespace().get_msgtype('channel_update'),
                          short_channel_id=short_channel_id,
                          signature=Sig(bytes(64)),
                          chain_hash=self.chain_hash,
@@ -436,7 +436,7 @@ class Funding(object):
                           addresses: bytes,
                           timestamp: int) -> Message:
         # Begin with a fake signature.
-        ann = Message(event_namespace.get_msgtype('node_announcement'),
+        ann = Message(namespace().get_msgtype('node_announcement'),
                       signature=Sig(bytes(64)),
                       features=features,
                       timestamp=timestamp,

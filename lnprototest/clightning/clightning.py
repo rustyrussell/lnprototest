@@ -18,7 +18,7 @@ import struct
 from concurrent import futures
 from ephemeral_port_reserve import reserve
 from pyln.testing.utils import wait_for, SimpleBitcoinProxy
-from lnprototest import Event, EventError, SpecFileError, KeySet, Conn, event_namespace, MustNotMsg
+from lnprototest import Event, EventError, SpecFileError, KeySet, Conn, namespace, MustNotMsg
 from typing import Dict, Any, Callable, List, Optional, cast
 
 TIMEOUT = int(os.getenv("TIMEOUT", "30"))
@@ -325,7 +325,7 @@ class Runner(lnprototest.Runner):
 
                 # Don't assume it's a message type we know!
                 msgtype = struct.unpack('>H', binmsg[:2])[0]
-                if msgtype == event_namespace.get_msgtype('error').number:
+                if msgtype == namespace().get_msgtype('error').number:
                     raise EventError(event, "Got error msg: {}"
                                      .format(binmsg.hex()))
 

@@ -1,13 +1,13 @@
 #! /usr/bin/python3
 import traceback
-from pyln.proto.message import Message
+from pyln.proto.message import Message, MessageNamespace
 import collections
 import os.path
 import io
 import struct
 import time
 from .errors import SpecFileError, EventError
-from .namespace import event_namespace
+from .namespace import namespace
 from .utils import check_hex
 from .signature import Sig
 from .bitfield import has_bit
@@ -108,7 +108,7 @@ class MustNotMsg(PerConnEvent):
 
     def matches(self, binmsg: bytes) -> bool:
         msgnum = struct.unpack('>H', binmsg[0:2])[0]
-        msgtype = event_namespace.get_msgtype_by_number(msgnum)
+        msgtype = namespace().get_msgtype_by_number(msgnum)
         if msgtype:
             name = msgtype.name
         else:
@@ -138,7 +138,8 @@ class Msg(PerConnEvent):
     def __init__(self, msgtypename: str, connprivkey: Optional[str] = None,
                  **kwargs: Union[ResolvableStr, ResolvableInt]):
         super().__init__(connprivkey)
-        self.msgtype = event_namespace.get_msgtype(msgtypename)
+        self.msgtype = namespace().get_msgtype(msgtypename)
+
         if not self.msgtype:
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
         self.kwargs = kwargs
@@ -222,7 +223,7 @@ message should not be ignored: by default, it is ignore_gossip_queries.
         #  - SHOULD set `ignored` to 0s.
         #  - MUST NOT set `ignored` to sensitive data such as secrets or
         #    portions of initialized
-        outmsg = Message(event_namespace.get_msgtype('pong'),
+        outmsg = Message(namespace().get_msgtype('pong'),
                          ignored='00' * msg.fields['num_pong_bytes'])
         return [outmsg]
 
@@ -253,7 +254,7 @@ message should not be ignored: by default, it is ignore_gossip_queries.
                  connprivkey: Optional[str] = None,
                  **kwargs: Union[str, Resolvable]):
         super().__init__(connprivkey)
-        self.msgtype = event_namespace.get_msgtype(msgtypename)
+        self.msgtype = namespace().get_msgtype(msgtypename)
         if not self.msgtype:
             raise SpecFileError(self, "Unknown msgtype {}".format(msgtypename))
         self.kwargs = kwargs
@@ -288,7 +289,7 @@ message should not be ignored: by default, it is ignore_gossip_queries.
 
             # Might be completely unknown to namespace.
             try:
-                msg = Message.read(event_namespace, io.BytesIO(binmsg))
+                msg = Message.read(namespace(), io.BytesIO(binmsg))
             except ValueError as ve:
                 raise EventError(self, "Runner gave bad msg {}: {}".format(binmsg.hex(), ve))
 

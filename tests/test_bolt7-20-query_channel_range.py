@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, CheckEq, EventError, event_namespace, Wait
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, CheckEq, EventError, namespace, Wait
 from helpers import tx_spendable, utxo
 from typing import Optional
 import unittest
@@ -79,7 +79,7 @@ def decode_scids(runner: 'Runner', event: Event, field: str) -> str:
     else:
         raise EventError(event, "Unknown encoding type {}: {}".format(encoded[0], encoded.hex()))
 
-    scidtype = event_namespace.get_fundamentaltype('short_channel_id')
+    scidtype = namespace().get_fundamentaltype('short_channel_id')
     arr = []
     buf = io.BytesIO(b)
     while True:

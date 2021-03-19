@@ -2,7 +2,7 @@
 import io
 from .event import Event, ExpectMsg, ResolvableBool
 from .errors import SpecFileError, EventError
-from .namespace import event_namespace
+from .namespace import namespace
 from pyln.proto.message import Message
 from typing import Union, List, Optional, TYPE_CHECKING, cast
 if TYPE_CHECKING:
@@ -102,7 +102,7 @@ class OneOf(Event):
                 raise EventError(self, "Did not receive a message from runner")
 
             try:
-                msg = Message.read(event_namespace, io.BytesIO(binmsg))
+                msg = Message.read(namespace(), io.BytesIO(binmsg))
             except ValueError as ve:
                 raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 
@@ -163,7 +163,7 @@ class AnyOrder(Event):
                                  .format([s.events[0] for s in sequences]))
 
             try:
-                msg = Message.read(event_namespace, io.BytesIO(binmsg))
+                msg = Message.read(namespace(), io.BytesIO(binmsg))
             except ValueError as ve:
                 raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 

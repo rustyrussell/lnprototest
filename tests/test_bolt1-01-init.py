@@ -2,12 +2,14 @@
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 
-from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len
+from lnprototest import Runner, Event, Sequence, TryAll, Connect, Disconnect, EventError, ExpectMsg, Msg, ExpectError, has_bit, bitfield, bitfield_len, SpecFileError
 from lnprototest.stash import rcvd
 import pyln.spec.bolt1
 from pyln.proto.message import Message
 from typing import List, Any
+
 import functools
+import pytest
 
 
 # BOLT #1: The sending node:
@@ -39,6 +41,15 @@ def has_one_feature(featurebits: List[int], event: Event, msg: Message) -> None:
 
     if not has_any:
         raise EventError(event, "none of {} set: {}".format(featurebits, msg.to_str()))
+
+
+def test_namespace_override(runner: Runner, namespaceoverride: Any) -> None:
+    # Truncate the namespace to just BOLT1
+    namespaceoverride(pyln.spec.bolt1.namespace)
+
+    # Try to send a message that's not in BOLT1
+    with pytest.raises(SpecFileError, match=r'Unknown msgtype open_channel'):
+        Msg('open_channel')
 
 
 def test_init(runner: Runner, namespaceoverride: Any) -> None:
