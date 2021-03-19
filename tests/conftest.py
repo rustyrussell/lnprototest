@@ -3,7 +3,7 @@ import pytest
 import importlib
 import lnprototest
 from pyln.proto.message import MessageNamespace
-from typing import Any, Callable, Generator
+from typing import Any, Callable, Generator, List
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -24,5 +24,18 @@ def namespaceoverride(pytestconfig: Any) -> Generator[Callable[[MessageNamespace
         lnprototest.assign_namespace(newns)
 
     yield _setter
+    # Restore it
+    lnprototest.assign_namespace(lnprototest.peer_message_namespace())
+
+
+@pytest.fixture()
+def with_proposal(pytestconfig: Any) -> Generator[Callable[[List[str]], None], None, None]:
+    """Use this to add additional messages to the namespace
+       Useful for testing proposed (but not yet merged) spec mods"""
+    def _setter(proposal_csv: List[str]) -> None:
+        lnprototest.assign_namespace(lnprototest.namespace() + MessageNamespace(proposal_csv))
+
+    yield _setter
+
     # Restore it
     lnprototest.assign_namespace(lnprototest.peer_message_namespace())
