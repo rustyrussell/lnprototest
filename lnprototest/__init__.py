@@ -22,6 +22,7 @@ from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
 from .utils import Side, regtest_hash, privkey_expand
 from .funding import AcceptFunding, CreateFunding, CreateDualFunding, Funding, AddInput, AddOutput, FinalizeFunding, AddWitnesses
+from .proposals import dual_fund_csv
 
 __all__ = [
     "EventError",
@@ -86,4 +87,5 @@ __all__ = [
     "regtest_hash",
     "privkey_expand",
     "Wait",
+    "dual_fund_csv",
 ]
