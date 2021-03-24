@@ -145,6 +145,20 @@ class Funding(object):
         self.outputs.append({'output': txout,
                              'serial_id': serial_id})
 
+    def witnesses(self) -> str:
+        """ Extract expected witness data for our node """
+        witnesses = []
+
+        # Extract the witnesses from the tx
+        for wit in self.tx.wit.vtxinwit:
+            elems = []
+            for e in wit.scriptWitness.stack:
+                elems.append('{{witness={0}}}'.format(e.hex()))
+
+            witnesses.append('{{witness_element=[{0}]}}'.format(','.join(elems)))
+
+        val = '[{}]'.format(','.join(witnesses))
+        return val
 
     def add_witnesses(self,
                       witness_stack) -> str:
