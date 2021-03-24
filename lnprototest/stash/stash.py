@@ -185,6 +185,14 @@ def funding() -> Callable[[Runner, Event, str], Funding]:
     return _funding
 
 
+def witnesses() -> Callable[[Runner, Event, str], str]:
+    """Get the witnesses for the stashed funding tx"""
+    def _witnesses(runner: Runner, event: Event, field: str) -> str:
+        funding = runner.get_stash(event, 'Funding')
+        return funding.witnesses()
+    return _witnesses
+
+
 def locking_script() -> Callable[[Runner, Event, str], str]:
     def _locking_script(runner: Runner, event: Event, field: str) -> str:
         return runner.get_stash(event, 'Funding').locking_script().hex()
