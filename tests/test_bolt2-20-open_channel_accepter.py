@@ -30,6 +30,23 @@ def channel_id_v2(local_keyset: KeySet) -> Callable[[Runner, Event, str], str]:
     return _channel_id_v2
 
 
+def channel_id_tmp(local_keyset: KeySet, opener: Side) -> Callable[[Runner, Event, str], str]:
+    def _channel_id_tmp(runner: Runner, event: Event, field: str) -> str:
+        # BOLT-f53ca2301232db780843e894f55d95d512f297f9 #2:
+        #
+        # If the peer's revocation basepoint is unknown (e.g. `open_channel2`),
+        # a temporary `channel_id` should be found by using a zeroed out
+        # basepoint for the unknown peer.
+        if opener == Side.local:
+            key = local_keyset.raw_revocation_basepoint()
+        else:
+            key = runner.get_keyset().raw_revocation_basepoint()
+
+        return sha256(bytes.fromhex('00' * 33) + key.format()).digest().hex()
+
+    return _channel_id_tmp
+
+
 def test_open_accepter_channel(runner: Runner) -> None:
     # Needs modified spec, so don't even try unless we have that!
     if not 'open_channel2' in pyln.spec.bolt2.__dict__:
