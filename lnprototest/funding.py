@@ -118,7 +118,7 @@ class Funding(object):
                   serial_id: int,
                   prevtx: str,
                   prevtx_vout: int,
-                  script: str,
+                  script_sig: str,
                   sequence: int,
                   privkey: str = None) -> None:
         # Find the txid of the transaction
@@ -133,7 +133,7 @@ class Funding(object):
                             'serial_id': serial_id,
                             'sats': prev_vout.nValue,
                             'prev_outscript': prev_vout.scriptPubKey.hex(),
-                            'redeemscript': script,
+                            'redeemscript': script_sig,
                             'privkey': privkey,
                            })
 
@@ -630,7 +630,7 @@ class AddInput(Event):
                  serial_id: ResolvableInt,
                  prevtx: ResolvableStr,
                  prevtx_vout: ResolvableInt,
-                 script: ResolvableStr,
+                 script_sig: ResolvableStr,
                  sequence: ResolvableInt = 0xFFFFFFFD,
                  privkey: str = None):
         super().__init__()
@@ -639,7 +639,7 @@ class AddInput(Event):
         self.serial_id = serial_id
         self.prevtx = prevtx
         self.prevtx_vout = prevtx_vout
-        self.script = script
+        self.script_sig = script_sig
         self.sequence = sequence
 
     def action(self, runner: Runner) -> bool:
@@ -649,7 +649,7 @@ class AddInput(Event):
                                               {'serial_id': self.serial_id,
                                                'prevtx': self.prevtx,
                                                'prevtx_vout': self.prevtx_vout,
-                                               'script': self.script,
+                                               'script_sig': self.script_sig,
                                                'sequence': self.sequence,
                                                'privkey': self.privkey}))
         return True
