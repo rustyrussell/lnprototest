@@ -2,8 +2,8 @@
 # Variations on open_channel, accepter perspective
 
 from hashlib import sha256
-from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses
-from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding, locking_script, get_member
+from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, namespace
+from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index
 from typing import Any, Callable
 import coincurve
@@ -177,7 +177,7 @@ def test_open_accepter_channel(runner: Runner, with_proposal: Any) -> None:
            Msg('tx_signatures',
                channel_id=rcvd('accept_channel2.channel_id'),
                txid=funding_txid(),
-               witness_stack=[]),
+               witness_stack=witnesses()),
 
            # Mine the block!
            Block(blockheight=103, number=3, txs=[funding_tx()]),
@@ -393,7 +393,7 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
            Msg('tx_signatures',
                channel_id=rcvd('accept_channel2.channel_id'),
                txid=funding_txid(),
-               witness_stack=[]),
+               witness_stack=witnesses()),
 
            AddWitnesses(funding=funding(),
                         witness_stack=rcvd('witness_stack')),
