@@ -5,7 +5,7 @@ from hashlib import sha256
 from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses
 from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding, locking_script, get_member
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index
-from typing import Callable
+from typing import Any, Callable
 import coincurve
 import functools
 import pyln.spec.bolt2
@@ -47,19 +47,15 @@ def channel_id_tmp(local_keyset: KeySet, opener: Side) -> Callable[[Runner, Even
     return _channel_id_tmp
 
 
-def test_open_accepter_channel(runner: Runner) -> None:
-    # Needs modified spec, so don't even try unless we have that!
-    if not 'open_channel2' in pyln.spec.bolt2.__dict__:
-        return
+def test_open_accepter_channel(runner: Runner, with_proposal: Any) -> None:
+    with_proposal(dual_fund_csv)
 
     local_funding_privkey = '20'
-
     local_keyset = KeySet(revocation_base_secret='21',
                           payment_base_secret='22',
                           htlc_base_secret='24',
                           delayed_payment_base_secret='23',
                           shachain_seed='00' * 32)
-
     input_index = 0
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
@@ -73,18 +69,18 @@ def test_open_accepter_channel(runner: Runner) -> None:
 
             # Accepter side: we initiate a new channel.
             Msg('open_channel2',
+                channel_id=channel_id_tmp(local_keyset, Side.local),
                 chain_hash=regtest_hash,
                 funding_satoshis=funding_amount_for_utxo(input_index),
                 dust_limit_satoshis=546,
                 max_htlc_value_in_flight_msat=4294967295,
                 htlc_minimum_msat=0,
-                feerate_per_kw=253,
-                feerate_per_kw_funding=253,
+                funding_feerate_perkw=253,
+                commitment_feerate_perkw=253,
                 # We use 5, because c-lightning runner uses 6, so this is different.
                 to_self_delay=5,
                 max_accepted_htlcs=483,
                 locktime=0,
-                podle_h2='00' * 32,
                 funding_pubkey=pubkey_of(local_funding_privkey),
                 revocation_basepoint=local_keyset.revocation_basepoint(),
                 payment_basepoint=local_keyset.payment_basepoint(),
@@ -135,7 +131,7 @@ def test_open_accepter_channel(runner: Runner) -> None:
                 prevtx=tx_spendable,
                 prevtx_vout=tx_out_for_index(input_index),
                 sequence=0xfffffffd,
-                script=''),
+                script_sig=''),
 
            # Ignore unknown odd messages
            TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -178,6 +174,11 @@ def test_open_accepter_channel(runner: Runner) -> None:
                      txid=funding_txid(),
                      witness_stack='[]'),
 
+           Msg('tx_signatures',
+               channel_id=rcvd('accept_channel2.channel_id'),
+               txid=funding_txid(),
+               witness_stack=[]),
+
            # Mine the block!
            Block(blockheight=103, number=3, txs=[funding_tx()]),
 
@@ -217,10 +218,8 @@ def funding_lockscript(our_privkey: str) -> Callable[[Runner, Event, str], str]:
     return _funding_lockscript
 
 
-def test_open_dual_accepter_channel(runner: Runner) -> None:
-    # Needs modified spec, so don't even try unless we have that!
-    if not 'open_channel2' in pyln.spec.bolt2.__dict__:
-        return
+def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
+    with_proposal(dual_fund_csv)
 
     local_funding_privkey = '20'
 
@@ -237,7 +236,7 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
     expected_add_input = ExpectMsg('tx_add_input',
         channel_id=rcvd('accept_channel2.channel_id'),
         sequence=0xfffffffd,
-        script='',
+        script_sig='',
         if_match=odd_serial)
 
     expected_add_output = ExpectMsg('tx_add_output',
@@ -256,18 +255,18 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
 
             # Accepter side: we initiate a new channel.
             Msg('open_channel2',
+                channel_id=channel_id_tmp(local_keyset, Side.local),
                 chain_hash=regtest_hash,
                 funding_satoshis=funding_amount_for_utxo(input_index),
                 dust_limit_satoshis=546,
                 max_htlc_value_in_flight_msat=4294967295,
                 htlc_minimum_msat=0,
-                feerate_per_kw=253,
-                feerate_per_kw_funding=253,
+                funding_feerate_perkw=253,
+                commitment_feerate_perkw=253,
                 # We use 5, because c-lightning runner uses 6, so this is different.
                 to_self_delay=5,
                 max_accepted_htlcs=483,
                 locktime=100,
-                podle_h2='00' * 32,
                 funding_pubkey=pubkey_of(local_funding_privkey),
                 revocation_basepoint=local_keyset.revocation_basepoint(),
                 payment_basepoint=local_keyset.payment_basepoint(),
@@ -307,14 +306,14 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
                 sequence=0xfffffffd,
                 prevtx=tx_spendable,
                 prevtx_vout=tx_out_for_index(input_index),
-                script=''),
+                script_sig=''),
 
             AddInput(funding=funding(),
                      privkey=privkey_for_index(input_index),
                      serial_id=sent('tx_add_input.serial_id', int),
                      prevtx=sent(),
                      prevtx_vout=sent('tx_add_input.prevtx_vout', int),
-                     script=sent()),
+                     script_sig=sent()),
 
             OneOf([expected_add_input,
                   Msg('tx_add_output',
@@ -335,7 +334,7 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
                     serial_id=rcvd('tx_add_input.serial_id', int),
                     prevtx=rcvd('tx_add_input.prevtx'),
                     prevtx_vout=rcvd('tx_add_input.prevtx_vout', int),
-                    script=rcvd('tx_add_input.script')),
+                    script_sig=rcvd('tx_add_input.script_sig')),
 
            AddOutput(funding=funding(),
                      serial_id=rcvd('tx_add_output.serial_id', int),
@@ -390,6 +389,11 @@ def test_open_dual_accepter_channel(runner: Runner) -> None:
            ExpectMsg('tx_signatures',
                      channel_id=rcvd('accept_channel2.channel_id'),
                      txid=funding_txid()),
+
+           Msg('tx_signatures',
+               channel_id=rcvd('accept_channel2.channel_id'),
+               txid=funding_txid(),
+               witness_stack=[]),
 
            AddWitnesses(funding=funding(),
                         witness_stack=rcvd('witness_stack')),
