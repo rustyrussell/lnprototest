@@ -204,6 +204,12 @@ class Funding(object):
         self.tx = CMutableTransaction(ins, outs, nVersion=2, nLockTime=self.locktime)
         self.txid = self.tx.GetTxid().hex()
 
+        # Set the output index for the funding output
+        locking_script = self.locking_script()
+        for i, out in enumerate(outs):
+            if out.scriptPubKey == locking_script:
+                self.output_index = i
+
         return self.tx.serialize().hex()
 
 
