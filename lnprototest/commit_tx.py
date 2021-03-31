@@ -742,12 +742,13 @@ Returns it and a list of matching HTLCs for each output
         return self._sig(self.funding.bitcoin_privkeys[Side.local], tx)
 
     def remote_sig(self, tx: CMutableTransaction) -> Sig:
-        print('Signing {} redeemscript keys {} and {}: {} amount = {}'.format(
+        print('Signing {} redeemscript keys {} and {}: {} amount = {}\ntx: {}'.format(
             Side.remote,
             self.funding.funding_pubkey(Side.local).format().hex(),
             self.funding.funding_pubkey(Side.remote).format().hex(),
             self.funding.redeemscript().hex(),
-            self.funding.amount))
+            self.funding.amount,
+            tx.serialize().hex()))
         return self._sig(self.funding.bitcoin_privkeys[Side.remote], tx)
 
     def htlc_txs(self, side: Side) -> List[Tuple[CMutableTransaction, script.CScript, int]]:
