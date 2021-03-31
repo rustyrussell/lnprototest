@@ -688,7 +688,7 @@ class FinalizeFunding(Event):
 
         tx = funding.build_tx()
         # FIXME: sanity checks?
-        print(tx)
+        print('finalized funding', tx)
         return True
 
 
