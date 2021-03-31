@@ -207,10 +207,17 @@ def even_serial(event: Event, msg: Msg) -> None:
         raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
 
 
-def agreed_funding() -> Callable[[Runner, Event, str], int]:
+def agreed_funding(opener: Side) -> Callable[[Runner, Event, str], int]:
     def _agreed_funding(runner: Runner, event: Event, field: str) -> int:
-        open_funding = get_member(event, runner, 'Msg', 'open_channel2.funding_satoshis')
-        accept_funding = get_member(event, runner, 'ExpectMsg', 'accept_channel2.funding_satoshis')
+        open_funding = get_member(event,
+                                  runner,
+                                  'Msg' if opener == Side.local else 'ExpectMsg',
+                                  'open_channel2.funding_satoshis')
+        accept_funding = get_member(event,
+                                    runner,
+                                    'ExpectMsg' if opener == Side.local else 'Msg',
+                                    'accept_channel2.funding_satoshis')
+
         return open_funding + accept_funding
     return _agreed_funding
 
@@ -295,7 +302,7 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
 
             # Create and stash Funding object and FundingTx
             CreateDualFunding(*utxo(input_index),
-                              funding_sats=agreed_funding(),
+                              funding_sats=agreed_funding(Side.local),
                               locktime=sent('open_channel2.locktime', int),
                               local_node_privkey='02',
                               local_funding_privkey=local_funding_privkey,
@@ -324,14 +331,14 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
                   Msg('tx_add_output',
                    channel_id=rcvd('accept_channel2.channel_id'),
                    serial_id=0,
-                   sats=agreed_funding(),
+                   sats=agreed_funding(Side.local),
                    script=funding_lockscript(local_funding_privkey)),
                  expected_add_output],
                 [expected_add_output,
                  Msg('tx_add_output',
                    channel_id=rcvd('accept_channel2.channel_id'),
                    serial_id=2,
-                   sats=agreed_funding(),
+                   sats=agreed_funding(Side.local),
                    script=funding_lockscript(local_funding_privkey)),
                  expected_add_input]),
 
