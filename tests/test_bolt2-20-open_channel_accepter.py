@@ -2,13 +2,10 @@
 # Variations on open_channel
 
 from hashlib import sha256
-from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, ExpectTx, Msg, RawMsg, KeySet, AcceptFunding, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, CheckEq, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, namespace
-from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
+from lnprototest import TryAll, Connect, Block, FundChannel, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv
+from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index
 from typing import Any, Callable
-import coincurve
-import functools
-import pyln.spec.bolt2
 
 
 def channel_id_v2(local_keyset: KeySet) -> Callable[[Runner, Event, str], str]:
@@ -133,66 +130,66 @@ def test_open_accepter_channel(runner: Runner, with_proposal: Any) -> None:
                 sequence=0xfffffffd,
                 script_sig=''),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           ExpectMsg('tx_complete',
-                     channel_id=rcvd('accept_channel2.channel_id')),
+            ExpectMsg('tx_complete',
+                      channel_id=rcvd('accept_channel2.channel_id')),
 
-           Msg('tx_add_output',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               serial_id=2,
-               sats=funding_amount_for_utxo(input_index),
-               script=locking_script()),
+            Msg('tx_add_output',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                serial_id=2,
+                sats=funding_amount_for_utxo(input_index),
+                script=locking_script()),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           ExpectMsg('tx_complete',
-                     channel_id=rcvd('accept_channel2.channel_id')),
+            ExpectMsg('tx_complete',
+                      channel_id=rcvd('accept_channel2.channel_id')),
 
-           Msg('tx_complete',
-               channel_id=rcvd('accept_channel2.channel_id')),
+            Msg('tx_complete',
+                channel_id=rcvd('accept_channel2.channel_id')),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           Msg('commitment_signed',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               signature=commitsig_to_send(),
-               htlc_signature='[]'),
+            Msg('commitment_signed',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                signature=commitsig_to_send(),
+                htlc_signature='[]'),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           ExpectMsg('commitment_signed',
-                     channel_id=rcvd('accept_channel2.channel_id'),
-                     signature=commitsig_to_recv()),
+            ExpectMsg('commitment_signed',
+                      channel_id=rcvd('accept_channel2.channel_id'),
+                      signature=commitsig_to_recv()),
 
-           ExpectMsg('tx_signatures',
-                     channel_id=rcvd('accept_channel2.channel_id'),
-                     txid=funding_txid(),
-                     witness_stack='[]'),
+            ExpectMsg('tx_signatures',
+                      channel_id=rcvd('accept_channel2.channel_id'),
+                      txid=funding_txid(),
+                      witness_stack='[]'),
 
-           Msg('tx_signatures',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               txid=funding_txid(),
-               witness_stack=witnesses()),
+            Msg('tx_signatures',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                txid=funding_txid(),
+                witness_stack=witnesses()),
 
-           # Mine the block!
-           Block(blockheight=103, number=3, txs=[funding_tx()]),
+            # Mine the block!
+            Block(blockheight=103, number=3, txs=[funding_tx()]),
 
-           Msg('funding_locked',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               next_per_commitment_point='027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d'),
+            Msg('funding_locked',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                next_per_commitment_point='027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d'),
 
-           ExpectMsg('funding_locked',
-                     channel_id=rcvd('accept_channel2.channel_id'),
-                     next_per_commitment_point='032405cbd0f41225d5f203fe4adac8401321a9e05767c5f8af97d51d2e81fbb206'),
+            ExpectMsg('funding_locked',
+                      channel_id=rcvd('accept_channel2.channel_id'),
+                      next_per_commitment_point='032405cbd0f41225d5f203fe4adac8401321a9e05767c5f8af97d51d2e81fbb206'),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F')))
-        ]
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            ]
 
     runner.run(test)
 
@@ -246,14 +243,14 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
     # Since technically these can be sent in any order,
     # we must specify this as ok!
     expected_add_input = ExpectMsg('tx_add_input',
-        channel_id=rcvd('accept_channel2.channel_id'),
-        sequence=0xfffffffd,
-        script_sig='',
-        if_match=odd_serial)
+                                   channel_id=rcvd('accept_channel2.channel_id'),
+                                   sequence=0xfffffffd,
+                                   script_sig='',
+                                   if_match=odd_serial)
 
     expected_add_output = ExpectMsg('tx_add_output',
-        channel_id=rcvd('accept_channel2.channel_id'),
-        if_match=odd_serial)
+                                    channel_id=rcvd('accept_channel2.channel_id'),
+                                    if_match=odd_serial)
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='02'),
@@ -328,47 +325,46 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
                      script_sig=sent()),
 
             OneOf([expected_add_input,
-                  Msg('tx_add_output',
-                   channel_id=rcvd('accept_channel2.channel_id'),
-                   serial_id=0,
-                   sats=agreed_funding(Side.local),
-                   script=funding_lockscript(local_funding_privkey)),
-                 expected_add_output],
-                [expected_add_output,
-                 Msg('tx_add_output',
-                   channel_id=rcvd('accept_channel2.channel_id'),
-                   serial_id=2,
-                   sats=agreed_funding(Side.local),
-                   script=funding_lockscript(local_funding_privkey)),
-                 expected_add_input]),
+                   Msg('tx_add_output',
+                       channel_id=rcvd('accept_channel2.channel_id'),
+                       serial_id=0,
+                       sats=agreed_funding(Side.local),
+                       script=funding_lockscript(local_funding_privkey)),
+                   expected_add_output],
+                  [expected_add_output,
+                   Msg('tx_add_output',
+                       channel_id=rcvd('accept_channel2.channel_id'),
+                       serial_id=2,
+                       sats=agreed_funding(Side.local),
+                       script=funding_lockscript(local_funding_privkey)),
+                   expected_add_input]),
 
-           AddInput(funding=funding(),
-                    serial_id=rcvd('tx_add_input.serial_id', int),
-                    prevtx=rcvd('tx_add_input.prevtx'),
-                    prevtx_vout=rcvd('tx_add_input.prevtx_vout', int),
-                    script_sig=rcvd('tx_add_input.script_sig')),
+            AddInput(funding=funding(),
+                     serial_id=rcvd('tx_add_input.serial_id', int),
+                     prevtx=rcvd('tx_add_input.prevtx'),
+                     prevtx_vout=rcvd('tx_add_input.prevtx_vout', int),
+                     script_sig=rcvd('tx_add_input.script_sig')),
 
-           AddOutput(funding=funding(),
-                     serial_id=rcvd('tx_add_output.serial_id', int),
-                     sats=rcvd('tx_add_output.sats', int),
-                     script=rcvd('tx_add_output.script')),
+            AddOutput(funding=funding(),
+                      serial_id=rcvd('tx_add_output.serial_id', int),
+                      sats=rcvd('tx_add_output.sats', int),
+                      script=rcvd('tx_add_output.script')),
 
-           AddOutput(funding=funding(),
-                     serial_id=sent('tx_add_output.serial_id', int),
-                     sats=sent('tx_add_output.sats', int),
-                     script=sent('tx_add_output.script')),
+            AddOutput(funding=funding(),
+                      serial_id=sent('tx_add_output.serial_id', int),
+                      sats=sent('tx_add_output.sats', int),
+                      script=sent('tx_add_output.script')),
 
-           FinalizeFunding(funding=funding()),
+            FinalizeFunding(funding=funding()),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           Msg('tx_complete',
-               channel_id=rcvd('accept_channel2.channel_id')),
+            Msg('tx_complete',
+                channel_id=rcvd('accept_channel2.channel_id')),
 
-           ExpectMsg('tx_complete',
-                     channel_id=rcvd('accept_channel2.channel_id')),
-
+            ExpectMsg('tx_complete',
+                      channel_id=rcvd('accept_channel2.channel_id')),
 
             Commit(funding=funding(),
                    opener=Side.local,
@@ -383,47 +379,47 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
                    local_features=sent('init.features'),
                    remote_features=rcvd('init.features')),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           Msg('commitment_signed',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               signature=commitsig_to_send(),
-               htlc_signature='[]'),
+            Msg('commitment_signed',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                signature=commitsig_to_send(),
+                htlc_signature='[]'),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F'))),
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
 
-           ExpectMsg('commitment_signed',
-                     channel_id=rcvd('accept_channel2.channel_id'),
-                     signature=commitsig_to_recv()),
+            ExpectMsg('commitment_signed',
+                      channel_id=rcvd('accept_channel2.channel_id'),
+                      signature=commitsig_to_recv()),
 
-           ExpectMsg('tx_signatures',
-                     channel_id=rcvd('accept_channel2.channel_id'),
-                     txid=funding_txid()),
+            ExpectMsg('tx_signatures',
+                      channel_id=rcvd('accept_channel2.channel_id'),
+                      txid=funding_txid()),
 
-           Msg('tx_signatures',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               txid=funding_txid(),
-               witness_stack=witnesses()),
+            Msg('tx_signatures',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                txid=funding_txid(),
+                witness_stack=witnesses()),
 
-           AddWitnesses(funding=funding(),
-                        witness_stack=rcvd('witness_stack')),
+            AddWitnesses(funding=funding(),
+                         witness_stack=rcvd('witness_stack')),
 
-           # Mine the block!
-           Block(blockheight=103, number=3, txs=[funding_tx()]),
+            # Mine the block!
+            Block(blockheight=103, number=3, txs=[funding_tx()]),
 
-           Msg('funding_locked',
-               channel_id=rcvd('accept_channel2.channel_id'),
-               next_per_commitment_point=local_keyset.per_commit_point(1)),
+            Msg('funding_locked',
+                channel_id=rcvd('accept_channel2.channel_id'),
+                next_per_commitment_point=local_keyset.per_commit_point(1)),
 
-           ExpectMsg('funding_locked',
-                     channel_id=rcvd('accept_channel2.channel_id'),
-                     next_per_commitment_point=remote_per_commitment_point(1)),
+            ExpectMsg('funding_locked',
+                      channel_id=rcvd('accept_channel2.channel_id'),
+                      next_per_commitment_point=remote_per_commitment_point(1)),
 
-           # Ignore unknown odd messages
-           TryAll([], RawMsg(bytes.fromhex('270F')))
-        ]
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            ]
 
     runner.run(test)
 

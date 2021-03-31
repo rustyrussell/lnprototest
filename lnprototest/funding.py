@@ -15,6 +15,7 @@ from bitcoin.wallet import P2WPKHBitcoinAddress
 
 ResolvableFunding = Union['Funding', Callable[['Runner', 'Event', str], 'Funding']]
 
+
 def txid_raw(tx: str) -> str:
     """Helper to get the txid of a tx: note this is in wire protocol order, not bitcoin order!"""
     return CTransaction.deserialize(bytes.fromhex(tx)).GetTxid().hex()
@@ -48,7 +49,6 @@ class Funding(object):
         if not self.tx:
             return ''
         return self.tx.serialize().hex()
-
 
     @staticmethod
     def sort_by_keys(key_one: coincurve.PublicKey, key_two: coincurve.PublicKey,
@@ -135,7 +135,7 @@ class Funding(object):
                             'prev_outscript': prev_vout.scriptPubKey.hex(),
                             'redeemscript': script_sig,
                             'privkey': privkey,
-                           })
+                            })
 
     def add_output(self,
                    serial_id: int,
@@ -165,7 +165,6 @@ class Funding(object):
         wits = []
         for idx, _in in enumerate(self.inputs):
             privkey = _in['privkey']
-            serial_id = _in['serial_id']
 
             if privkey:
                 inkey = privkey_expand(privkey)
@@ -199,7 +198,7 @@ class Funding(object):
 
         # Sort outputs by serial number
         outs = [x['output'] for x in
-               sorted(self.outputs, key=lambda k: k['serial_id'])]
+                sorted(self.outputs, key=lambda k: k['serial_id'])]
 
         self.tx = CMutableTransaction(ins, outs, nVersion=2, nLockTime=self.locktime)
         self.txid = self.tx.GetTxid().hex()
@@ -211,7 +210,6 @@ class Funding(object):
                 self.output_index = i
 
         return self.tx.serialize().hex()
-
 
     @staticmethod
     def from_utxo(txid_in: str,
@@ -674,7 +672,7 @@ class AddOutput(Event):
         funding = self.resolve_arg('funding', runner, self.funding)
         funding.add_output(**self.resolve_args(runner,
                                                {'serial_id': self.serial_id,
-                                                'sats' : self.sats,
+                                                'sats': self.sats,
                                                 'script': self.script}))
         return True
 
@@ -695,7 +693,7 @@ class FinalizeFunding(Event):
 class AddWitnesses(Event):
     def __init__(self,
                  funding: ResolvableFunding,
-                 witness_stack: Any): # FIXME what's the type here?
+                 witness_stack: Any):  # FIXME what's the type here?
         self.funding = funding
         self.witness_stack = witness_stack
 
