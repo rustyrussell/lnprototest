@@ -216,7 +216,6 @@ class Commitment(object):
         else:
             return sha256(local_key.format() + remote_key.format()).digest().hex()
 
-
     @staticmethod
     def obscured_commit_num(opener_payment_basepoint: coincurve.PublicKey,
                             non_opener_payment_basepoint: coincurve.PublicKey,
