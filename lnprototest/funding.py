@@ -182,11 +182,7 @@ class Funding(object):
                 wits.append(CTxInWitness(CScriptWitness([sig, inkey_pub.format()])))
                 continue
 
-            # Every input from the witness stack will be the accepter's
-            # which is always an odd serial
-            assert(serial_id % 2 == 1)
             elems = witness_stack.pop(0)['witness_element']
-
             stack = []
             for elem in elems:
                 stack.append(bytes.fromhex(elem['witness']))
