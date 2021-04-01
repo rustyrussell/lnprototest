@@ -406,19 +406,26 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
             AddWitnesses(funding=funding(),
                          witness_stack=rcvd('witness_stack')),
 
-            # Mine the block!
-            Block(blockheight=103, number=3, txs=[funding_tx()]),
-
-            Msg('funding_locked',
-                channel_id=rcvd('accept_channel2.channel_id'),
-                next_per_commitment_point=local_keyset.per_commit_point(1)),
-
-            ExpectMsg('funding_locked',
-                      channel_id=rcvd('accept_channel2.channel_id'),
-                      next_per_commitment_point=remote_per_commitment_point(1)),
-
-            # Ignore unknown odd messages
-            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            TryAll([# Attempt a shutdown
+                    Msg('shutdown',
+                        channel_id=rcvd('accept_channel2.channel_id'),
+                        scriptpubkey='001473daa75958d5b2ddca87a6c279bb7cb307167037'),
+                    # Ignore unknown odd messages
+                    TryAll([], RawMsg(bytes.fromhex('270F'))),
+                    ExpectMsg('shutdown',
+                              channel_id=rcvd('accept_channel2.channel_id'))
+                    ],
+                    [# Mine the block + lock-in
+                     Block(blockheight=103, number=3, txs=[funding_tx()]),
+                     Msg('funding_locked',
+                         channel_id=rcvd('accept_channel2.channel_id'),
+                         next_per_commitment_point=local_keyset.per_commit_point(1)),
+                     ExpectMsg('funding_locked',
+                               channel_id=rcvd('accept_channel2.channel_id'),
+                               next_per_commitment_point=remote_per_commitment_point(1)),
+                     # Ignore unknown odd messages
+                     TryAll([], RawMsg(bytes.fromhex('270F')))
+                     ]),
             ]
 
     runner.run(test)
@@ -584,15 +591,23 @@ def test_open_opener_channel(runner: Runner, with_proposal: Any) -> None:
             AddWitnesses(funding=funding(),
                          witness_stack=rcvd('witness_stack')),
 
-            # Mine the block!
-            Block(blockheight=103, number=3, txs=[funding_tx()]),
-
-            ExpectMsg('funding_locked',
-                      channel_id=sent('accept_channel2.channel_id'),
-                      next_per_commitment_point=remote_per_commitment_point(1)),
-
-            # Ignore unknown odd messages
-            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            TryAll(
+                   [Msg('shutdown',
+                        channel_id=sent('accept_channel2.channel_id'),
+                        scriptpubkey='001473daa75958d5b2ddca87a6c279bb7cb307167037'),
+                    # Ignore unknown odd messages
+                    TryAll([], RawMsg(bytes.fromhex('270F'))),
+                    ExpectMsg('shutdown',
+                              channel_id=sent('accept_channel2.channel_id'))
+                    ],
+                    [# Mine the block!
+                     Block(blockheight=103, number=3, txs=[funding_tx()]),
+                     ExpectMsg('funding_locked',
+                               channel_id=sent('accept_channel2.channel_id'),
+                               next_per_commitment_point=remote_per_commitment_point(1)),
+                     # Ignore unknown odd messages
+                     TryAll([], RawMsg(bytes.fromhex('270F'))),
+                     ]),
             ]
 
     runner.run(test)
