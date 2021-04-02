@@ -44,7 +44,7 @@ def channel_id_tmp(local_keyset: KeySet, opener: Side) -> Callable[[Runner, Even
     return _channel_id_tmp
 
 
-def test_open_accepter_channel(runner: Runner, with_proposal: Any) -> None:
+def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
 
     local_funding_privkey = '20'
@@ -277,7 +277,7 @@ def change_amount(opener: Side, change_for_opener: bool, script: str, input_amt:
     return _change_amount
 
 
-def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
+def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
 
     local_funding_privkey = '20'
@@ -472,7 +472,7 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
     runner.run(test)
 
 
-def test_open_opener_channel(runner: Runner, with_proposal: Any) -> None:
+def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
 
     local_funding_privkey = '20'
