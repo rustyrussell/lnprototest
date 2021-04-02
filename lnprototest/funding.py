@@ -586,12 +586,8 @@ class CreateFunding(Event):
 
 
 class CreateDualFunding(Event):
-    """Event to create a 'dual-funded' funding tx. Stashes 'Funding' and 'FundingTx'."""
+    """Event to create a 'dual-funded' funding tx. Stashes 'Funding'"""
     def __init__(self,
-                 local_in_txid: str,
-                 local_in_outnum: int,
-                 local_in_sats: int,
-                 spending_privkey: str,
                  fee: int,
                  funding_sats: ResolvableInt,
                  locktime: ResolvableInt,
@@ -604,7 +600,6 @@ class CreateDualFunding(Event):
 
         self.funding_sats = funding_sats
         self.locktime = locktime
-        self.spending_privkey = spending_privkey
         self.local_node_privkey = local_node_privkey
         self.local_funding_privkey = local_funding_privkey
         self.remote_node_privkey = remote_node_privkey

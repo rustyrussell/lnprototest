@@ -349,7 +349,7 @@ def test_open_dual_accepter_channel(runner: Runner, with_proposal: Any) -> None:
                       first_per_commitment_point=remote_per_commitment_point(0)),
 
             # Create and stash Funding object and FundingTx
-            CreateDualFunding(*utxo(input_index),
+            CreateDualFunding(fee=200,
                               funding_sats=agreed_funding(Side.local),
                               locktime=sent('open_channel2.locktime', int),
                               local_node_privkey='02',
@@ -529,7 +529,7 @@ def test_open_opener_channel(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             # Create and stash Funding object and FundingTx
-            CreateDualFunding(*utxo(input_index),
+            CreateDualFunding(fee=200,
                               funding_sats=agreed_funding(Side.remote),
                               locktime=rcvd('open_channel2.locktime', int),
                               local_node_privkey='02',
