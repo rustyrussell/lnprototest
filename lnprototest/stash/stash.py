@@ -189,7 +189,7 @@ def witnesses() -> Callable[[Runner, Event, str], str]:
     """Get the witnesses for the stashed funding tx"""
     def _witnesses(runner: Runner, event: Event, field: str) -> str:
         funding = runner.get_stash(event, 'Funding')
-        return funding.witnesses()
+        return funding.our_witnesses()
     return _witnesses
 
 

@@ -145,28 +145,30 @@ class Funding(object):
         self.outputs.append({'output': txout,
                              'serial_id': serial_id})
 
-    def witnesses(self) -> str:
+    def our_witnesses(self) -> str:
         """ Extract expected witness data for our node """
         witnesses = []
+        # these were sorted in `build_tx`
+        for _in in self.inputs:
+            if not _in['privkey']:
+                continue
 
-        # Extract the witnesses from the tx
-        for wit in self.tx.wit.vtxinwit:
+            wit = _in['sig']
+            print('witness is ... ', wit)
             elems = []
             for e in wit.scriptWitness.stack:
                 elems.append('{{witness={0}}}'.format(e.hex()))
-
             witnesses.append('{{witness_element=[{0}]}}'.format(','.join(elems)))
-
         val = '[{}]'.format(','.join(witnesses))
+        print('witnesses are', val)
         return val
 
-    def add_witnesses(self,
-                      witness_stack) -> str:
-        wits = []
+    def sign_our_inputs(self) -> None:
         for idx, _in in enumerate(self.inputs):
             privkey = _in['privkey']
 
-            if privkey:
+            if privkey and 'sig' not in _in:
+                print('signing our input for tx', self.tx.serialize().hex())
                 inkey = privkey_expand(privkey)
                 inkey_pub = coincurve.PublicKey.from_secret(inkey.secret)
 
@@ -178,7 +180,13 @@ class Funding(object):
                                                sigversion=script.SIGVERSION_WITNESS_V0)
                 sig = inkey.sign(sighash, hasher=None) + bytes([script.SIGHASH_ALL])
 
-                wits.append(CTxInWitness(CScriptWitness([sig, inkey_pub.format()])))
+                _in['sig'] = CTxInWitness(CScriptWitness([sig, inkey_pub.format()]))
+
+    def add_witnesses(self, witness_stack) -> str:
+        wits = []
+        for idx, _in in enumerate(self.inputs):
+            if 'sig' in _in:
+                wits.append(_in['sig'])
                 continue
 
             elems = witness_stack.pop(0)['witness_element']
@@ -192,20 +200,18 @@ class Funding(object):
         return self.tx.serialize().hex()
 
     def build_tx(self) -> str:
-        # Sort inputs by serial number
-        ins = [x['input'] for x in
-               sorted(self.inputs, key=lambda k: k['serial_id'])]
+        # Sort inputs/outputs by serial number
+        self.inputs = sorted(self.inputs, key=lambda k: k['serial_id'])
+        self.outputs = sorted(self.outputs, key=lambda k: k['serial_id'])
 
-        # Sort outputs by serial number
-        outs = [x['output'] for x in
-                sorted(self.outputs, key=lambda k: k['serial_id'])]
-
-        self.tx = CMutableTransaction(ins, outs, nVersion=2, nLockTime=self.locktime)
+        self.tx = CMutableTransaction([i['input'] for i in self.inputs],
+                                      [o['output'] for o in self.outputs],
+                                      nVersion=2, nLockTime=self.locktime)
         self.txid = self.tx.GetTxid().hex()
 
         # Set the output index for the funding output
         locking_script = self.locking_script()
-        for i, out in enumerate(outs):
+        for i, out in enumerate([o['output'] for o in self.outputs]):
             if out.scriptPubKey == locking_script:
                 self.output_index = i
 
@@ -685,6 +691,7 @@ class FinalizeFunding(Event):
         funding = self.resolve_arg('funding', runner, self.funding)
 
         tx = funding.build_tx()
+        funding.sign_our_inputs()
         # FIXME: sanity checks?
         print('finalized funding', tx)
         return True
