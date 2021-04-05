@@ -143,6 +143,23 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
             ExpectMsg('tx_complete',
                       channel_id=rcvd('accept_channel2.channel_id')),
 
+            # Try removing and re-adding an input
+            TryAll([],
+                   [Msg('tx_remove_input',
+                        channel_id=rcvd('accept_channel2.channel_id'),
+                        serial_id=2),
+                    ExpectMsg('tx_complete',
+                              channel_id=rcvd('accept_channel2.channel_id')),
+                    Msg('tx_add_input',
+                        channel_id=rcvd('accept_channel2.channel_id'),
+                        serial_id=2,
+                        prevtx=tx_spendable,
+                        prevtx_vout=tx_out_for_index(input_index),
+                        sequence=0xfffffffd,
+                        script_sig=''),
+                    ExpectMsg('tx_complete',
+                              channel_id=rcvd('accept_channel2.channel_id'))]),
+
             Msg('tx_add_output',
                 channel_id=rcvd('accept_channel2.channel_id'),
                 serial_id=2,
@@ -159,6 +176,21 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
 
             ExpectMsg('tx_complete',
                       channel_id=rcvd('accept_channel2.channel_id')),
+
+            # Try removing and re-adding an output
+            TryAll([],
+                   [Msg('tx_remove_output',
+                        channel_id=rcvd('accept_channel2.channel_id'),
+                        serial_id=2),
+                    ExpectMsg('tx_complete',
+                              channel_id=rcvd('accept_channel2.channel_id')),
+                    Msg('tx_add_output',
+                        channel_id=rcvd('accept_channel2.channel_id'),
+                        serial_id=2,
+                        sats=funding_amount_for_utxo(input_index),
+                        script=locking_script()),
+                    ExpectMsg('tx_complete',
+                              channel_id=rcvd('accept_channel2.channel_id'))]),
 
             Msg('tx_complete',
                 channel_id=rcvd('accept_channel2.channel_id')),
