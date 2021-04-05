@@ -44,6 +44,73 @@ def channel_id_tmp(local_keyset: KeySet, opener: Side) -> Callable[[Runner, Even
     return _channel_id_tmp
 
 
+def odd_serial(event: Event, msg: Msg) -> None:
+    if msg.fields['serial_id'] % 2 == 0:
+        raise EventError(event, "Received **even** serial {}, expected odd".format(msg.fields['serial_id']))
+
+
+def even_serial(event: Event, msg: Msg) -> None:
+    if msg.fields['serial_id'] % 2 == 1:
+        raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
+
+
+def agreed_funding(opener: Side) -> Callable[[Runner, Event, str], int]:
+    def _agreed_funding(runner: Runner, event: Event, field: str) -> int:
+        open_funding = get_member(event,
+                                  runner,
+                                  'Msg' if opener == Side.local else 'ExpectMsg',
+                                  'open_channel2.funding_satoshis')
+        accept_funding = get_member(event,
+                                    runner,
+                                    'ExpectMsg' if opener == Side.local else 'Msg',
+                                    'accept_channel2.funding_satoshis')
+
+        return open_funding + accept_funding
+    return _agreed_funding
+
+
+def funding_lockscript(our_privkey: str) -> Callable[[Runner, Event, str], str]:
+    def _funding_lockscript(runner: Runner, event: Event, field: str) -> str:
+        remote_pubkey = Funding.funding_pubkey_key(privkey_expand(runner.get_node_bitcoinkey()))
+        local_pubkey = Funding.funding_pubkey_key(privkey_expand(our_privkey))
+        return Funding.locking_script_keys(remote_pubkey, local_pubkey).hex()
+    return _funding_lockscript
+
+
+def change_amount(opener: Side, change_for_opener: bool, script: str, input_amt: int) -> Callable[[Runner, Event, str], int]:
+    # We assume that change is input minus fees
+    def _change_amount(runner: Runner, event: Event, field: str) -> int:
+        if change_for_opener:
+            opening_amt = get_member(event, runner,
+                                     'Msg' if opener == Side.local else 'ExpectMsg',
+                                     'open_channel2.funding_satoshis')
+        else:
+            opening_amt = get_member(event, runner,
+                                     'ExpectMsg' if opener == Side.local else 'Msg',
+                                     'accept_channel2.funding_satoshis')
+
+        feerate = get_member(event, runner,
+                             'Msg' if opener == Side.local else 'ExpectMsg',
+                             'open_channel2.funding_feerate_perkw')
+
+        # assume 1 input, with no redeemscript
+        weight = (32 + 4 + 4 + 1 + 0) * 4
+        # assume 1 output, with script of varlen of 1
+        weight += (8 + max(len(script), 110) // 2 + 1) * 4
+        # opener has to pay for 'common' fields plus the funding output
+        if change_for_opener:
+            weight += 1 + 1 + (4 + 1 + 1 + 4) * 4
+            # p2wsh script is 34 bytes, all told
+            weight += (8 + 34 + 1) * 4
+
+        fee = (weight * feerate) // 1000
+        change = input_amt - opening_amt - fee
+
+        return change
+
+    return _change_amount
+
+
 def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
 
@@ -238,75 +305,6 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
             ]
 
     runner.run(test)
-
-
-def odd_serial(event: Event, msg: Msg) -> None:
-    if msg.fields['serial_id'] % 2 == 0:
-        raise EventError(event, "Received **even** serial {}, expected odd".format(msg.fields['serial_id']))
-
-
-def even_serial(event: Event, msg: Msg) -> None:
-    if msg.fields['serial_id'] % 2 == 1:
-        raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
-
-
-def agreed_funding(opener: Side) -> Callable[[Runner, Event, str], int]:
-    def _agreed_funding(runner: Runner, event: Event, field: str) -> int:
-        open_funding = get_member(event,
-                                  runner,
-                                  'Msg' if opener == Side.local else 'ExpectMsg',
-                                  'open_channel2.funding_satoshis')
-        accept_funding = get_member(event,
-                                    runner,
-                                    'ExpectMsg' if opener == Side.local else 'Msg',
-                                    'accept_channel2.funding_satoshis')
-
-        return open_funding + accept_funding
-    return _agreed_funding
-
-
-def funding_lockscript(our_privkey: str) -> Callable[[Runner, Event, str], str]:
-    def _funding_lockscript(runner: Runner, event: Event, field: str) -> str:
-        remote_pubkey = Funding.funding_pubkey_key(privkey_expand(runner.get_node_bitcoinkey()))
-        local_pubkey = Funding.funding_pubkey_key(privkey_expand(our_privkey))
-        return Funding.locking_script_keys(remote_pubkey, local_pubkey).hex()
-    return _funding_lockscript
-
-
-def change_amount(opener: Side, change_for_opener: bool, script: str, input_amt: int) -> Callable[[Runner, Event, str], int]:
-    # We assume that change is input minus fees
-    def _change_amount(runner: Runner, event: Event, field: str) -> int:
-        if change_for_opener:
-            opening_amt = get_member(event, runner,
-                                     'Msg' if opener == Side.local else 'ExpectMsg',
-                                     'open_channel2.funding_satoshis')
-        else:
-            opening_amt = get_member(event, runner,
-                                     'ExpectMsg' if opener == Side.local else 'Msg',
-                                     'accept_channel2.funding_satoshis')
-
-        feerate = get_member(event, runner,
-                             'Msg' if opener == Side.local else 'ExpectMsg',
-                             'open_channel2.funding_feerate_perkw')
-
-        # assume 1 input, with no redeemscript
-        weight = (32 + 4 + 4 + 1 + 0) * 4
-        # assume 1 output, with script of varlen of 1
-        weight += (8 + max(len(script), 110) // 2 + 1) * 4
-        # opener has to pay for 'common' fields plus the funding output
-        if change_for_opener:
-            weight += 1 + 1 + (4 + 1 + 1 + 4) * 4
-            # p2wsh script is 34 bytes, all told
-            weight += (8 + 34 + 1) * 4
-
-        fee = (weight * feerate) // 1000
-        change = input_amt - opening_amt - fee
-
-        print('weight, feerate, fee', weight, feerate, fee)
-        print('input_amt, opening_amt, change', input_amt, opening_amt, change)
-        return change
-
-    return _change_amount
 
 
 def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
@@ -773,25 +771,12 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                 prevtx_vout=tx_out_for_index(ii),
                 script_sig=''),
 
-            AddInput(funding=funding(),
-                     privkey=privkey_for_index(ii),
-                     serial_id=sent('tx_add_input.serial_id', int),
-                     prevtx=sent(),
-                     prevtx_vout=sent('tx_add_input.prevtx_vout', int),
-                     script_sig=sent()),
-
             # The funding output
             ExpectMsg('tx_add_output',
                       channel_id=sent('accept_channel2.channel_id'),
                       sats=agreed_funding(Side.remote),
                       if_match=even_serial),
 
-            # FIXME: They may send us the funding output second,
-            # if there's also a change output
-            AddOutput(funding=funding(),
-                      serial_id=rcvd('tx_add_output.serial_id', int),
-                      sats=rcvd('tx_add_output.sats', int),
-                      script=rcvd('tx_add_output.script')),
 
             Msg('tx_add_output',
                 channel_id=sent('accept_channel2.channel_id'),
@@ -800,6 +785,20 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                                    '001473daa75958d5b2ddca87a6c279bb7cb307167037',
                                    funding_amount_for_utxo(ii)),
                 script='001473daa75958d5b2ddca87a6c279bb7cb307167037'),
+
+            AddInput(funding=funding(),
+                     privkey=privkey_for_index(ii),
+                     serial_id=sent('tx_add_input.serial_id', int),
+                     prevtx=sent(),
+                     prevtx_vout=sent('tx_add_input.prevtx_vout', int),
+                     script_sig=sent()),
+
+            # FIXME: They may send us the funding output second,
+            # if there's also a change output
+            AddOutput(funding=funding(),
+                      serial_id=rcvd('tx_add_output.serial_id', int),
+                      sats=rcvd('tx_add_output.sats', int),
+                      script=rcvd('tx_add_output.script')),
 
             AddOutput(funding=funding(),
                       serial_id=sent('tx_add_output.serial_id', int),
