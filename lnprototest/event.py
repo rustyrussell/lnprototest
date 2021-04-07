@@ -5,6 +5,7 @@ import collections
 import os.path
 import io
 import struct
+import time
 from .errors import SpecFileError, EventError
 from .namespace import event_namespace
 from .utils import check_hex
@@ -153,6 +154,17 @@ class Msg(PerConnEvent):
         message.write(binmsg)
         runner.recv(self, self.find_conn(runner), binmsg.getvalue())
         msg_to_stash(runner, self, message)
+        return True
+
+
+class Wait(PerConnEvent):
+    """Put a delay in a test, to allow time for things to happen
+       on the node's end """
+    def __init__(self, delay_s: int):
+        self.delay_s = delay_s
+
+    def action(self, runner: 'Runner') -> bool:
+        time.sleep(self.delay_s)
         return True
 
 
