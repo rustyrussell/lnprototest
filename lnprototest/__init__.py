@@ -88,4 +88,5 @@ __all__ = [
     "privkey_expand",
     "Wait",
     "dual_fund_csv",
+    "Wait",
 ]
