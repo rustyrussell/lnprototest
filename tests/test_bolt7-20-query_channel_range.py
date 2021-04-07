@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, CheckEq, EventError, event_namespace
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, CheckEq, EventError, event_namespace, Wait
 from helpers import tx_spendable, utxo
 from typing import Optional
 import unittest
@@ -212,6 +212,11 @@ def test_query_channel_range(runner: Runner) -> None:
             RawMsg(funding2.channel_announcement('109x1x0', '')),
             RawMsg(update_109x1x0_LOCAL),
             RawMsg(update_109x1x0_REMOTE),
+
+            # c-lightning gets a race condition if we dont wait for
+            # these updates to be added to the gossip store
+            # FIXME: convert to explicit signal
+            Wait(0.7),
 
             # New peer connects, with gossip_query option.
             Connect(connprivkey='05'),
