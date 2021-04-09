@@ -75,10 +75,12 @@ class DummyRunner(Runner):
     def fundchannel(self,
                     event: Event,
                     conn: Conn,
-                    amount: int) -> None:
+                    amount: int,
+                    feerate: int = 253,
+                    expect_fail: bool = False) -> None:
         if self.config.getoption('verbose'):
-            print("[FUNDCHANNEL TO {} for {}]"
-                  .format(conn, amount))
+            print("[FUNDCHANNEL TO {} for {} at feerate {}. Expect fail? {}]"
+                  .format(conn, amount, feerate, expect_fail))
 
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
         if self.config.getoption('verbose'):
