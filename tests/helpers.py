@@ -112,6 +112,12 @@ def privkey_for_index(index: int = 0) -> str:
     return privkey
 
 
+def utxo_amount(index: int = 0) -> int:
+    """How much is this utxo worth """
+    _, _, amt, _, _ = utxo(index)
+    return amt
+
+
 def funding_amount_for_utxo(index: int = 0) -> int:
     """How much can we fund a channel for using utxo #index?"""
     _, _, amt, _, fee = utxo(index)
