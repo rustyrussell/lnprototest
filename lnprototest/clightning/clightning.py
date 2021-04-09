@@ -118,7 +118,7 @@ class Runner(lnprototest.Runner):
         if fut:
             try:
                 fut.result(0)
-            except SpecFileError:
+            except (SpecFileError, futures.TimeoutError):
                 pass
 
     def shutdown(self) -> None:
