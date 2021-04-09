@@ -318,7 +318,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
                           delayed_payment_base_secret='23',
                           shachain_seed='00' * 32)
 
-    # Index 5 is special, only the test runner can spend it
+    # Index 5+6 are special, only the test runner can spend them
     input_index = 5
 
     # Since technically these can be sent in any order,

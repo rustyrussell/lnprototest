@@ -172,15 +172,24 @@ class Funding(object):
                 inkey = privkey_expand(privkey)
                 inkey_pub = coincurve.PublicKey.from_secret(inkey.secret)
 
-                address = P2WPKHBitcoinAddress.from_scriptPubKey(CScript([script.OP_0, Hash160(inkey_pub.format())]))
+                # Really horrid hack to produce a signature for the
+                # multisig utxo in tests/helpers.py
+                if privkey == '38204720bc4f9647fd58c6d0a4bd3a6dd2be16d8e4273c4d1bdd5774e8c51eaf':
+                    redeemscript = bytes.fromhex('51210253cdf835e328346a4f19de099cf3d42d4a7041e073cd4057a1c4fd7cdbb1228f2103ae903722f21f85e651b8f9b18fc854084fb90eeb76452bdcfd0cb43a16a382a221036c264d68a9727afdc75949f7d7fa71910ae9ae8001a1fbffa6f7ce000976597c21036429fa8a4ef0b2b1d5cb553e34eeb90a32ab19fae1f0024f332ab4f74283a7282103d4232f19ea85051e7b76bf5f01d03e17eea8751463dee36d71413a739de1a92755ae')
+                else:
+                    address = P2WPKHBitcoinAddress.from_scriptPubKey(CScript([script.OP_0, Hash160(inkey_pub.format())]))
+                    redeemscript = address.to_redeemScript()
 
-                sighash = script.SignatureHash(address.to_redeemScript(),
+                sighash = script.SignatureHash(redeemscript,
                                                self.tx, idx, script.SIGHASH_ALL,
                                                amount=_in['sats'],
                                                sigversion=script.SIGVERSION_WITNESS_V0)
                 sig = inkey.sign(sighash, hasher=None) + bytes([script.SIGHASH_ALL])
 
-                _in['sig'] = CTxInWitness(CScriptWitness([sig, inkey_pub.format()]))
+                if privkey == '38204720bc4f9647fd58c6d0a4bd3a6dd2be16d8e4273c4d1bdd5774e8c51eaf':
+                    _in['sig'] = CTxInWitness(CScriptWitness([bytes([]), sig, redeemscript]))
+                else:
+                    _in['sig'] = CTxInWitness(CScriptWitness([sig, inkey_pub.format()]))
 
     def add_witnesses(self, witness_stack) -> str:
         wits = []
