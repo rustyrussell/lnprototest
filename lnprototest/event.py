@@ -353,15 +353,19 @@ class ExpectTx(Event):
 
 class FundChannel(PerConnEvent):
     """Tell the runner to fund a channel with this peer."""
-    def __init__(self, amount: ResolvableInt, connprivkey: Optional[str] = None):
+    def __init__(self, amount: ResolvableInt, feerate: ResolvableInt, expect_fail: ResolvableBool, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
         self.amount = amount
+        self.feerate = feerate
+        self.expect_fail = expect_fail
 
     def action(self, runner: 'Runner') -> bool:
         super().action(runner)
         runner.fundchannel(self,
                            self.find_conn(runner),
-                           self.resolve_arg('amount', runner, self.amount))
+                           self.resolve_arg('amount', runner, self.amount),
+                           self.resolve_arg('feerate', runner, self.feerate),
+                           self.resolve_arg('expect_fail', runner, self.expect_fail))
         return True
 
 

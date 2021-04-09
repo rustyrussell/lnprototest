@@ -139,7 +139,9 @@ require that minimum_depth be 3, just for test simplicity.
     def fundchannel(self,
                     event: Event,
                     conn: Conn,
-                    amount: int) -> None:
+                    amount: int,
+                    feerate: int = 0,
+                    expect_fail: bool = False) -> None:
         raise NotImplementedError()
 
     def addhtlc(self, event: Event, conn: Conn,

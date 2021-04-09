@@ -193,11 +193,15 @@ class Runner(lnprototest.Runner):
     def fundchannel(self,
                     event: Event,
                     conn: Conn,
-                    amount: int) -> None:
+                    amount: int,
+                    feerate: int = 253,
+                    expect_fail: bool = False) -> None:
         """
-            event   - the event which cause this, for error logging
-            conn    - which conn (i.e. peer) to fund.
-            amount  - amount to fund the channel with
+            event       - the event which cause this, for error logging
+            conn        - which conn (i.e. peer) to fund.
+            amount      - amount to fund the channel with
+            feerate     - feerate, in kiloweights
+            expect_fail - true if this command is expected to error/fail
         """
         # First, check that another fundchannel isn't already running
         if self.fundchannel_future:
@@ -205,20 +209,20 @@ class Runner(lnprototest.Runner):
                 raise RuntimeError("{} called fundchannel while another fundchannel is still in process".format(event))
             self.fundchannel_future = None
 
-        def _fundchannel(runner: Runner, conn: Conn, amount: int) -> str:
+        def _fundchannel(runner: Runner, conn: Conn, amount: int, feerate: int, expect_fail: bool = False) -> str:
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
-            return runner.rpc.fundchannel(peer_id, amount, feerate='253perkw')
+            return runner.rpc.fundchannel(peer_id, amount, feerate='{}perkw'.format(feerate))
 
         def _done(fut: Any) -> None:
             exception = fut.exception(0)
-            if exception and not self.is_fundchannel_kill:
+            if exception and not self.is_fundchannel_kill and not expect_fail:
                 raise(exception)
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)
 
-        fut = self.executor.submit(_fundchannel, self, conn, amount)
+        fut = self.executor.submit(_fundchannel, self, conn, amount, feerate, expect_fail)
         fut.add_done_callback(_done)
         self.fundchannel_future = fut
         self.cleanup_callbacks.append(self.kill_fundchannel)
