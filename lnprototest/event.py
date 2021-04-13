@@ -11,7 +11,9 @@ from .namespace import namespace
 from .utils import check_hex
 from .signature import Sig
 from .bitfield import has_bit
+from bitcoin.core import CTransaction
 from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING, overload
+
 if TYPE_CHECKING:
     # Otherwise a circular dependency
     from .runner import Runner, Conn
@@ -366,6 +368,39 @@ class FundChannel(PerConnEvent):
                            self.resolve_arg('amount', runner, self.amount),
                            self.resolve_arg('feerate', runner, self.feerate),
                            self.resolve_arg('expect_fail', runner, self.expect_fail))
+        return True
+
+
+class InitRbf(PerConnEvent):
+    def __init__(self,
+                 channel_id: ResolvableStr,
+                 amount: ResolvableInt,
+                 utxo_tx: ResolvableStr,
+                 utxo_outnum: ResolvableInt,
+                 last_feerate: ResolvableInt,
+                 connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
+        self.channel_id = channel_id
+        self.amount = amount
+        self.last_feerate = last_feerate
+        self.utxo_tx = utxo_tx
+        self.utxo_outnum = utxo_outnum
+
+    def action(self, runner: 'Runner') -> bool:
+        super().action(runner)
+        last_feerate = self.resolve_arg('last_feerate', runner, self.last_feerate),
+        utxo_tx = self.resolve_arg('utxo_tx', runner, self.utxo_tx)
+        txid = CTransaction.deserialize(bytes.fromhex(utxo_tx)).GetTxid()[::-1].hex()
+
+        feerate = last_feerate[0] + last_feerate[0] // 4
+        runner.init_rbf(self,
+                        self.find_conn(runner),
+                        self.resolve_arg('channel_id', runner, self.channel_id),
+                        self.resolve_arg('amount', runner, self.amount),
+                        txid,
+                        self.resolve_arg('utxo_outnum', runner, self.utxo_outnum),
+                        feerate)
+
         return True
 
 

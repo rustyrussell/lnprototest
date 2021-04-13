@@ -144,6 +144,16 @@ require that minimum_depth be 3, just for test simplicity.
                     expect_fail: bool = False) -> None:
         raise NotImplementedError()
 
+    def init_rbf(self,
+                 event: Event,
+                 conn: Conn,
+                 channel_id: str,
+                 amount: int,
+                 utxo_txid: str,
+                 utxo_outnum: int,
+                 feerate: int) -> None:
+        raise NotImplementedError()
+
     def addhtlc(self, event: Event, conn: Conn,
                 amount: int, preimage: str) -> None:
         raise NotImplementedError()

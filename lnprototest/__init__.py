@@ -11,7 +11,7 @@ reference material, and the tutorial should get you started.
 
 """
 from .errors import EventError, SpecFileError
-from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, MustNotMsg, Block, ExpectTx, FundChannel, Invoice, AddHtlc, CheckEq, ExpectError, ResolvableInt, ResolvableStr, Resolvable, ResolvableBool, msat, negotiated, DualFundAccept, Wait
+from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, MustNotMsg, Block, ExpectTx, FundChannel, InitRbf, Invoice, AddHtlc, CheckEq, ExpectError, ResolvableInt, ResolvableStr, Resolvable, ResolvableBool, msat, negotiated, DualFundAccept, Wait
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn, remote_revocation_basepoint, remote_payment_basepoint, remote_delayed_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_per_commitment_secret, remote_funding_pubkey, remote_funding_privkey
 from .dummyrunner import DummyRunner
@@ -46,6 +46,7 @@ __all__ = [
     "Block",
     "ExpectTx",
     "FundChannel",
+    "InitRbf",
     "Invoice",
     "AddHtlc",
     "ExpectError",
