@@ -774,6 +774,13 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                 prevtx_vout=tx_out_for_index(ii),
                 script_sig=''),
 
+            AddInput(funding=funding(),
+                     privkey=privkey_for_index(ii),
+                     serial_id=sent('tx_add_input.serial_id', int),
+                     prevtx=sent(),
+                     prevtx_vout=sent('tx_add_input.prevtx_vout', int),
+                     script_sig=sent()),
+
             # The funding output
             ExpectMsg('tx_add_output',
                       channel_id=sent('accept_channel2.channel_id'),
@@ -788,13 +795,6 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                                    '001473daa75958d5b2ddca87a6c279bb7cb307167037',
                                    funding_amount_for_utxo(ii)),
                 script='001473daa75958d5b2ddca87a6c279bb7cb307167037'),
-
-            AddInput(funding=funding(),
-                     privkey=privkey_for_index(ii),
-                     serial_id=sent('tx_add_input.serial_id', int),
-                     prevtx=sent(),
-                     prevtx_vout=sent('tx_add_input.prevtx_vout', int),
-                     script_sig=sent()),
 
             # FIXME: They may send us the funding output second,
             # if there's also a change output
