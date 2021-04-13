@@ -206,7 +206,7 @@ class Runner(lnprototest.Runner):
         # First, check that another fundchannel isn't already running
         if self.fundchannel_future:
             if not self.fundchannel_future.done():
-                raise RuntimeError("{} called fundchannel while another fundchannel is still in process".format(event))
+                raise RuntimeError("{} called fundchannel while another channel funding (fundchannel/init_rbf) is still in process".format(event))
             self.fundchannel_future = None
 
         def _fundchannel(runner: Runner, conn: Conn, amount: int, feerate: int, expect_fail: bool = False) -> str:
@@ -226,6 +226,41 @@ class Runner(lnprototest.Runner):
         fut.add_done_callback(_done)
         self.fundchannel_future = fut
         self.cleanup_callbacks.append(self.kill_fundchannel)
+
+    def init_rbf(self, event: Event, conn: Conn,
+                 channel_id: str, amount: int,
+                 utxo_txid: str, utxo_outnum: int, feerate: int) -> None:
+
+        if self.fundchannel_future:
+            self.kill_fundchannel()
+
+        startweight = 42 + 172  # base weight, funding output
+        # Build a utxo using the given utxo
+        utxos = ['{}:{}'.format(utxo_txid, utxo_outnum)]
+        initial_psbt = self.rpc.utxopsbt(amount,
+                                         '{}perkw'.format(feerate),
+                                         startweight, utxos,
+                                         reservedok=True,
+                                         min_witness_weight=110,
+                                         locktime=0, excess_as_change=True)['psbt']
+
+        def _run_rbf(runner: Runner, conn: Conn):
+            bump = runner.rpc.openchannel_bump(channel_id, amount, initial_psbt)
+            update = runner.rpc.openchannel_update(channel_id, bump['psbt'])
+
+            # Run until they're done sending us updates
+            while not update['commitments_secured']:
+                update = runner.rpc.openchannel_update(channel_id, update['psbt'])
+            signed_psbt = runner.rpc.signpsbt(update['psbt'])['signed_psbt']
+            return runner.rpc.openchannel_signed(channel_id, signed_psbt)
+
+        def _done(fut: Any) -> None:
+            exception = fut.exception(0)
+            if exception:
+                raise(exception)
+
+        fut = self.executor.submit(_run_rbf, self, conn)
+        fut.add_done_callback(_done)
 
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
         self.rpc.invoice(msatoshi=amount,

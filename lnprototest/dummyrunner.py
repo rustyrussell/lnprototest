@@ -82,6 +82,13 @@ class DummyRunner(Runner):
             print("[FUNDCHANNEL TO {} for {} at feerate {}. Expect fail? {}]"
                   .format(conn, amount, feerate, expect_fail))
 
+    def init_rbf(self, event: Event, conn: Conn,
+                 channel_id: str, amount: int,
+                 utxo_txid: str, utxo_outnum: int, feerate: int) -> None:
+        if self.config.getoption('verbose'):
+            print("[INIT_RBF TO {} (channel {}) for {} at feerate {}. {}:{}"
+                  .format(conn, channel_id, amount, feerate, utxo_txid, utxo_outnum))
+
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
         if self.config.getoption('verbose'):
             print("[INVOICE for {} with PREIMAGE {}]"
