@@ -54,16 +54,19 @@ def even_serial(event: Event, msg: Msg) -> None:
         raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
 
 
-def agreed_funding(opener: Side) -> Callable[[Runner, Event, str], int]:
+def agreed_funding(opener: Side, is_rbf: bool = False) -> Callable[[Runner, Event, str], int]:
     def _agreed_funding(runner: Runner, event: Event, field: str) -> int:
+        opener_msg = 'init_rbf' if is_rbf else 'open_channel2'
+        accept_msg = 'ack_rbf' if is_rbf else 'accept_channel2'
+
         open_funding = get_member(event,
                                   runner,
                                   'Msg' if opener == Side.local else 'ExpectMsg',
-                                  'open_channel2.funding_satoshis')
+                                  opener_msg + '.funding_satoshis')
         accept_funding = get_member(event,
                                     runner,
                                     'ExpectMsg' if opener == Side.local else 'Msg',
-                                    'accept_channel2.funding_satoshis')
+                                    accept_msg + '.funding_satoshis')
 
         return open_funding + accept_funding
     return _agreed_funding
