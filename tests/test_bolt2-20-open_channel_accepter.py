@@ -629,7 +629,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
                    remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
                    local_dust_limit=550,
                    remote_dust_limit=546,
-                   feerate=rcvd('open_channel2.funding_feerate_perkw', int),
+                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
                    local_features=sent('init.features'),
                    remote_features=rcvd('init.features')),
 
@@ -837,7 +837,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                    remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
                    local_dust_limit=550,
                    remote_dust_limit=546,
-                   feerate=rcvd('open_channel2.funding_feerate_perkw', int),
+                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
                    local_features=sent('init.features'),
                    remote_features=rcvd('init.features')),
 
@@ -1236,7 +1236,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                    remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
                    local_dust_limit=550,
                    remote_dust_limit=546,
-                   feerate=rcvd('open_channel2.funding_feerate_perkw', int),
+                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
                    local_features=sent('init.features'),
                    remote_features=rcvd('init.features')),
 
