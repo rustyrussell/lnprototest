@@ -223,6 +223,7 @@ class Funding(object):
         for i, out in enumerate([o['output'] for o in self.outputs]):
             if out.scriptPubKey == locking_script:
                 self.output_index = i
+                self.amount = out.nValue
 
         return self.tx.serialize().hex()
 
