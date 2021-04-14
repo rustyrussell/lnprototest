@@ -2,7 +2,7 @@
 # Variations on open_channel
 
 from hashlib import sha256
-from lnprototest import TryAll, Connect, Block, FundChannel, InitRbf, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, ExpectError
+from lnprototest import TryAll, Connect, Block, FundChannel, InitRbf, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, ExpectError, Disconnect
 from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index, utxo_amount
 from typing import Any, Callable
@@ -1972,6 +1972,330 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
                        next_per_commitment_point=remote_per_commitment_point(1)),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
+             ]
+
+    runner.run(test)
+
+
+def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
+    """ The runner forgets we're in the middle of an RBF.
+        Peer should reconnect and allow another RBF to be initialized.
+    """
+    with_proposal(dual_fund_csv)
+
+    local_funding_privkey = '20'
+    local_keyset = KeySet(revocation_base_secret='21',
+                          payment_base_secret='22',
+                          htlc_base_secret='24',
+                          delayed_payment_base_secret='23',
+                          shachain_seed='00' * 32)
+    input_index = 0
+    funding_amount = funding_amount_for_utxo(input_index)
+    rbf_funding_amount = funding_amount - 1000
+
+    test = [Block(blockheight=102, txs=[tx_spendable]),
+            Connect(connprivkey='02'),
+            ExpectMsg('init'),
+
+            # BOLT-f53ca2301232db780843e894f55d95d512f297f9 #9:
+            # | 28/29 | `option_dual_fund`             | Use v2 of channel open, enables dual funding              | IN9      | `option_anchor_outputs`, `option_static_remotekey`   | [BOLT #2](02-peer-protocol.md)        |
+
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
+
+            # Accepter side: we initiate a new channel.
+            Msg('open_channel2',
+                channel_id=channel_id_tmp(local_keyset, Side.local),
+                chain_hash=regtest_hash,
+                funding_satoshis=funding_amount,
+                dust_limit_satoshis=546,
+                max_htlc_value_in_flight_msat=4294967295,
+                htlc_minimum_msat=0,
+                funding_feerate_perkw=253,
+                commitment_feerate_perkw=253,
+                # We use 5, because c-lightning runner uses 6, so this is different.
+                to_self_delay=5,
+                max_accepted_htlcs=483,
+                locktime=0,
+                funding_pubkey=pubkey_of(local_funding_privkey),
+                revocation_basepoint=local_keyset.revocation_basepoint(),
+                payment_basepoint=local_keyset.payment_basepoint(),
+                delayed_payment_basepoint=local_keyset.delayed_payment_basepoint(),
+                htlc_basepoint=local_keyset.htlc_basepoint(),
+                first_per_commitment_point=local_keyset.per_commit_point(0),
+                channel_flags=1),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+            ExpectMsg('accept_channel2',
+                      channel_id=channel_id_v2(local_keyset),
+                      funding_satoshis=0,
+                      funding_pubkey=remote_funding_pubkey(),
+                      revocation_basepoint=remote_revocation_basepoint(),
+                      payment_basepoint=remote_payment_basepoint(),
+                      delayed_payment_basepoint=remote_delayed_payment_basepoint(),
+                      htlc_basepoint=remote_htlc_basepoint(),
+                      first_per_commitment_point=remote_per_commitment_point(0)),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            ]
+
+    test += accepter_tx_creation(input_index, False, funding_amount,
+                                 local_funding_privkey, local_keyset,
+                                 runner)
+
+    test += [TryAll([], RawMsg(bytes.fromhex('270F'))),
+             # Let's RBF
+             Msg('init_rbf',
+                 channel_id=rcvd('accept_channel2.channel_id'),
+                 funding_satoshis=rbf_funding_amount,
+                 fee_step=1,
+                 locktime=0),
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+             ExpectMsg('ack_rbf',
+                       channel_id=rcvd('accept_channel2.channel_id'),
+                       funding_satoshis=0),
+             ]
+
+    # Now we forget that we're in the middle of an RBF
+    test += [Msg('tx_add_input',
+                 channel_id=rcvd('accept_channel2.channel_id'),
+                 serial_id=2,
+                 prevtx=tx_spendable,
+                 prevtx_vout=tx_out_for_index(input_index),
+                 sequence=0xfffffffd,
+                 script_sig=''),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+             ExpectMsg('tx_complete',
+                       channel_id=rcvd('accept_channel2.channel_id')),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+             # Let's RBF, again?
+             Msg('init_rbf',
+                 channel_id=rcvd('accept_channel2.channel_id'),
+                 funding_satoshis=rbf_funding_amount,
+                 fee_step=1,
+                 locktime=0),
+
+             ExpectError(),
+
+             # We reconnect!
+             Disconnect(),
+             Connect(connprivkey='02'),
+             ExpectMsg('init'),
+             Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
+
+             # We expect them to send channel reestablish
+             ExpectMsg('channel_reestablish',
+                       channel_id=rcvd('accept_channel2.channel_id'),
+                       next_commitment_number=1,
+                       next_revocation_number=0,
+                       your_last_per_commitment_secret='00' * 32,
+                       ignore=ExpectMsg.ignore_all_gossip),
+
+             Msg('channel_reestablish',
+                 channel_id=rcvd('accept_channel2.channel_id'),
+                 next_commitment_number=1,
+                 next_revocation_number=0,
+                 your_last_per_commitment_secret='00' * 32,
+                 my_current_per_commitment_point=local_keyset.per_commit_point(0)),
+
+             ExpectMsg('tx_signatures',
+                       channel_id=rcvd('accept_channel2.channel_id'),
+                       txid=funding_txid()),
+
+             # Let's RBF, again?
+             Msg('init_rbf',
+                 channel_id=rcvd('accept_channel2.channel_id'),
+                 funding_satoshis=rbf_funding_amount,
+                 fee_step=1,
+                 locktime=0),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+             ExpectMsg('ack_rbf',
+                       channel_id=rcvd('accept_channel2.channel_id'),
+                       funding_satoshis=0),
+             ]
+
+    runner.run(test)
+
+
+def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
+    with_proposal(dual_fund_csv)
+
+    local_funding_privkey = '20'
+    local_keyset = KeySet(revocation_base_secret='21',
+                          payment_base_secret='22',
+                          htlc_base_secret='24',
+                          delayed_payment_base_secret='23',
+                          shachain_seed='00' * 32)
+
+    # Index 5 is special, only the test runner can spend it
+    input_index = 5
+    txid_in, tx_index_in, sats_in, spending_privkey, fee = utxo(input_index)
+
+    funding_amount = funding_amount_for_utxo(input_index)
+    rbf_funding_amount = funding_amount - 1000
+
+    test = [Block(blockheight=102, txs=[tx_spendable]),
+            Connect(connprivkey='02'),
+            ExpectMsg('init'),
+
+            # BOLT-f53ca2301232db780843e894f55d95d512f297f9 #9:
+            # | 28/29 | `option_dual_fund`             | Use v2 of channel open, enables dual funding              | IN9      | `option_anchor_outputs`, `option_static_remotekey`   | [BOLT #2](02-peer-protocol.md)        |
+
+            Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
+
+            FundChannel(amount=funding_amount, feerate=2000),
+
+            ExpectMsg('open_channel2',
+                      channel_id=channel_id_tmp(local_keyset, Side.remote),
+                      chain_hash=regtest_hash,
+                      funding_satoshis=funding_amount,
+                      dust_limit_satoshis=546,
+                      htlc_minimum_msat=0,
+                      to_self_delay=6,
+                      funding_pubkey=remote_funding_pubkey(),
+                      revocation_basepoint=remote_revocation_basepoint(),
+                      payment_basepoint=remote_payment_basepoint(),
+                      delayed_payment_basepoint=remote_delayed_payment_basepoint(),
+                      htlc_basepoint=remote_htlc_basepoint(),
+                      first_per_commitment_point=remote_per_commitment_point(0),
+                      channel_flags='01'),
+
+            Msg('accept_channel2',
+                channel_id=channel_id_v2(local_keyset),
+                dust_limit_satoshis=550,
+                funding_satoshis=400000,
+                max_htlc_value_in_flight_msat=4294967295,
+                htlc_minimum_msat=0,
+                minimum_depth=3,
+                max_accepted_htlcs=483,
+                # We use 5, to be different from c-lightning runner who uses 6
+                to_self_delay=5,
+                funding_pubkey=pubkey_of(local_funding_privkey),
+                revocation_basepoint=local_keyset.revocation_basepoint(),
+                payment_basepoint=local_keyset.payment_basepoint(),
+                delayed_payment_basepoint=local_keyset.delayed_payment_basepoint(),
+                htlc_basepoint=local_keyset.htlc_basepoint(),
+                first_per_commitment_point=local_keyset.per_commit_point(0)),
+
+            # Ignore unknown odd messages
+            TryAll([], RawMsg(bytes.fromhex('270F'))),
+            ]
+
+    test += opener_tx_creation(input_index, False, funding_amount,
+                               local_funding_privkey, local_keyset,
+                               runner)
+
+    test += [TryAll([], RawMsg(bytes.fromhex('270F'))),
+             # Let's RBF
+             InitRbf(channel_id=sent('accept_channel2.channel_id'),
+                     amount=rbf_funding_amount,
+                     utxo_tx=rcvd('tx_add_input.prevtx'),
+                     utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
+                     last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
+
+             ExpectMsg('init_rbf',
+                       channel_id=sent('accept_channel2.channel_id'),
+                       funding_satoshis=rbf_funding_amount,
+                       fee_step=1),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+             Msg('ack_rbf',
+                 channel_id=sent('accept_channel2.channel_id'),
+                 funding_satoshis=400000),
+             ]
+
+    # Now we forget that we're in the middle of an RBF
+    test += [ExpectMsg('tx_add_input',
+                       channel_id=sent('accept_channel2.channel_id'),
+                       if_match=even_serial,
+                       prevtx=tx_spendable,
+                       sequence=0xfffffffd,
+                       script_sig=''),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+             Msg('tx_add_input',
+                 channel_id=sent('accept_channel2.channel_id'),
+                 serial_id=1,
+                 sequence=0xfffffffd,
+                 prevtx=tx_spendable,
+                 prevtx_vout=tx_out_for_index(input_index),
+                 script_sig=''),
+
+             # The funding output
+             ExpectMsg('tx_add_output',
+                       channel_id=sent('accept_channel2.channel_id'),
+                       if_match=even_serial),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+             # Let's RBF, again?
+             Msg('init_rbf',
+                 channel_id=sent('accept_channel2.channel_id'),
+                 funding_satoshis=rbf_funding_amount,
+                 fee_step=1,
+                 locktime=100),
+
+             ExpectError(),
+
+             # We reconnect!
+             Disconnect(),
+             Connect(connprivkey='02'),
+             ExpectMsg('init'),
+             Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
+
+             # We expect them to send channel reestablish
+             ExpectMsg('channel_reestablish',
+                       channel_id=sent('accept_channel2.channel_id'),
+                       next_commitment_number=1,
+                       next_revocation_number=0,
+                       your_last_per_commitment_secret='00' * 32,
+                       ignore=ExpectMsg.ignore_all_gossip),
+
+             Msg('channel_reestablish',
+                 channel_id=sent('accept_channel2.channel_id'),
+                 next_commitment_number=1,
+                 next_revocation_number=0,
+                 your_last_per_commitment_secret='00' * 32,
+                 my_current_per_commitment_point=local_keyset.per_commit_point(0)),
+
+             ExpectMsg('tx_signatures',
+                       channel_id=sent('accept_channel2.channel_id'),
+                       txid=funding_txid()),
+
+             # Let's RBF again?
+             InitRbf(channel_id=sent('accept_channel2.channel_id'),
+                     amount=rbf_funding_amount,
+                     utxo_tx=rcvd('tx_add_input.prevtx'),
+                     utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
+                     last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
+
+             ExpectMsg('init_rbf',
+                       channel_id=sent('accept_channel2.channel_id'),
+                       funding_satoshis=rbf_funding_amount,
+                       fee_step=1),
+
+             # Ignore unknown odd messages
+             TryAll([], RawMsg(bytes.fromhex('270F'))),
+
+             Msg('ack_rbf',
+                 channel_id=sent('accept_channel2.channel_id'),
+                 funding_satoshis=400000),
              ]
 
     runner.run(test)
