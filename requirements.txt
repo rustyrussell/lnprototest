@@ -1,4 +1,4 @@
-pyln.proto==0.8.4
+pyln.proto>=0.8.4
 pyln.bolt1==1.0.1.137
 pyln.bolt2==1.0.1.137
 pyln.bolt4==1.0.1.137
