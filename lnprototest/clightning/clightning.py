@@ -58,6 +58,11 @@ class Bitcoind(object):
         while b'Done loading' not in self.proc.stdout.readline():
             pass
 
+        if 'lnprototest' not in self.rpc.listwallets():
+            self.rpc.createwallet("lnprototest")  # Automatically loads
+        else:
+            self.rpc.loadwallet("lnprototest")
+
         # Block #1.
         self.rpc.submitblock('0000002006226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f69d715fba6edece89b2dee71f4fed52c7accd6cd62c328536e6233b72b14c5f5c8ba465fffff7f200100000001020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0200f2052a0100000016001419c70534cd905244cff88a594f0c16d4bbedc5e60000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000')
         self.rpc.generatetoaddress(100, self.rpc.getnewaddress())
