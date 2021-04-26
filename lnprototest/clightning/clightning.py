@@ -269,8 +269,9 @@ class Runner(lnprototest.Runner):
                          preimage=preimage)
 
     def accept_add_fund(self, event: Event) -> None:
-        plugin = os.path.join(LIGHTNING_SRC, 'tests', 'plugins', 'df_accepter.py')
-        self.rpc.plugin_start(plugin)
+        self.rpc.call('funderupdate', {'policy': 'match',
+                                       'policy_mod': 100,
+                                       'fuzz_percent': 0})
 
     def addhtlc(self, event: Event, conn: Conn,
                 amount: int, preimage: str) -> None:
