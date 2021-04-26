@@ -372,7 +372,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('accept_channel2',
-                      channel_id=channel_id_v2(local_keyset),
+                      channel_id=sent('open_channel2.channel_id'),
                       funding_satoshis=funding_amount_for_utxo(input_index),
                       funding_pubkey=remote_funding_pubkey(),
                       revocation_basepoint=remote_revocation_basepoint(),
@@ -542,7 +542,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
                       channel_flags='01'),
 
             Msg('accept_channel2',
-                channel_id=channel_id_v2(local_keyset),
+                channel_id=rcvd('open_channel2.channel_id'),
                 dust_limit_satoshis=550,
                 funding_satoshis=0,
                 max_htlc_value_in_flight_msat=4294967295,
@@ -571,7 +571,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
                               remote_funding_privkey=remote_funding_privkey()),
 
             ExpectMsg('tx_add_input',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       if_match=even_serial,
                       prevtx=tx_spendable,
                       sequence=0xfffffffd,
@@ -587,11 +587,11 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             Msg('tx_complete',
-                channel_id=sent('accept_channel2.channel_id')),
+                channel_id=channel_id_v2(local_keyset)),
 
             # The funding output
             ExpectMsg('tx_add_output',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       sats=agreed_funding(Side.remote),
                       if_match=even_serial),
             # FIXME: They may send us the funding output second,
@@ -601,22 +601,23 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
                       sats=rcvd('tx_add_output.sats', int),
                       script=rcvd('tx_add_output.script')),
 
-            Msg('tx_complete', channel_id=sent('accept_channel2.channel_id')),
+            Msg('tx_complete',
+                channel_id=channel_id_v2(local_keyset)),
 
             # Their change if they have one!
             OneOf([ExpectMsg('tx_add_output',
                              if_match=even_serial,
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    Msg('tx_complete',
-                       channel_id=sent('accept_channel2.channel_id')),
+                       channel_id=channel_id_v2(local_keyset)),
                    ExpectMsg('tx_complete',
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    AddOutput(funding=funding(),
                              serial_id=rcvd('tx_add_output.serial_id', int),
                              sats=rcvd('tx_add_output.sats', int),
                              script=rcvd('tx_add_output.script'))],
                   [ExpectMsg('tx_complete',
-                             channel_id=sent('accept_channel2.channel_id'))]),
+                             channel_id=channel_id_v2(local_keyset))]),
 
             FinalizeFunding(funding=funding()),
 
@@ -637,19 +638,19 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('commitment_signed',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       signature=commitsig_to_recv()),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             Msg('commitment_signed',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 signature=commitsig_to_send(),
                 htlc_signature='[]'),
 
             Msg('tx_signatures',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 txid=funding_txid(),
                 witness_stack=witnesses()),
 
@@ -657,23 +658,23 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('tx_signatures',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       txid=funding_txid()),
 
             AddWitnesses(funding=funding(),
                          witness_stack=rcvd('witness_stack')),
 
             TryAll([Msg('shutdown',
-                        channel_id=sent('accept_channel2.channel_id'),
+                        channel_id=channel_id_v2(local_keyset),
                         scriptpubkey='001473daa75958d5b2ddca87a6c279bb7cb307167037'),
                     # Ignore unknown odd messages
                     TryAll([], RawMsg(bytes.fromhex('270F'))),
                     ExpectMsg('shutdown',
-                              channel_id=sent('accept_channel2.channel_id'))
+                              channel_id=channel_id_v2(local_keyset))
                     ],
                    [Block(blockheight=103, number=3, txs=[funding_tx()]),
                     ExpectMsg('funding_locked',
-                              channel_id=sent('accept_channel2.channel_id'),
+                              channel_id=channel_id_v2(local_keyset),
                               next_per_commitment_point=remote_per_commitment_point(1)),
                     # Ignore unknown odd messages
                     TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -722,7 +723,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                       channel_flags='01'),
 
             Msg('accept_channel2',
-                channel_id=channel_id_v2(local_keyset),
+                channel_id=rcvd('open_channel2.channel_id'),
                 dust_limit_satoshis=550,
                 funding_satoshis=400000,
                 max_htlc_value_in_flight_msat=4294967295,
@@ -751,7 +752,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                               remote_funding_privkey=remote_funding_privkey()),
 
             ExpectMsg('tx_add_input',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       if_match=even_serial,
                       prevtx=tx_spendable,
                       sequence=0xfffffffd,
@@ -767,7 +768,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             Msg('tx_add_input',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 serial_id=1,
                 sequence=0xfffffffd,
                 prevtx=tx_spendable,
@@ -783,13 +784,13 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
 
             # The funding output
             ExpectMsg('tx_add_output',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       sats=agreed_funding(Side.remote),
                       if_match=even_serial),
 
 
             Msg('tx_add_output',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 serial_id=101,
                 sats=change_amount(Side.remote, False,
                                    '001473daa75958d5b2ddca87a6c279bb7cb307167037',
@@ -811,19 +812,19 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
             # Their change if they have one!
             OneOf([ExpectMsg('tx_add_output',
                              if_match=even_serial,
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    Msg('tx_complete',
-                       channel_id=sent('accept_channel2.channel_id')),
+                       channel_id=channel_id_v2(local_keyset)),
                    ExpectMsg('tx_complete',
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    AddOutput(funding=funding(),
                              serial_id=rcvd('tx_add_output.serial_id', int),
                              sats=rcvd('tx_add_output.sats', int),
                              script=rcvd('tx_add_output.script'))],
                   [ExpectMsg('tx_complete',
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    Msg('tx_complete',
-                       channel_id=sent('accept_channel2.channel_id')),
+                       channel_id=channel_id_v2(local_keyset)),
                    ]),
 
             FinalizeFunding(funding=funding()),
@@ -845,19 +846,19 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('commitment_signed',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       signature=commitsig_to_recv()),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             Msg('commitment_signed',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 signature=commitsig_to_send(),
                 htlc_signature='[]'),
 
             Msg('tx_signatures',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 txid=funding_txid(),
                 witness_stack=witnesses()),
 
@@ -865,7 +866,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('tx_signatures',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       txid=funding_txid()),
 
             AddWitnesses(funding=funding(),
@@ -874,7 +875,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
             # Mine the block!
             Block(blockheight=103, number=3, txs=[funding_tx()]),
             ExpectMsg('funding_locked',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       next_per_commitment_point=remote_per_commitment_point(1)),
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -945,7 +946,7 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('accept_channel2',
-                      channel_id=channel_id_v2(local_keyset),
+                      channel_id=sent('channel_id'),
                       funding_satoshis=funding_amount,
                       funding_pubkey=remote_funding_pubkey(),
                       revocation_basepoint=remote_revocation_basepoint(),
@@ -1123,7 +1124,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                       channel_flags='01'),
 
             Msg('accept_channel2',
-                channel_id=channel_id_v2(local_keyset),
+                channel_id=rcvd('channel_id'),
                 dust_limit_satoshis=550,
                 funding_satoshis=400000,
                 max_htlc_value_in_flight_msat=4294967295,
@@ -1149,7 +1150,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                               remote_funding_privkey=remote_funding_privkey()),
 
             ExpectMsg('tx_add_input',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       if_match=even_serial,
                       prevtx=tx_spendable,
                       sequence=0xfffffffd,
@@ -1162,7 +1163,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                      script_sig=rcvd('tx_add_input.script_sig')),
 
             Msg('tx_add_input',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 serial_id=1,
                 sequence=0xfffffffd,
                 prevtx=tx_spendable,
@@ -1178,12 +1179,12 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
 
             # The funding output
             ExpectMsg('tx_add_output',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       sats=agreed_funding(Side.remote),
                       if_match=even_serial),
 
             Msg('tx_add_output',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 serial_id=101,
                 # This function is the key to this test.
                 # `change_amount` uses a P2WPKH weight to calculate
@@ -1210,19 +1211,19 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
             # Their change if they have one!
             OneOf([ExpectMsg('tx_add_output',
                              if_match=even_serial,
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    Msg('tx_complete',
-                       channel_id=sent('accept_channel2.channel_id')),
+                       channel_id=channel_id_v2(local_keyset)),
                    ExpectMsg('tx_complete',
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    AddOutput(funding=funding(),
                              serial_id=rcvd('tx_add_output.serial_id', int),
                              sats=rcvd('tx_add_output.sats', int),
                              script=rcvd('tx_add_output.script'))],
                   [ExpectMsg('tx_complete',
-                             channel_id=sent('accept_channel2.channel_id')),
+                             channel_id=channel_id_v2(local_keyset)),
                    Msg('tx_complete',
-                       channel_id=sent('accept_channel2.channel_id')),
+                       channel_id=channel_id_v2(local_keyset)),
                    ]),
 
             FinalizeFunding(funding=funding()),
@@ -1241,16 +1242,16 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                    remote_features=rcvd('init.features')),
 
             ExpectMsg('commitment_signed',
-                      channel_id=sent('accept_channel2.channel_id'),
+                      channel_id=channel_id_v2(local_keyset),
                       signature=commitsig_to_recv()),
 
             Msg('commitment_signed',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 signature=commitsig_to_send(),
                 htlc_signature='[]'),
 
             Msg('tx_signatures',
-                channel_id=sent('accept_channel2.channel_id'),
+                channel_id=channel_id_v2(local_keyset),
                 txid=funding_txid(),
                 witness_stack=witnesses()),
 
@@ -1418,7 +1419,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                           remote_funding_privkey=remote_funding_privkey()),
 
         ExpectMsg('tx_add_input',
-                  channel_id=sent('accept_channel2.channel_id'),
+                  channel_id=channel_id_v2(local_keyset),
                   if_match=even_serial,
                   prevtx=tx_spendable,
                   sequence=0xfffffffd,
@@ -1434,7 +1435,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
         TryAll([], RawMsg(bytes.fromhex('270F'))),
 
         Msg('tx_add_input',
-            channel_id=sent('accept_channel2.channel_id'),
+            channel_id=channel_id_v2(local_keyset),
             serial_id=1,
             sequence=0xfffffffd,
             prevtx=tx_spendable,
@@ -1450,7 +1451,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
 
         # The funding output
         ExpectMsg('tx_add_output',
-                  channel_id=sent('accept_channel2.channel_id'),
+                  channel_id=channel_id_v2(local_keyset),
                   if_match=even_serial),
 
         # FIXME: They may send us the funding output second,
@@ -1462,7 +1463,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
 
 
         Msg('tx_add_output',
-            channel_id=sent('accept_channel2.channel_id'),
+            channel_id=channel_id_v2(local_keyset),
             serial_id=101,
             sats=change_amount(Side.remote, False,
                                '001473daa75958d5b2ddca87a6c279bb7cb307167037',
@@ -1477,19 +1478,19 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
         # Their change if they have one!
         OneOf([ExpectMsg('tx_add_output',
                          if_match=even_serial,
-                         channel_id=sent('accept_channel2.channel_id')),
+                         channel_id=channel_id_v2(local_keyset)),
                Msg('tx_complete',
-                   channel_id=sent('accept_channel2.channel_id')),
+                   channel_id=channel_id_v2(local_keyset)),
                ExpectMsg('tx_complete',
-                         channel_id=sent('accept_channel2.channel_id')),
+                         channel_id=channel_id_v2(local_keyset)),
                AddOutput(funding=funding(),
                          serial_id=rcvd('tx_add_output.serial_id', int),
                          sats=rcvd('tx_add_output.sats', int),
                          script=rcvd('tx_add_output.script'))],
               [ExpectMsg('tx_complete',
-                         channel_id=sent('accept_channel2.channel_id')),
+                         channel_id=channel_id_v2(local_keyset)),
                Msg('tx_complete',
-                   channel_id=sent('accept_channel2.channel_id')),
+                   channel_id=channel_id_v2(local_keyset)),
                ]),
 
         FinalizeFunding(funding=funding()),
@@ -1511,19 +1512,19 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
         TryAll([], RawMsg(bytes.fromhex('270F'))),
 
         ExpectMsg('commitment_signed',
-                  channel_id=sent('accept_channel2.channel_id'),
+                  channel_id=channel_id_v2(local_keyset),
                   signature=commitsig_to_recv()),
 
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex('270F'))),
 
         Msg('commitment_signed',
-            channel_id=sent('accept_channel2.channel_id'),
+            channel_id=channel_id_v2(local_keyset),
             signature=commitsig_to_send(),
             htlc_signature='[]'),
 
         Msg('tx_signatures',
-            channel_id=sent('accept_channel2.channel_id'),
+            channel_id=channel_id_v2(local_keyset),
             txid=funding_txid(),
             witness_stack=witnesses()),
 
@@ -1531,7 +1532,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
         TryAll([], RawMsg(bytes.fromhex('270F'))),
 
         ExpectMsg('tx_signatures',
-                  channel_id=sent('accept_channel2.channel_id'),
+                  channel_id=channel_id_v2(local_keyset),
                   txid=funding_txid()),
 
         AddWitnesses(funding=funding(),
@@ -1588,7 +1589,7 @@ def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('accept_channel2',
-                      channel_id=channel_id_v2(local_keyset),
+                      channel_id=sent('channel_id'),
                       funding_satoshis=0,
                       funding_pubkey=remote_funding_pubkey(),
                       revocation_basepoint=remote_revocation_basepoint(),
@@ -1670,7 +1671,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
                       channel_flags='01'),
 
             Msg('accept_channel2',
-                channel_id=channel_id_v2(local_keyset),
+                channel_id=rcvd('channel_id'),
                 dust_limit_satoshis=550,
                 funding_satoshis=400000,
                 max_htlc_value_in_flight_msat=4294967295,
@@ -1696,14 +1697,14 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
 
     test += [TryAll([], RawMsg(bytes.fromhex('270F'))),
              # Let's RBF
-             InitRbf(channel_id=sent('accept_channel2.channel_id'),
+             InitRbf(channel_id=channel_id_v2(local_keyset),
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
                      last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
 
              ExpectMsg('init_rbf',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
                        fee_step=1),
 
@@ -1711,7 +1712,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('ack_rbf',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=400000),
              ]
 
@@ -1721,7 +1722,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
 
     test += [Block(blockheight=103, number=3, txs=[funding_tx()]),
              ExpectMsg('funding_locked',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        next_per_commitment_point=remote_per_commitment_point(1)),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -1777,7 +1778,7 @@ def test_rbf_accepter_funding_locked(runner: Runner, with_proposal: Any) -> None
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('accept_channel2',
-                      channel_id=channel_id_v2(local_keyset),
+                      channel_id=sent('channel_id'),
                       funding_satoshis=0,
                       funding_pubkey=remote_funding_pubkey(),
                       revocation_basepoint=remote_revocation_basepoint(),
@@ -1889,7 +1890,7 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
                       channel_flags='01'),
 
             Msg('accept_channel2',
-                channel_id=channel_id_v2(local_keyset),
+                channel_id=rcvd('open_channel2.channel_id'),
                 dust_limit_satoshis=550,
                 funding_satoshis=400000,
                 max_htlc_value_in_flight_msat=4294967295,
@@ -1915,14 +1916,14 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
 
     test += [TryAll([], RawMsg(bytes.fromhex('270F'))),
              # Let's RBF
-             InitRbf(channel_id=sent('accept_channel2.channel_id'),
+             InitRbf(channel_id=channel_id_v2(local_keyset),
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
                      last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
 
              ExpectMsg('init_rbf',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
                        fee_step=1),
 
@@ -1930,12 +1931,12 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('ack_rbf',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=400000),
              ]
 
     test += [ExpectMsg('tx_add_input',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        if_match=even_serial,
                        prevtx=tx_spendable,
                        sequence=0xfffffffd,
@@ -1945,7 +1946,7 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('tx_add_input',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  serial_id=1,
                  sequence=0xfffffffd,
                  prevtx=tx_spendable,
@@ -1954,7 +1955,7 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
 
              # The funding output
              ExpectMsg('tx_add_output',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        if_match=even_serial),
 
              # Ignore unknown odd messages
@@ -1963,12 +1964,12 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
              Block(blockheight=103, number=3, txs=[funding_tx()]),
 
              Msg('funding_locked',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  next_per_commitment_point=local_keyset.per_commit_point(1)),
 
 
              ExpectMsg('funding_locked',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        next_per_commitment_point=remote_per_commitment_point(1)),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -2028,7 +2029,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('accept_channel2',
-                      channel_id=channel_id_v2(local_keyset),
+                      channel_id=sent('open_channel2.channel_id'),
                       funding_satoshis=0,
                       funding_pubkey=remote_funding_pubkey(),
                       revocation_basepoint=remote_revocation_basepoint(),
@@ -2172,7 +2173,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
                       channel_flags='01'),
 
             Msg('accept_channel2',
-                channel_id=channel_id_v2(local_keyset),
+                channel_id=rcvd('open_channel2.channel_id'),
                 dust_limit_satoshis=550,
                 funding_satoshis=400000,
                 max_htlc_value_in_flight_msat=4294967295,
@@ -2198,14 +2199,14 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
     test += [TryAll([], RawMsg(bytes.fromhex('270F'))),
              # Let's RBF
-             InitRbf(channel_id=sent('accept_channel2.channel_id'),
+             InitRbf(channel_id=channel_id_v2(local_keyset),
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
                      last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
 
              ExpectMsg('init_rbf',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
                        fee_step=1),
 
@@ -2213,13 +2214,13 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('ack_rbf',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=400000),
              ]
 
     # Now we forget that we're in the middle of an RBF
     test += [ExpectMsg('tx_add_input',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        if_match=even_serial,
                        prevtx=tx_spendable,
                        sequence=0xfffffffd,
@@ -2229,7 +2230,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('tx_add_input',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  serial_id=1,
                  sequence=0xfffffffd,
                  prevtx=tx_spendable,
@@ -2238,7 +2239,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
              # The funding output
              ExpectMsg('tx_add_output',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        if_match=even_serial),
 
              # Ignore unknown odd messages
@@ -2246,7 +2247,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
              # Let's RBF, again?
              Msg('init_rbf',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
                  fee_step=1,
                  locktime=100),
@@ -2261,32 +2262,32 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
              # We expect them to send channel reestablish
              ExpectMsg('channel_reestablish',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        next_commitment_number=1,
                        next_revocation_number=0,
                        your_last_per_commitment_secret='00' * 32,
                        ignore=ExpectMsg.ignore_all_gossip),
 
              Msg('channel_reestablish',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  next_commitment_number=1,
                  next_revocation_number=0,
                  your_last_per_commitment_secret='00' * 32,
                  my_current_per_commitment_point=local_keyset.per_commit_point(0)),
 
              ExpectMsg('tx_signatures',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        txid=funding_txid()),
 
              # Let's RBF again?
-             InitRbf(channel_id=sent('accept_channel2.channel_id'),
+             InitRbf(channel_id=channel_id_v2(local_keyset),
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
                      last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
 
              ExpectMsg('init_rbf',
-                       channel_id=sent('accept_channel2.channel_id'),
+                       channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
                        fee_step=1),
 
@@ -2294,7 +2295,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('ack_rbf',
-                 channel_id=sent('accept_channel2.channel_id'),
+                 channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=400000),
              ]
 
@@ -2352,7 +2353,7 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
             TryAll([], RawMsg(bytes.fromhex('270F'))),
 
             ExpectMsg('accept_channel2',
-                      channel_id=channel_id_v2(local_keyset),
+                      channel_id=sent('open_channel2.channel_id'),
                       funding_satoshis=0,
                       funding_pubkey=remote_funding_pubkey(),
                       revocation_basepoint=remote_revocation_basepoint(),
