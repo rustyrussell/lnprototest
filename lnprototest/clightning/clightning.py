@@ -8,7 +8,6 @@ import hashlib
 import pyln.client
 import pyln.proto.wire
 import os
-import logging
 import shutil
 import subprocess
 import tempfile
