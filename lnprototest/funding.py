@@ -202,6 +202,9 @@ class Funding(object):
                 wits.append(_in['sig'])
                 continue
 
+            if not len(witness_stack):
+                continue
+
             elems = witness_stack.pop(0)['witness_element']
             stack = []
             for elem in elems:
