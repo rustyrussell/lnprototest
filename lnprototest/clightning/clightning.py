@@ -339,3 +339,8 @@ class Runner(lnprototest.Runner):
         if optname in self.options:
             return self.options[optname]
         return None
+
+    def add_startup_flag(self, flag: str) -> None:
+        if self.config.getoption('verbose'):
+            print('[ADD STARTUP FLAG \'{}\']'.format(flag))
+        self.startup_flags.append("--{}".format(flag))

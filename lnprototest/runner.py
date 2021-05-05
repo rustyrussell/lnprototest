@@ -170,6 +170,9 @@ require that minimum_depth be 3, just for test simplicity.
     def has_option(self, optname: str) -> Optional[str]:
         raise NotImplementedError()
 
+    def add_startup_flag(self, flag: str) -> None:
+        raise NotImplementedError()
+
 
 def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote revocation basepoint"""

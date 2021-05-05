@@ -24,6 +24,11 @@ class DummyRunner(Runner):
                       delayed_payment_base_secret='13',
                       shachain_seed='FF' * 32)
 
+    def add_startup_flag(self, flag: str) -> None:
+        if self.config.getoption('verbose'):
+            print('[ADD STARTUP FLAG {}]'.format(flag))
+        return
+
     def get_node_privkey(self) -> str:
         return '01'
 
