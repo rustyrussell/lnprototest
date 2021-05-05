@@ -44,12 +44,18 @@ def channel_id_tmp(local_keyset: KeySet, opener: Side) -> Callable[[Runner, Even
     return _channel_id_tmp
 
 
-def odd_serial(event: Event, msg: Msg) -> None:
+def odd_serial(event: Event, msg: Msg, runner: 'Runner') -> None:
+    """
+        Test that a message's serial_id is odd.
+        Note that the dummy runner will fail this test, so we skip for them
+    """
     if msg.fields['serial_id'] % 2 == 0:
+        if runner._is_dummy():
+            return
         raise EventError(event, "Received **even** serial {}, expected odd".format(msg.fields['serial_id']))
 
 
-def even_serial(event: Event, msg: Msg) -> None:
+def even_serial(event: Event, msg: Msg, runner: 'Runner') -> None:
     if msg.fields['serial_id'] % 2 == 1:
         raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
 
