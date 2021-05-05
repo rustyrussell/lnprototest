@@ -121,6 +121,10 @@ class Funding(object):
                   script_sig: str,
                   sequence: int,
                   privkey: str = None) -> None:
+        # the dummy runner sends empty info, skip
+        if len(prevtx) == 0:
+            return
+
         # Find the txid of the transaction
         prev_tx = CTransaction.deserialize(bytes.fromhex(prevtx))
         txin = CTxIn(COutPoint(prev_tx.GetTxid(), prevtx_vout),
