@@ -87,6 +87,7 @@ Here's a short outline of the current expected methods for a Runner.
 - `get_node_privkey`: Private key of the node. Used to generate the node id and establish a communication channel with the node under test.
 - `get_node_bitcoinkey`: Private key of the node under test's funding pubkey
 - `has_option`: Returns `None` if node does not support provided option, otherwise 'even' or 'odd' (required or supported). Example input: `option_data_loss_protect` or `option_anchor_outputs`
+- `add_startup_flag`: Add flag to runner's startup.
 - `start`: Starts up / initializes the node under test.
 - `stop`: Stops the node under test and closes the connection.
 - `restart`: Restarts the node under tests, closes the existing connection, cleans up the existing test files, and restarts bitcoind. Note that it's useful to print a `RESTART` log when verbose logging is activated, e.g.

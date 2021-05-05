@@ -122,6 +122,7 @@ def change_amount(opener: Side, change_for_opener: bool, script: str, input_amt:
 
 def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -318,6 +319,7 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
 
 def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
 
@@ -513,6 +515,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
 
 def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
 
@@ -692,6 +695,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
 
 def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
 
@@ -892,6 +896,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
 
 def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
 
@@ -1091,6 +1096,7 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
 
 def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
 
@@ -1549,6 +1555,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
 
 def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -1635,6 +1642,7 @@ def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
 
 def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -1739,6 +1747,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
 
 def test_rbf_accepter_funding_locked(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -1854,6 +1863,7 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
     """ Check that if the funding transaction is published while we're inflight
     everything works as expected """
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -1989,6 +1999,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
         Peer should reconnect and allow another RBF to be initialized.
     """
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -2137,6 +2148,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
 
 def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
@@ -2311,6 +2323,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
     """ The proposed rbf doesn't have any overlapping inputs """
     with_proposal(dual_fund_csv)
+    runner.add_startup_flag('experimental-dual-fund')
 
     local_funding_privkey = '20'
     local_keyset = KeySet(revocation_base_secret='21',
