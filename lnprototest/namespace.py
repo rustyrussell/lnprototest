@@ -18,12 +18,15 @@ def peer_message_namespace() -> MessageNamespace:
                 + pyln.spec.bolt7.csv)
     return ns
 
+
 def namespace() -> MessageNamespace:
     return event_namespace
+
 
 def assign_namespace(ns: MessageNamespace) -> None:
     global event_namespace
     event_namespace = ns
+
 
 # By default, include all peer message bolts
 event_namespace = peer_message_namespace()
