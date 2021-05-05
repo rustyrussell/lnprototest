@@ -201,7 +201,7 @@ messages: it returns a list of messages to reply with, or None if the
 message should not be ignored: by default, it is ignore_gossip_queries.
 
     """
-    def _default_if_match(self, msg: Message) -> None:
+    def _default_if_match(self, msg: Message, runner: 'Runner') -> None:
         pass
 
     @staticmethod
@@ -251,7 +251,7 @@ message should not be ignored: by default, it is ignore_gossip_queries.
         return ExpectMsg.ignore_pings(msg)
 
     def __init__(self, msgtypename: str,
-                 if_match: Callable[['ExpectMsg', Message], None] = _default_if_match,
+                 if_match: Callable[['ExpectMsg', Message, 'Runner'], None] = _default_if_match,
                  ignore: Optional[Callable[[Message], Optional[List[Message]]]] = None,
                  connprivkey: Optional[str] = None,
                  **kwargs: Union[str, Resolvable]):
@@ -272,7 +272,7 @@ message should not be ignored: by default, it is ignore_gossip_queries.
 
         ret = cmp_msg(msg, partmessage)
         if ret is None:
-            self.if_match(self, msg)
+            self.if_match(self, msg, runner=runner)
             msg_to_stash(runner, self, msg)
         return ret
 
