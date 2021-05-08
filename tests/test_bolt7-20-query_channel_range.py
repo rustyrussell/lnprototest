@@ -109,7 +109,7 @@ def calc_checksum(update: Message) -> int:
     #     * [`byte`:`message_flags`]
 
     # Note: 2 bytes for `type` field
-    return crc32c.crc32(buf[2 + 64:2 + 64 + 32 + 8] + buf[2 + 64 + 32 + 8 + 4:])
+    return crc32c.crc32c(buf[2 + 64:2 + 64 + 32 + 8] + buf[2 + 64 + 32 + 8 + 4:])
 
 
 def update_checksums(update1: Optional[Message], update2: Optional[Message]) -> str:

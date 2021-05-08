@@ -7,4 +7,4 @@ pyln.testing
 coincurve==13.0.0
 python-bitcoinlib==0.11.0
 mypy
-crc32c
+crc32c==2.2
