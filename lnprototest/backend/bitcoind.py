@@ -7,6 +7,7 @@
 import os
 import shutil
 import subprocess
+import logging
 
 from ephemeral_port_reserve import reserve
 from pyln.testing.utils import wait_for, SimpleBitcoinProxy
@@ -28,6 +29,7 @@ class Bitcoind(Backend):
             '-logtimestamps',
             '-nolisten']
         self.port = reserve()
+        self.btc_version = None
         print("Port is {}, dir is {}".format(self.port, self.bitcoin_dir))
         # For after 0.16.1 (eg. 3f398d7a17f136cd4a67998406ca41a124ae2966), this
         # needs its own [regtest] section.
@@ -49,12 +51,14 @@ class Bitcoind(Backend):
         """
         if self.rpc is None:
             # Sanity check
-            raise Error("bitcoin implementation not initialized")
+            raise Error("bitcoind not initialized")
 
-        if 'lnprototest' not in self.rpc.listwallets():
-            self.rpc.createwallet("lnprototest")  # Automatically loads
-        else:
-            self.rpc.loadwallet("lnprototest")
+        self.btc_version = self.rpc.getnetworkinfo()['version']
+        logging.info("Bitcoin Core version {}".format(self.btc_version))
+        if self.btc_version >= 210000:
+            # Maintains the compatibility between wallet
+            # different ln implementation can use the main wallet (?)
+            self.rpc.createwallet("main")  # Automatically loads
 
 
     def start(self) -> None:
@@ -64,8 +68,8 @@ class Bitcoind(Backend):
         while b'Done loading' not in self.proc.stdout.readline():
             pass
 
-        # Block #1.
         self.version_compatibility()
+        # Block #1.
         self.rpc.submitblock('0000002006226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f69d715fba6edece89b2dee71f4fed52c7accd6cd62c328536e6233b72b14c5f5c8ba465fffff7f200100000001020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0200f2052a0100000016001419c70534cd905244cff88a594f0c16d4bbedc5e60000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000')
         self.rpc.generatetoaddress(100, self.rpc.getnewaddress())
 
