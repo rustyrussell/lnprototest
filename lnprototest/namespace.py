@@ -4,19 +4,24 @@ import pyln.spec.bolt2
 import pyln.spec.bolt7
 from pyln.proto.message import MessageNamespace
 from .signature import SigType
+from typing import List
 
 
-def peer_message_namespace() -> MessageNamespace:
-    """Namespace containing all the peer messages"""
+def make_namespace(csv: List[str]) -> MessageNamespace:
+    """Load a namespace, replacing signature type"""
     ns = MessageNamespace()
     # We replace the fundamental signature type with our custom type,
     # then we load in all the csv files so they use it.
     ns.fundamentaltypes['signature'] = SigType()
-
-    ns.load_csv(pyln.spec.bolt1.csv
-                + pyln.spec.bolt2.csv
-                + pyln.spec.bolt7.csv)
+    ns.load_csv(csv)
     return ns
+
+
+def peer_message_namespace() -> MessageNamespace:
+    """Namespace containing all the peer messages"""
+    return make_namespace(pyln.spec.bolt1.csv
+                          + pyln.spec.bolt2.csv
+                          + pyln.spec.bolt7.csv)
 
 
 def namespace() -> MessageNamespace:

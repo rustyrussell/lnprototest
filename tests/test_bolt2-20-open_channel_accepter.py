@@ -2,10 +2,11 @@
 # Variations on open_channel
 
 from hashlib import sha256
+from pyln.proto.message import Message
 from lnprototest import TryAll, Connect, Block, FundChannel, InitRbf, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, ExpectError, Disconnect
 from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index, utxo_amount
-from typing import Any, Callable
+from typing import Any, Callable, List
 
 
 def channel_id_v2(local_keyset: KeySet) -> Callable[[Runner, Event, str], str]:
@@ -44,7 +45,7 @@ def channel_id_tmp(local_keyset: KeySet, opener: Side) -> Callable[[Runner, Even
     return _channel_id_tmp
 
 
-def odd_serial(event: Event, msg: Msg, runner: 'Runner') -> None:
+def odd_serial(event: Event, msg: Message, runner: 'Runner') -> None:
     """
         Test that a message's serial_id is odd.
         Note that the dummy runner will fail this test, so we skip for them
@@ -55,7 +56,7 @@ def odd_serial(event: Event, msg: Msg, runner: 'Runner') -> None:
         raise EventError(event, "Received **even** serial {}, expected odd".format(msg.fields['serial_id']))
 
 
-def even_serial(event: Event, msg: Msg, runner: 'Runner') -> None:
+def even_serial(event: Event, msg: Message, runner: 'Runner') -> None:
     if msg.fields['serial_id'] % 2 == 1:
         raise EventError(event, "Received **odd** serial {}, expected event".format(msg.fields['serial_id']))
 
@@ -74,7 +75,7 @@ def agreed_funding(opener: Side, is_rbf: bool = False) -> Callable[[Runner, Even
                                     'ExpectMsg' if opener == Side.local else 'Msg',
                                     accept_msg + '.funding_satoshis')
 
-        return open_funding + accept_funding
+        return int(open_funding) + int(accept_funding)
     return _agreed_funding
 
 
@@ -112,8 +113,8 @@ def change_amount(opener: Side, change_for_opener: bool, script: str, input_amt:
             # p2wsh script is 34 bytes, all told
             weight += (8 + 34 + 1) * 4
 
-        fee = (weight * feerate) // 1000
-        change = input_amt - opening_amt - fee
+        fee = (weight * int(feerate)) // 1000
+        change = input_amt - int(opening_amt) - fee
 
         return change
 
@@ -1276,7 +1277,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
 def accepter_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                          local_funding_privkey: str,
                          local_keyset: KeySet,
-                         runner: Runner):
+                         runner: Runner) -> List[Event]:
     """ Repeated tx construction protocols, for accepter tests """
     txid_in, tx_index_in, sats_in, spending_privkey, fee = utxo(input_index)
     fee = sats_in - funding_amt if is_rbf else fee
@@ -1413,7 +1414,7 @@ def accepter_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
 def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                        local_funding_privkey: str,
                        local_keyset: KeySet,
-                       runner: Runner):
+                       runner: Runner) -> List[Event]:
     """ Repeated tx construction protocols, for opener tests """
     txid_in, tx_index_in, sats_in, spending_privkey, fee = utxo(input_index)
     fee = sats_in - funding_amt if is_rbf else fee

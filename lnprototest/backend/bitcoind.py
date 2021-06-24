@@ -10,7 +10,7 @@ import subprocess
 import logging
 
 from ephemeral_port_reserve import reserve
-from pyln.testing.utils import wait_for, SimpleBitcoinProxy
+from pyln.testing.utils import SimpleBitcoinProxy
 from .backend import Backend
 
 
@@ -41,7 +41,7 @@ class Bitcoind(Backend):
             f.write("rpcport={}\n".format(self.port))
         self.rpc = SimpleBitcoinProxy(btc_conf_file=self.bitcoin_conf)
 
-    def version_compatibility(self):
+    def version_compatibility(self) -> None:
         """
         This method try to manage the compatibility between
         different version of Bitcoin Core implementation.
@@ -51,18 +51,19 @@ class Bitcoind(Backend):
         """
         if self.rpc is None:
             # Sanity check
-            raise Error("bitcoind not initialized")
+            raise ValueError("bitcoind not initialized")
 
         self.btc_version = self.rpc.getnetworkinfo()['version']
+        assert self.btc_version is not None
         logging.info("Bitcoin Core version {}".format(self.btc_version))
         if self.btc_version >= 210000:
             # Maintains the compatibility between wallet
             # different ln implementation can use the main wallet (?)
             self.rpc.createwallet("main")  # Automatically loads
 
-
     def start(self) -> None:
         self.proc = subprocess.Popen(self.cmd_line, stdout=subprocess.PIPE)
+        assert self.proc.stdout
 
         # Wait for it to startup.
         while b'Done loading' not in self.proc.stdout.readline():
@@ -84,4 +85,3 @@ class Bitcoind(Backend):
             self.stop()
             shutil.rmtree(os.path.join(self.bitcoin_dir, 'regtest'))
             self.start()
-

@@ -15,14 +15,14 @@ from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, MustNotMs
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn, remote_revocation_basepoint, remote_payment_basepoint, remote_delayed_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_per_commitment_secret, remote_funding_pubkey, remote_funding_privkey
 from .dummyrunner import DummyRunner
-from .namespace import peer_message_namespace, namespace, assign_namespace
+from .namespace import peer_message_namespace, namespace, assign_namespace, make_namespace
 from .bitfield import bitfield, has_bit, bitfield_len
 from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
 from .utils import Side, regtest_hash, privkey_expand
 from .funding import AcceptFunding, CreateFunding, CreateDualFunding, Funding, AddInput, AddOutput, FinalizeFunding, AddWitnesses
-from .proposals import dual_fund_csv
+from .proposals import dual_fund_csv, channel_type_csv
 
 __all__ = [
     "EventError",
@@ -65,6 +65,7 @@ __all__ = [
     "peer_message_namespace",
     "namespace",
     "assign_namespace",
+    "make_namespace",
     "bitfield",
     "has_bit",
     "bitfield_len",
@@ -89,5 +90,5 @@ __all__ = [
     "privkey_expand",
     "Wait",
     "dual_fund_csv",
-    "Wait",
+    "channel_type_csv",
 ]

@@ -216,7 +216,7 @@ def test_query_channel_range(runner: Runner) -> None:
             # c-lightning gets a race condition if we dont wait for
             # these updates to be added to the gossip store
             # FIXME: convert to explicit signal
-            Wait(0.7),
+            Wait(1),
 
             # New peer connects, with gossip_query option.
             Connect(connprivkey='05'),

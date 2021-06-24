@@ -5,6 +5,7 @@
 # https://creativecommons.org/publicdomain/zero/1.0/
 from abc import ABC, abstractmethod
 
+
 class Backend(ABC):
     """
     Generic implementation of Bitcoin backend

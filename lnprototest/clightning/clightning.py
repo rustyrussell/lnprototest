@@ -62,8 +62,11 @@ class Runner(lnprototest.Runner):
                               stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').splitlines()
         self.options: Dict[str, str] = {}
         for o in opts:
-            k, v = o.split('/')
-            self.options[k] = v
+            if o.startswith("supports_"):
+                self.options[o] = "true"
+            else:
+                k, v = o.split('/')
+                self.options[k] = v
 
     def get_keyset(self) -> KeySet:
         return KeySet(revocation_base_secret='0000000000000000000000000000000000000000000000000000000000000011',
@@ -244,7 +247,7 @@ class Runner(lnprototest.Runner):
                                          min_witness_weight=110,
                                          locktime=0, excess_as_change=True)['psbt']
 
-        def _run_rbf(runner: Runner, conn: Conn):
+        def _run_rbf(runner: Runner, conn: Conn) -> Dict[str, Any]:
             bump = runner.rpc.openchannel_bump(channel_id, amount, initial_psbt)
             update = runner.rpc.openchannel_update(channel_id, bump['psbt'])
 

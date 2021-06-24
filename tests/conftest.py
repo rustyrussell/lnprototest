@@ -2,6 +2,9 @@
 import pytest
 import importlib
 import lnprototest
+import pyln.spec.bolt1
+import pyln.spec.bolt2
+import pyln.spec.bolt7
 from pyln.proto.message import MessageNamespace
 from typing import Any, Callable, Generator, List
 
@@ -33,7 +36,12 @@ def with_proposal(pytestconfig: Any) -> Generator[Callable[[List[str]], None], N
     """Use this to add additional messages to the namespace
        Useful for testing proposed (but not yet merged) spec mods"""
     def _setter(proposal_csv: List[str]) -> None:
-        lnprototest.assign_namespace(lnprototest.namespace() + MessageNamespace(proposal_csv))
+        # We merge *csv*, because then you can add tlv entries; merging
+        # namespaces with duplicate TLVs complains of a clash.
+        lnprototest.assign_namespace(lnprototest.make_namespace(pyln.spec.bolt1.csv
+                                                                + pyln.spec.bolt2.csv
+                                                                + pyln.spec.bolt7.csv
+                                                                + proposal_csv))
 
     yield _setter
 
