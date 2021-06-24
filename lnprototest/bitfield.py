@@ -30,7 +30,7 @@ def has_bit(bitfield: Union[List[int], str], bitnum: int) -> bool:
 
 def bitfield(*args: int) -> str:
     """Create a bitfield hex value with these bit numbers set"""
-    bytelen = max(args) + 8 // 8
+    bytelen = (max(args) + 8) // 8
     bfield = bytearray(bytelen)
     for bitnum in args:
         bfield[bytelen - 1 - bitnum // 8] |= (1 << (bitnum % 8))
