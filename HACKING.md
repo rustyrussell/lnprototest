@@ -86,7 +86,7 @@ Here's a short outline of the current expected methods for a Runner.
 - `get_keyset`: returns the node's KeySet (`revocation_base_secret`, `payment_base_secret`, `htlc_base_secret`, and `shachain_seed`)
 - `get_node_privkey`: Private key of the node. Used to generate the node id and establish a communication channel with the node under test.
 - `get_node_bitcoinkey`: Private key of the node under test's funding pubkey
-- `has_option`: Returns `None` if node does not support provided option, otherwise 'even' or 'odd' (required or supported). Example input: `option_data_loss_protect` or `option_anchor_outputs`
+- `has_option`: checks for features (e.g. `option_anchor_outputs`) in which cast it returns `None`, or "even" or "odd" (required or supported).  Also checks for non-feature-bit features, such as `supports_open_accept_channel_types` which returns `None` or "true".
 - `add_startup_flag`: Add flag to runner's startup.
 - `start`: Starts up / initializes the node under test.
 - `stop`: Stops the node under test and closes the connection.

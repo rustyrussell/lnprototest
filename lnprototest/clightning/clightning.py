@@ -62,8 +62,11 @@ class Runner(lnprototest.Runner):
                               stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').splitlines()
         self.options: Dict[str, str] = {}
         for o in opts:
-            k, v = o.split('/')
-            self.options[k] = v
+            if o.startswith("supports_"):
+                self.options[o] = "true"
+            else:
+                k, v = o.split('/')
+                self.options[k] = v
 
     def get_keyset(self) -> KeySet:
         return KeySet(revocation_base_secret='0000000000000000000000000000000000000000000000000000000000000011',
