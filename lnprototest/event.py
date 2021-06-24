@@ -272,7 +272,7 @@ message should not be ignored: by default, it is ignore_gossip_queries.
 
         ret = cmp_msg(msg, partmessage)
         if ret is None:
-            self.if_match(self, msg, runner=runner)
+            self.if_match(self, msg, runner)
             msg_to_stash(runner, self, msg)
         return ret
 
@@ -432,7 +432,7 @@ class AddHtlc(PerConnEvent):
 
 
 class DualFundAccept(Event):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def action(self, runner: 'Runner') -> bool:

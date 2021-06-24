@@ -1,5 +1,5 @@
 # Support for funding txs.
-from typing import Tuple, Any, Optional, Union, Callable
+from typing import Tuple, Any, Optional, Union, Callable, Dict, List
 from .utils import Side, privkey_expand, regtest_hash
 from .event import Event, ResolvableInt, ResolvableStr
 from .namespace import namespace
@@ -42,8 +42,8 @@ class Funding(object):
                               privkey_expand(remote_node_privkey)]
         self.tx = None
         self.locktime = locktime
-        self.outputs = []
-        self.inputs = []
+        self.outputs: List[Dict[str, Any]] = []
+        self.inputs: List[Dict[str, Any]] = []
 
     def tx_hex(self) -> str:
         if not self.tx:
@@ -168,6 +168,7 @@ class Funding(object):
         return val
 
     def sign_our_inputs(self) -> None:
+        assert self.tx is not None
         for idx, _in in enumerate(self.inputs):
             privkey = _in['privkey']
 
@@ -195,7 +196,8 @@ class Funding(object):
                 else:
                     _in['sig'] = CTxInWitness(CScriptWitness([sig, inkey_pub.format()]))
 
-    def add_witnesses(self, witness_stack) -> str:
+    def add_witnesses(self, witness_stack: List[Dict[str, Any]]) -> str:
+        assert self.tx is not None
         wits = []
         for idx, _in in enumerate(self.inputs):
             if 'sig' in _in:
@@ -223,6 +225,7 @@ class Funding(object):
         self.tx = CMutableTransaction([i['input'] for i in self.inputs],
                                       [o['output'] for o in self.outputs],
                                       nVersion=2, nLockTime=self.locktime)
+        assert self.tx is not None
         self.txid = self.tx.GetTxid().hex()
 
         # Set the output index for the funding output
@@ -712,7 +715,9 @@ class FinalizeFunding(Event):
 class AddWitnesses(Event):
     def __init__(self,
                  funding: ResolvableFunding,
-                 witness_stack: Any):  # FIXME what's the type here?
+                 witness_stack: Union[List[Dict[str, Any]],
+                                      Callable[['Runner', 'Event', str],
+                                               List[Dict[str, Any]]]]):
         self.funding = funding
         self.witness_stack = witness_stack
 
