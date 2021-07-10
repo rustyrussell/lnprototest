@@ -1,5 +1,5 @@
 from lnprototest import Runner, Event, Side, SpecFileError, Funding
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, Dict
 from pyln.proto.message import Message
 import functools
 import time
@@ -146,6 +146,30 @@ fieldname can be [msg].[field] or just [field] for last Msg
 
     """
     return functools.partial(_get_member, 'Msg', fieldname, casttype)
+
+
+def _get_msg(stashname: str,
+             msgname: Optional[str],
+             # This is the signature which Msg() expects for callable values:
+             runner: 'Runner',
+             event: Event,
+             field: str) -> Dict[str, Any]:
+    for name, d in reversed(runner.get_stash(event, stashname)):
+        if msgname is None or name == msgname:
+            return d
+    raise SpecFileError(event, '{}: have no prior {}'.format(stashname, msgname))
+
+
+def rcvd_msg(msgname: Optional[str] = None) -> Callable[[Runner, Event, Any], Any]:
+    """Get previous ExpectMsg of type msgname (or final if None).
+    """
+    return functools.partial(_get_msg, 'ExpectMsg', msgname)
+
+
+def sent_msg(msgname: Optional[str] = None) -> Callable[[Runner, Event, Any], Any]:
+    """Get previous Msg of type msgname (or final if None).
+    """
+    return functools.partial(_get_msg, 'Msg', msgname)
 
 
 def funding_amount() -> Callable[[Runner, Event, str], int]:
