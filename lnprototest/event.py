@@ -272,8 +272,13 @@ message should not be ignored: by default, it is ignore_gossip_queries.
 
         ret = cmp_msg(msg, partmessage)
         if ret is None:
-            self.if_match(self, msg, runner)
-            msg_to_stash(runner, self, msg)
+            # Make sure it matches any if_match too.
+            try:
+                self.if_match(self, msg, runner)
+            except EventError as e:
+                ret = e.message
+            if ret is None:
+                msg_to_stash(runner, self, msg)
         return ret
 
     def action(self, runner: 'Runner') -> bool:
