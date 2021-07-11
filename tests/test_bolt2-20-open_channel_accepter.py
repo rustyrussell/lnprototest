@@ -3,8 +3,8 @@
 
 from hashlib import sha256
 from pyln.proto.message import Message
-from lnprototest import TryAll, Connect, Block, FundChannel, InitRbf, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, ExpectError, Disconnect
-from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
+from lnprototest import TryAll, Connect, Block, FundChannel, InitRbf, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, ExpectError, Disconnect, ChannelType
+from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, funding_txid, funding_tx, funding, locking_script, get_member, witnesses, sent_msg, rcvd_msg
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index, utxo_amount
 from typing import Any, Callable, List
 
@@ -185,7 +185,11 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
                           local_node_privkey='02',
                           local_funding_privkey=local_funding_privkey,
                           remote_node_privkey=runner.get_node_privkey(),
-                          remote_funding_privkey=remote_funding_privkey()),
+                          remote_funding_privkey=remote_funding_privkey(),
+                          channel_type=ChannelType.resolve(sent_msg('open_channel2'),
+                                                           rcvd_msg('accept_channel2'),
+                                                           sent('init.features'),
+                                                           rcvd('init.features'))),
 
             Commit(funding=funding(),
                    opener=Side.local,
@@ -397,7 +401,11 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
                               local_node_privkey='02',
                               local_funding_privkey=local_funding_privkey,
                               remote_node_privkey=runner.get_node_privkey(),
-                              remote_funding_privkey=remote_funding_privkey()),
+                              remote_funding_privkey=remote_funding_privkey(),
+                              channel_type=ChannelType.resolve(sent_msg('open_channel2'),
+                                                               rcvd_msg('accept_channel2'),
+                                                               sent('init.features'),
+                                                               rcvd('init.features'))),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -578,7 +586,11 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
                               local_node_privkey='02',
                               local_funding_privkey=local_funding_privkey,
                               remote_node_privkey=runner.get_node_privkey(),
-                              remote_funding_privkey=remote_funding_privkey()),
+                              remote_funding_privkey=remote_funding_privkey(),
+                              channel_type=ChannelType.resolve(rcvd_msg('open_channel2'),
+                                                               sent_msg('accept_channel2'),
+                                                               sent('init.features'),
+                                                               rcvd('init.features'))),
 
             ExpectMsg('tx_add_input',
                       channel_id=channel_id_v2(local_keyset),
@@ -760,7 +772,11 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                               local_node_privkey='02',
                               local_funding_privkey=local_funding_privkey,
                               remote_node_privkey=runner.get_node_privkey(),
-                              remote_funding_privkey=remote_funding_privkey()),
+                              remote_funding_privkey=remote_funding_privkey(),
+                              channel_type=ChannelType.resolve(rcvd_msg('open_channel2'),
+                                                               sent_msg('accept_channel2'),
+                                                               sent('init.features'),
+                                                               rcvd('init.features'))),
 
             ExpectMsg('tx_add_input',
                       channel_id=channel_id_v2(local_keyset),
@@ -974,7 +990,11 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
                               local_node_privkey='02',
                               local_funding_privkey=local_funding_privkey,
                               remote_node_privkey=runner.get_node_privkey(),
-                              remote_funding_privkey=remote_funding_privkey()),
+                              remote_funding_privkey=remote_funding_privkey(),
+                              channel_type=ChannelType.resolve(sent_msg('open_channel2'),
+                                                               rcvd_msg('accept_channel2'),
+                                                               sent('init.features'),
+                                                               rcvd('init.features'))),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -1160,7 +1180,11 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                               local_node_privkey='02',
                               local_funding_privkey=local_funding_privkey,
                               remote_node_privkey=runner.get_node_privkey(),
-                              remote_funding_privkey=remote_funding_privkey()),
+                              remote_funding_privkey=remote_funding_privkey(),
+                              channel_type=ChannelType.resolve(rcvd_msg('open_channel2'),
+                                                               sent_msg('accept_channel2'),
+                                                               sent('init.features'),
+                                                               rcvd('init.features'))),
 
             ExpectMsg('tx_add_input',
                       channel_id=channel_id_v2(local_keyset),
@@ -1294,7 +1318,11 @@ def accepter_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                       local_node_privkey='02',
                       local_funding_privkey=local_funding_privkey,
                       remote_node_privkey=runner.get_node_privkey(),
-                      remote_funding_privkey=remote_funding_privkey()),
+                      remote_funding_privkey=remote_funding_privkey(),
+                      channel_type=ChannelType.resolve(sent_msg('open_channel2'),
+                                                       rcvd_msg('accept_channel2'),
+                                                       sent('init.features'),
+                                                       rcvd('init.features'))),
 
         Commit(funding=funding(),
                opener=Side.local,
@@ -1429,7 +1457,11 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                           local_node_privkey='02',
                           local_funding_privkey=local_funding_privkey,
                           remote_node_privkey=runner.get_node_privkey(),
-                          remote_funding_privkey=remote_funding_privkey()),
+                          remote_funding_privkey=remote_funding_privkey(),
+                          channel_type=ChannelType.resolve(rcvd_msg('open_channel2'),
+                                                           sent_msg('accept_channel2'),
+                                                           sent('init.features'),
+                                                           rcvd('init.features'))),
 
         ExpectMsg('tx_add_input',
                   channel_id=channel_id_v2(local_keyset),
@@ -2415,7 +2447,11 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
                            local_node_privkey='02',
                            local_funding_privkey=local_funding_privkey,
                            remote_node_privkey=runner.get_node_privkey(),
-                           remote_funding_privkey=remote_funding_privkey()),
+                           remote_funding_privkey=remote_funding_privkey(),
+                           channel_type=ChannelType.resolve(sent_msg('open_channel2'),
+                                                            rcvd_msg('accept_channel2'),
+                                                            sent('init.features'),
+                                                            rcvd('init.features'))),
              Commit(funding=funding(),
                     opener=Side.local,
                     local_keyset=local_keyset,

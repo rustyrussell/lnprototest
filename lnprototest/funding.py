@@ -1,6 +1,7 @@
 # Support for funding txs.
 from typing import Tuple, Any, Optional, Union, Callable, Dict, List
 from .utils import Side, privkey_expand, regtest_hash
+from .channel_type import ChannelType
 from .event import Event, ResolvableInt, ResolvableStr
 from .namespace import namespace
 from .runner import Runner
@@ -14,6 +15,7 @@ import bitcoin.core.script as script
 from bitcoin.wallet import P2WPKHBitcoinAddress
 
 ResolvableFunding = Union['Funding', Callable[['Runner', 'Event', str], 'Funding']]
+ResolvableChannelType = Union[ChannelType, Callable[['Runner', 'Event', str], ChannelType]]
 
 
 def txid_raw(tx: str) -> str:
@@ -30,6 +32,7 @@ class Funding(object):
                  local_funding_privkey: str,
                  remote_node_privkey: str,
                  remote_funding_privkey: str,
+                 channel_type: ChannelType,
                  chain_hash: str = regtest_hash,
                  locktime: int = 0):
         self.chain_hash = chain_hash
@@ -44,6 +47,7 @@ class Funding(object):
         self.locktime = locktime
         self.outputs: List[Dict[str, Any]] = []
         self.inputs: List[Dict[str, Any]] = []
+        self.channel_type = channel_type
 
     def tx_hex(self) -> str:
         if not self.tx:
@@ -103,6 +107,7 @@ class Funding(object):
               remote_node_privkey: str,
               remote_funding_privkey: str,
               funding_sats: int,
+              channel_type: ChannelType,
               locktime: int,
               chain_hash: str = regtest_hash) -> 'Funding':
 
@@ -112,6 +117,7 @@ class Funding(object):
                        local_funding_privkey,
                        remote_node_privkey,
                        remote_funding_privkey,
+                       channel_type,
                        chain_hash, locktime)
 
     def add_input(self,
@@ -247,6 +253,7 @@ class Funding(object):
                   local_funding_privkey: str,
                   remote_node_privkey: str,
                   remote_funding_privkey: str,
+                  channel_type: ChannelType,
                   chain_hash: str = regtest_hash) -> Tuple['Funding', str]:
         """Make a funding transaction by spending this utxo using privkey: return Funding, tx."""
 
@@ -256,6 +263,7 @@ class Funding(object):
                           local_funding_privkey,
                           remote_node_privkey,
                           remote_funding_privkey,
+                          channel_type,
                           chain_hash)
 
         # input private key.
@@ -533,6 +541,7 @@ class AcceptFunding(Event):
                  local_funding_privkey: ResolvableStr,
                  remote_node_privkey: ResolvableStr,
                  remote_funding_privkey: ResolvableStr,
+                 channel_type: ResolvableChannelType,
                  chain_hash: str = regtest_hash):
         super().__init__()
         self.funding_txid = funding_txid
@@ -542,6 +551,7 @@ class AcceptFunding(Event):
         self.local_funding_privkey = local_funding_privkey
         self.remote_node_privkey = remote_node_privkey
         self.remote_funding_privkey = remote_funding_privkey
+        self.channel_type = channel_type
         self.chain_hash = chain_hash
 
     def action(self, runner: Runner) -> bool:
@@ -555,7 +565,8 @@ class AcceptFunding(Event):
                                                'local_node_privkey': self.local_node_privkey,
                                                'local_funding_privkey': self.local_funding_privkey,
                                                'remote_node_privkey': self.remote_node_privkey,
-                                               'remote_funding_privkey': self.remote_funding_privkey}))
+                                               'remote_funding_privkey': self.remote_funding_privkey,
+                                               'channel_type': self.channel_type}))
         runner.add_stash('Funding', funding)
         return True
 
@@ -572,6 +583,7 @@ class CreateFunding(Event):
                  local_funding_privkey: ResolvableStr,
                  remote_node_privkey: ResolvableStr,
                  remote_funding_privkey: ResolvableStr,
+                 channel_type: ResolvableChannelType,
                  chain_hash: str = regtest_hash):
         super().__init__()
         self.txid_in = txid_in
@@ -583,6 +595,7 @@ class CreateFunding(Event):
         self.local_funding_privkey = local_funding_privkey
         self.remote_node_privkey = remote_node_privkey
         self.remote_funding_privkey = remote_funding_privkey
+        self.channel_type = channel_type
         self.chain_hash = chain_hash
 
     def action(self, runner: Runner) -> bool:
@@ -598,7 +611,8 @@ class CreateFunding(Event):
                                                             {'local_node_privkey': self.local_node_privkey,
                                                              'local_funding_privkey': self.local_funding_privkey,
                                                              'remote_node_privkey': self.remote_node_privkey,
-                                                             'remote_funding_privkey': self.remote_funding_privkey}))
+                                                             'remote_funding_privkey': self.remote_funding_privkey,
+                                                             'channel_type': self.channel_type}))
 
         runner.add_stash('Funding', funding)
         runner.add_stash('FundingTx', tx)
@@ -615,6 +629,7 @@ class CreateDualFunding(Event):
                  local_funding_privkey: str,
                  remote_node_privkey: str,
                  remote_funding_privkey: ResolvableStr,
+                 channel_type: ResolvableChannelType,
                  chain_hash: str = regtest_hash):
         super().__init__()
 
@@ -624,6 +639,7 @@ class CreateDualFunding(Event):
         self.local_funding_privkey = local_funding_privkey
         self.remote_node_privkey = remote_node_privkey
         self.remote_funding_privkey = remote_funding_privkey
+        self.channel_type = channel_type
         self.chain_hash = chain_hash
 
     def action(self, runner: Runner) -> bool:
@@ -637,7 +653,8 @@ class CreateDualFunding(Event):
                                                         'funding_sats': self.funding_sats,
                                                         'remote_funding_privkey': self.remote_funding_privkey,
                                                         'remote_node_privkey': self.remote_node_privkey,
-                                                        'locktime': self.locktime
+                                                        'locktime': self.locktime,
+                                                        'channel_type': self.channel_type,
                                                     }))
 
         runner.add_stash('Funding', funding)

@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, CheckEq, EventError, namespace, Wait
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Event, Side, MustNotMsg, OneOf, Runner, bitfield, TryAll, Sequence, regtest_hash, CheckEq, EventError, namespace, Wait, ChannelType
 from helpers import tx_spendable, utxo
 from typing import Optional
 import unittest
@@ -147,13 +147,15 @@ def test_query_channel_range(runner: Runner) -> None:
                                               local_node_privkey='02',
                                               local_funding_privkey='10',
                                               remote_node_privkey='03',
-                                              remote_funding_privkey='20')
+                                              remote_funding_privkey='20',
+                                              channel_type=ChannelType.nofeatures())
 
     funding2, funding2_tx = Funding.from_utxo(*utxo(1),
                                               local_node_privkey='04',
                                               local_funding_privkey='30',
                                               remote_node_privkey='05',
-                                              remote_funding_privkey='40')
+                                              remote_funding_privkey='40',
+                                              channel_type=ChannelType.nofeatures())
 
     timestamp_103x1x0_LOCAL = int(time.time())
     timestamp_109x1x0_LOCAL = timestamp_103x1x0_LOCAL - 1

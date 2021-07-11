@@ -14,6 +14,7 @@ from .event import Event, ResolvableInt, ResolvableStr, negotiated, msat
 from .runner import Runner
 from .utils import Side, check_hex
 from .funding import Funding
+from .channel_type import ChannelType
 import coincurve
 import json
 
@@ -971,7 +972,8 @@ def test_simple_commitment() -> None:
                                    remote_node_privkey='99',
                                    # BOLT #3:
                                    # INTERNAL: remote_funding_privkey: 1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e1301
-                                   remote_funding_privkey='1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e13'),
+                                   remote_funding_privkey='1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e13',
+                                   channel_type=ChannelType.nofeatures()),
                    opener=Side.local,
 
                    # BOLT #3:
@@ -1588,7 +1590,8 @@ def test_anchor_commitment() -> None:
                                    remote_node_privkey='99',
                                    # BOLT #3:
                                    # INTERNAL: remote_funding_privkey: 1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e1301
-                                   remote_funding_privkey='1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e13'),
+                                   remote_funding_privkey='1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e13',
+                                   channel_type=ChannelType.nofeatures()),
                    opener=Side.local,
 
                    # BOLT #3:

@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 # Variations on adding an HTLC.
 
-from lnprototest import TryAll, Connect, Block, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, Disconnect, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, HTLC, UpdateCommit, remote_per_commitment_secret
-from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding, htlc_sigs_to_send, htlc_sigs_to_recv
+from lnprototest import TryAll, Connect, Block, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, Disconnect, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, HTLC, UpdateCommit, remote_per_commitment_secret, ChannelType
+from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, channel_id, funding_txid, funding_tx, funding, htlc_sigs_to_send, htlc_sigs_to_recv, sent_msg, rcvd_msg
 from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
 
 # FIXME: bolt9.featurebits?
@@ -91,7 +91,11 @@ def test_htlc_add(runner: Runner) -> None:
                           local_node_privkey='02',
                           local_funding_privkey=local_funding_privkey,
                           remote_node_privkey=runner.get_node_privkey(),
-                          remote_funding_privkey=remote_funding_privkey()),
+                          remote_funding_privkey=remote_funding_privkey(),
+                          channel_type=ChannelType.resolve(sent_msg('open_channel'),
+                                                           rcvd_msg('accept_channel'),
+                                                           sent('init.features'),
+                                                           rcvd('init.features'))),
 
             Commit(funding=funding(),
                    opener=Side.local,

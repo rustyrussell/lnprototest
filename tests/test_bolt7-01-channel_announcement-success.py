@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Simple gossip tests.
 
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Side, MustNotMsg, Disconnect, Runner
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Funding, Side, MustNotMsg, Disconnect, Runner, ChannelType
 from helpers import tx_spendable, utxo
 import time
 
@@ -12,7 +12,8 @@ def test_gossip(runner: Runner) -> None:
                                             local_node_privkey='02',
                                             local_funding_privkey='10',
                                             remote_node_privkey='03',
-                                            remote_funding_privkey='20')
+                                            remote_funding_privkey='20',
+                                            channel_type=ChannelType.nofeatures())
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='03'),

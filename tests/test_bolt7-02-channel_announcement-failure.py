@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Tests for malformed/bad channel_announcement
 
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, ExpectError, Funding, Side, MustNotMsg, Runner, TryAll, Sig
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, ExpectError, Funding, Side, MustNotMsg, Runner, TryAll, Sig, ChannelType
 import time
 from typing import cast
 from helpers import utxo, tx_spendable
@@ -22,7 +22,8 @@ def test_premature_channel_announcement(runner: Runner) -> None:
                                             local_node_privkey='02',
                                             local_funding_privkey='10',
                                             remote_node_privkey='03',
-                                            remote_funding_privkey='20')
+                                            remote_funding_privkey='20',
+                                            channel_type=ChannelType.nofeatures())
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='03'),
@@ -66,7 +67,8 @@ def test_bad_announcement(runner: Runner) -> None:
                                             local_node_privkey='02',
                                             local_funding_privkey='10',
                                             remote_node_privkey='03',
-                                            remote_funding_privkey='20')
+                                            remote_funding_privkey='20',
+                                            channel_type=ChannelType.nofeatures())
 
     # ### Ignored:
     ann_bad_chainhash = funding.channel_announcement('103x1x0', '')
@@ -80,13 +82,15 @@ def test_bad_announcement(runner: Runner) -> None:
                                    local_node_privkey='02',
                                    local_funding_privkey='10',
                                    remote_node_privkey='03',
-                                   remote_funding_privkey='21').channel_announcement('103x1x0', '')
+                                   remote_funding_privkey='21',
+                                   channel_type=ChannelType.nofeatures()).channel_announcement('103x1x0', '')
 
     ann_bad_bitcoin_key2 = Funding(funding.txid, funding.output_index, funding.amount,
                                    local_node_privkey='02',
                                    local_funding_privkey='11',
                                    remote_node_privkey='03',
-                                   remote_funding_privkey='20').channel_announcement('103x1x0', '')
+                                   remote_funding_privkey='20',
+                                   channel_type=ChannelType.nofeatures()).channel_announcement('103x1x0', '')
 
     # ### These should cause an error
     ann_bad_nodesig1 = funding.channel_announcement('103x1x0', '')

@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 # Tests for gossip_timestamp_filter
-from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Side, MustNotMsg, Disconnect, AnyOrder, Runner, Funding, bitfield
+from lnprototest import Connect, Block, ExpectMsg, Msg, RawMsg, Side, MustNotMsg, Disconnect, AnyOrder, Runner, Funding, bitfield, ChannelType
 import unittest
 import time
 from helpers import utxo, tx_spendable
@@ -14,13 +14,15 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                                               local_node_privkey='02',
                                               local_funding_privkey='10',
                                               remote_node_privkey='03',
-                                              remote_funding_privkey='20')
+                                              remote_funding_privkey='20',
+                                              channel_type=ChannelType.nofeatures())
 
     funding2, funding2_tx = Funding.from_utxo(*utxo(1),
                                               local_node_privkey='04',
                                               local_funding_privkey='30',
                                               remote_node_privkey='05',
-                                              remote_funding_privkey='40')
+                                              remote_funding_privkey='40',
+                                              channel_type=ChannelType.nofeatures())
 
     timestamp1 = int(time.time())
     timestamp2 = timestamp1 + 1
