@@ -95,22 +95,32 @@ def get_member(event: Event, runner: 'Runner', stashname: str, var: str, last: b
 If var contains a '.' then we look for that message to extract the field.  If last is True, we get the last message, otherwise the first.
 """
     stash = runner.get_stash(event, stashname)
-    if '.' in var:
-        prevname, _, var = var.partition('.')
+    parts = var.split('.')
+    if len(parts) > 1:
+        prevname: Optional[str] = parts[0]
+        varparts = parts[1:]
     else:
-        prevname = ''
+        prevname = None
+        varparts = [parts[0]]
+
     if last:
         seq = reversed(stash)
     else:
         seq = stash
 
     for name, d in seq:
-        if prevname == '' or name == prevname:
-            if var not in d:
-                raise SpecFileError(event, '{}: {} did not receive a {}'
-                                    .format(stashname, prevname, var))
-            return d[var]
-    raise SpecFileError(event, '{}: have no prior {}'.format(stashname, prevname))
+        if prevname is None or name == prevname:
+            for v in varparts:
+                if v not in d:
+                    raise SpecFileError(event, '{}: {} did not receive a {} in {}'
+                                        .format(stashname, name, ".".join(varparts), d))
+                d = d[v]
+
+            # If they ask for a.b, return it as {a={b=value}}.
+            for v in reversed(varparts[1:]):
+                d = '{' + v + '=' + d + '}'
+            return d
+    raise SpecFileError(event, '{}: have no prior {}'.format(stashname, name))
 
 
 def _get_member(stashname: str,
