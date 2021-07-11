@@ -16,7 +16,7 @@ from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import Runner, Conn, remote_revocation_basepoint, remote_payment_basepoint, remote_delayed_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_per_commitment_secret, remote_funding_pubkey, remote_funding_privkey
 from .dummyrunner import DummyRunner
 from .namespace import peer_message_namespace, namespace, assign_namespace, make_namespace
-from .bitfield import bitfield, has_bit, bitfield_len
+from .bitfield import bitfield, has_bit, bitfield_len, has_feature, both_have_feature
 from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
@@ -70,6 +70,8 @@ __all__ = [
     "bitfield",
     "has_bit",
     "bitfield_len",
+    "has_feature",
+    "both_have_feature",
     "msat",
     "negotiated",
     "remote_revocation_basepoint",

@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-from typing import Union, List
+from typing import Union, List, Optional
 
 
 def bitfield_len(bitfield: Union[List[int], str]) -> int:
@@ -35,3 +35,19 @@ def bitfield(*args: int) -> str:
     for bitnum in args:
         bfield[bytelen - 1 - bitnum // 8] |= (1 << (bitnum % 8))
     return bfield.hex()
+
+
+def has_feature(fbit: int, featurebits: str) -> Optional[str]:
+    """Returns "even" if set even, "odd" if set odd, otherwise None"""
+    oddf = fbit | 1
+    evenf = fbit & ~1
+    if has_bit(featurebits, evenf):
+        return "even"
+    elif has_bit(featurebits, oddf):
+        return "odd"
+    return None
+
+
+def both_have_feature(fbit: int, featurebits1: str, featurebits2: str) -> bool:
+    """Returns has_feature(fbit, featurebits1) and has_feature(fbit, featurebits2)"""
+    return has_feature(fbit, featurebits1) is not None and has_feature(fbit, featurebits2) is not None

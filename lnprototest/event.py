@@ -10,7 +10,7 @@ from .errors import SpecFileError, EventError
 from .namespace import namespace
 from .utils import check_hex
 from .signature import Sig
-from .bitfield import has_bit
+from .bitfield import has_feature
 from bitcoin.core import CTransaction
 from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING, overload
 
@@ -546,11 +546,6 @@ def negotiated(a_features: ResolvableStr,
                b_features: ResolvableStr,
                included: List[int] = [],
                excluded: List[int] = []) -> ResolvableBool:
-    def has_feature(fbit: int, featurebits: str) -> bool:
-        # Feature bits go in optional/compulsory pairs.
-        altfbit = fbit ^ 1
-        return has_bit(featurebits, fbit) or has_bit(featurebits, altfbit)
-
     def _negotiated(runner: 'Runner', event: Event, field: str) -> bool:
         a = event.resolve_arg('features', runner, a_features)
         b = event.resolve_arg('features', runner, b_features)
