@@ -200,9 +200,7 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
                    remote_amount=0,
                    local_dust_limit=546,
                    remote_dust_limit=546,
-                   feerate=253,
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=253),
 
             Msg('tx_add_input',
                 channel_id=channel_id_v2(local_keyset),
@@ -476,9 +474,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
                    remote_amount=msat(rcvd('accept_channel2.funding_satoshis', int)),
                    local_dust_limit=546,
                    remote_dust_limit=546,
-                   feerate=253,
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=253),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -652,9 +648,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
                    remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
                    local_dust_limit=550,
                    remote_dust_limit=546,
-                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int)),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -865,9 +859,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
                    remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
                    local_dust_limit=550,
                    remote_dust_limit=546,
-                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int)),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -1081,9 +1073,7 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
                    remote_amount=msat(rcvd('accept_channel2.funding_satoshis', int)),
                    local_dust_limit=546,
                    remote_dust_limit=546,
-                   feerate=253,
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=253),
 
             # Ignore unknown odd messages
             TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -1274,9 +1264,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
                    remote_amount=msat(rcvd('open_channel2.funding_satoshis', int)),
                    local_dust_limit=550,
                    remote_dust_limit=546,
-                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=rcvd('open_channel2.commitment_feerate_perkw', int)),
 
             ExpectMsg('commitment_signed',
                       channel_id=channel_id_v2(local_keyset),
@@ -1333,9 +1321,7 @@ def accepter_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                remote_amount=msat(rcvd(accept_msg + '.funding_satoshis', int)),
                local_dust_limit=546,
                remote_dust_limit=546,
-               feerate=253,
-               local_features=sent('init.features'),
-               remote_features=rcvd('init.features')),
+               feerate=253),
 
         Msg('tx_add_input',
             channel_id=channel_id_v2(local_keyset),
@@ -1549,9 +1535,7 @@ def opener_tx_creation(input_index: int, is_rbf: bool, funding_amt: int,
                remote_amount=msat(rcvd(open_msg + '.funding_satoshis', int)),
                local_dust_limit=550,
                remote_dust_limit=546,
-               feerate=rcvd('open_channel2.commitment_feerate_perkw', int),
-               local_features=sent('init.features'),
-               remote_features=rcvd('init.features')),
+               feerate=rcvd('open_channel2.commitment_feerate_perkw', int)),
 
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -2461,9 +2445,7 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
                     remote_amount=msat(rcvd('ack_rbf.funding_satoshis', int)),
                     local_dust_limit=546,
                     remote_dust_limit=546,
-                    feerate=253,
-                    local_features=sent('init.features'),
-                    remote_features=rcvd('init.features')),
+                    feerate=253),
 
              Msg('tx_add_input',
                  channel_id=channel_id_v2(local_keyset),

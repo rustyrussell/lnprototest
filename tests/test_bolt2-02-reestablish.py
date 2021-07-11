@@ -91,9 +91,7 @@ def test_reestablish(runner: Runner) -> None:
                    remote_amount=0,
                    local_dust_limit=546,
                    remote_dust_limit=546,
-                   feerate=253,
-                   local_features=sent('init.features'),
-                   remote_features=rcvd('init.features')),
+                   feerate=253),
 
             Msg('funding_created',
                 temporary_channel_id=rcvd(),

@@ -89,9 +89,7 @@ def test_open_channel(runner: Runner) -> None:
                         remote_amount=0,
                         local_dust_limit=546,
                         remote_dust_limit=546,
-                        feerate=253,
-                        local_features=sent('init.features'),
-                        remote_features=rcvd('init.features')),
+                        feerate=253),
 
                  Msg('funding_created',
                      temporary_channel_id=rcvd(),
@@ -183,9 +181,7 @@ def test_open_channel(runner: Runner) -> None:
                         remote_amount=msat(rcvd('open_channel.funding_satoshis', int)),
                         local_dust_limit=sent('accept_channel.dust_limit_satoshis', int),
                         remote_dust_limit=rcvd('open_channel.dust_limit_satoshis', int),
-                        feerate=rcvd('open_channel.feerate_per_kw', int),
-                        local_features=sent('init.features'),
-                        remote_features=rcvd('init.features')),
+                        feerate=rcvd('open_channel.feerate_per_kw', int)),
 
                  # Now we've created commit, we can check sig is valid!
                  CheckEq(rcvd('funding_created.signature'), commitsig_to_recv()),

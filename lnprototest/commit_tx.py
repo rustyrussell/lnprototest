@@ -7,10 +7,10 @@ import struct
 import hashlib
 from hashlib import sha256
 from .keyset import KeySet
-from .errors import SpecFileError, EventError
+from .errors import SpecFileError
 from .signature import Sig
 from typing import List, Tuple, Callable, Union, Optional, Dict
-from .event import Event, ResolvableInt, ResolvableStr, negotiated, msat
+from .event import Event, ResolvableInt, msat
 from .runner import Runner
 from .utils import Side, check_hex
 from .funding import Funding
@@ -79,9 +79,7 @@ class Commitment(object):
                  remote_amount: int,
                  local_dust_limit: int,
                  remote_dust_limit: int,
-                 feerate: int,
-                 option_static_remotekey: bool,
-                 option_anchor_outputs: bool):
+                 feerate: int):
         self.opener = opener
         self.funding = funding
         self.feerate = feerate
@@ -91,10 +89,8 @@ class Commitment(object):
         self.dust_limit = (local_dust_limit, remote_dust_limit)
         self.htlcs: Dict[int, HTLC] = {}
         self.commitnum = 0
-        self.option_static_remotekey = option_static_remotekey
-        self.option_anchor_outputs = option_anchor_outputs
-        if self.option_anchor_outputs:
-            assert self.option_static_remotekey
+        self.option_static_remotekey = funding.channel_type.has_static_remotekey()
+        self.option_anchor_outputs = funding.channel_type.has_anchor_outputs()
 
     @staticmethod
     def ripemd160(b: bytes) -> bytes:
@@ -839,10 +835,8 @@ class Commit(Event):
                  remote_amount: ResolvableInt,
                  local_dust_limit: ResolvableInt,
                  remote_dust_limit: ResolvableInt,
-                 feerate: ResolvableInt,
-                 local_features: ResolvableStr,
-                 remote_features: ResolvableStr):
-        """Stashes a commitment transaction as 'Commit'.
+                 feerate: ResolvableInt):
+        """Stashes a commitment transaction as 'Commit'.  funding dictates channel type.
 
 Note that local_to_self_delay is dictated by the remote side, and
 remote_to_self_delay is dicated by the local side!
@@ -859,31 +853,13 @@ remote_to_self_delay is dicated by the local side!
         self.local_dust_limit = local_dust_limit
         self.remote_dust_limit = remote_dust_limit
         self.feerate = feerate
-        # BOLT #9:
-        # | 12/13 | `option_static_remotekey`        | Static key for remote output
-        self.static_remotekey = negotiated(local_features, remote_features, [12])
-        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
-        # | 20/21 | `option_anchor_outputs`          | Anchor outputs
-        self.anchor_outputs = negotiated(local_features, remote_features, [20])
 
     def action(self, runner: Runner) -> bool:
         super().action(runner)
 
-        static_remotekey = self.resolve_arg('option_static_remotekey', runner, self.static_remotekey)
-        anchor_outputs = self.resolve_arg('option_anchor_outputs', runner, self.anchor_outputs)
-
-        # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
-        # | Bits  | Name                     | Description    | Context  | Dependencies
-        # ...
-        # | 20/21 | `option_anchor_outputs`  | Anchor outputs | IN       | `option_static_remotekey` |
-        if anchor_outputs and not static_remotekey:
-            raise EventError(self, "Cannot have option_anchor_outputs without option_static_remotekey")
-
         commit = Commitment(local_keyset=self.local_keyset,
                             remote_keyset=runner.get_keyset(),
                             opener=self.opener,
-                            option_static_remotekey=static_remotekey,
-                            option_anchor_outputs=anchor_outputs,
                             **self.resolve_args(runner,
                                                 {'funding': self.funding,
                                                  'local_to_self_delay': self.local_to_self_delay,
@@ -1000,9 +976,7 @@ def test_simple_commitment() -> None:
                    remote_amount=3000000000,
                    local_dust_limit=546,
                    remote_dust_limit=546,
-                   feerate=15000,
-                   option_static_remotekey=False,
-                   option_anchor_outputs=False)
+                   feerate=15000)
 
     # Make sure undefined field are not used.
     c.keyset[Side.local].revocation_base_secret = None
@@ -1591,7 +1565,7 @@ def test_anchor_commitment() -> None:
                                    # BOLT #3:
                                    # INTERNAL: remote_funding_privkey: 1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e1301
                                    remote_funding_privkey='1552dfba4f6cf29a62a0af13c8d6981d36d0ef8d61ba10fb0fe90da7634d7e13',
-                                   channel_type=ChannelType.nofeatures()),
+                                   channel_type=ChannelType.anchor_outputs()),
                    opener=Side.local,
 
                    # BOLT #3:
@@ -1618,9 +1592,7 @@ def test_anchor_commitment() -> None:
                    remote_amount=3000000000,
                    local_dust_limit=546,
                    remote_dust_limit=546,
-                   feerate=15000,
-                   option_static_remotekey=True,
-                   option_anchor_outputs=True)
+                   feerate=15000)
 
     # Make sure undefined field are not used.
     c.keyset[Side.local].revocation_base_secret = None
