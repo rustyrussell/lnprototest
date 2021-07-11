@@ -87,11 +87,8 @@ dual_fund_csv = [
 
 # This is https://github.com/lightningnetwork/lightning-rfc/pull/880
 channel_type_csv = [
-    "subtype,channel_type",
-    "subtypedata,channel_type,len,u16,",
-    "subtypedata,channel_type,features,byte,len",
-    "tlvtype,open_channel_tlvs,channel_types,1",
-    "tlvdata,open_channel_tlvs,channel_types,types,channel_type,...",
+    "tlvtype,open_channel_tlvs,channel_type,1",
+    "tlvdata,open_channel_tlvs,channel_type,type,byte,...",
     "tlvtype,accept_channel_tlvs,channel_type,1",
-    "tlvdata,accept_channel_tlvs,channel_type,type,channel_type,",
+    "tlvdata,accept_channel_tlvs,channel_type,type,byte,...",
 ]
