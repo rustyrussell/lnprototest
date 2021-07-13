@@ -239,16 +239,18 @@ class Runner(lnprototest.Runner):
 
         startweight = 42 + 172  # base weight, funding output
         # Build a utxo using the given utxo
+        fmt_feerate = '{}perkw'.format(feerate)
         utxos = ['{}:{}'.format(utxo_txid, utxo_outnum)]
         initial_psbt = self.rpc.utxopsbt(amount,
-                                         '{}perkw'.format(feerate),
+                                         fmt_feerate,
                                          startweight, utxos,
                                          reservedok=True,
                                          min_witness_weight=110,
                                          locktime=0, excess_as_change=True)['psbt']
 
         def _run_rbf(runner: Runner, conn: Conn) -> Dict[str, Any]:
-            bump = runner.rpc.openchannel_bump(channel_id, amount, initial_psbt)
+            bump = runner.rpc.openchannel_bump(channel_id, amount, initial_psbt,
+                                               funding_feerate=fmt_feerate)
             update = runner.rpc.openchannel_update(channel_id, bump['psbt'])
 
             # Run until they're done sending us updates

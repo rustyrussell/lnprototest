@@ -1625,7 +1625,7 @@ def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=253 * 65 // 64,
                  locktime=0),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -1658,6 +1658,8 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
 
     funding_amount = funding_amount_for_utxo(input_index)
     rbf_funding_amount = funding_amount - 1000
+    init_feerate = 2000
+    rbf_feerate = init_feerate * 65 // 64
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='02'),
@@ -1668,7 +1670,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
 
             Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
 
-            FundChannel(amount=funding_amount, feerate=2000),
+            FundChannel(amount=funding_amount, feerate=init_feerate),
 
             ExpectMsg('open_channel2',
                       channel_id=channel_id_tmp(local_keyset, Side.remote),
@@ -1716,19 +1718,19 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
-                     last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
+                     feerate=rbf_feerate * 2),
 
              ExpectMsg('init_rbf',
                        channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
-                       fee_step=1),
+                       funding_feerate_perkw=rbf_feerate * 2),
 
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
 
              Msg('ack_rbf',
                  channel_id=channel_id_v2(local_keyset),
-                 funding_satoshis=400000),
+                 funding_satoshis=380000),
              ]
 
     test += opener_tx_creation(input_index, True, rbf_funding_amount,
@@ -1816,7 +1818,7 @@ def test_rbf_accepter_funding_locked(runner: Runner, with_proposal: Any) -> None
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=253 * 65 // 64,
                  locktime=0),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -1879,6 +1881,7 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
 
     funding_amount = funding_amount_for_utxo(input_index)
     rbf_funding_amount = funding_amount - 1000
+    init_feerate = 2000
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='02'),
@@ -1889,7 +1892,7 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
 
             Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
 
-            FundChannel(amount=funding_amount, feerate=2000),
+            FundChannel(amount=funding_amount, feerate=init_feerate),
 
             ExpectMsg('open_channel2',
                       channel_id=channel_id_tmp(local_keyset, Side.remote),
@@ -1937,12 +1940,12 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
-                     last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
+                     feerate=init_feerate * 65 // 64),
 
              ExpectMsg('init_rbf',
                        channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
-                       fee_step=1),
+                       funding_feerate_perkw=init_feerate * 65 // 64),
 
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -2069,7 +2072,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=253 * 65 // 64,
                  locktime=0),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -2100,7 +2103,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=253 * 65 // 64,
                  locktime=0),
 
              ExpectError(),
@@ -2134,7 +2137,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=253 * 65 // 64,
                  locktime=0),
 
              # Ignore unknown odd messages
@@ -2164,6 +2167,8 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
     funding_amount = funding_amount_for_utxo(input_index)
     rbf_funding_amount = funding_amount - 1000
+    initial_feerate = 2000
+    rbf_feerate = initial_feerate * 65 // 64
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='02'),
@@ -2174,7 +2179,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
             Msg('init', globalfeatures='', features=bitfield(12, 20, 29)),
 
-            FundChannel(amount=funding_amount, feerate=2000),
+            FundChannel(amount=funding_amount, feerate=initial_feerate),
 
             ExpectMsg('open_channel2',
                       channel_id=channel_id_tmp(local_keyset, Side.remote),
@@ -2222,12 +2227,12 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
-                     last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
+                     feerate=rbf_feerate),
 
              ExpectMsg('init_rbf',
                        channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
-                       fee_step=1),
+                       funding_feerate_perkw=rbf_feerate),
 
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -2268,7 +2273,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=rbf_feerate,
                  locktime=100),
 
              ExpectError(),
@@ -2303,12 +2308,12 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
                      amount=rbf_funding_amount,
                      utxo_tx=rcvd('tx_add_input.prevtx'),
                      utxo_outnum=rcvd('tx_add_input.prevtx_vout', int),
-                     last_feerate=rcvd('open_channel2.funding_feerate_perkw', int)),
+                     feerate=rbf_feerate),
 
              ExpectMsg('init_rbf',
                        channel_id=channel_id_v2(local_keyset),
                        funding_satoshis=rbf_funding_amount,
-                       fee_step=1),
+                       funding_feerate_perkw=rbf_feerate),
 
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
@@ -2395,7 +2400,7 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
              Msg('init_rbf',
                  channel_id=channel_id_v2(local_keyset),
                  funding_satoshis=rbf_funding_amount,
-                 fee_step=1,
+                 funding_feerate_perkw=253 * 65 // 64,
                  locktime=0),
              # Ignore unknown odd messages
              TryAll([], RawMsg(bytes.fromhex('270F'))),
