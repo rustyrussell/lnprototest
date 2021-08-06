@@ -276,7 +276,8 @@ class Runner(lnprototest.Runner):
     def accept_add_fund(self, event: Event) -> None:
         self.rpc.call('funderupdate', {'policy': 'match',
                                        'policy_mod': 100,
-                                       'fuzz_percent': 0})
+                                       'fuzz_percent': 0,
+                                       'leases_only': False})
 
     def addhtlc(self, event: Event, conn: Conn,
                 amount: int, preimage: str) -> None:
