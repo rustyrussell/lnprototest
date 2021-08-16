@@ -81,7 +81,7 @@ class Bitcoind(Backend):
 
     def restart(self) -> None:
         # Only restart if we have to.
-        if self.rpc.getblockcount() != 102 or self.rpc.getrawmempool() == []:
+        if self.rpc.getblockcount() != 101 or self.rpc.getrawmempool() != []:
             self.stop()
             shutil.rmtree(os.path.join(self.bitcoin_dir, 'regtest'))
             self.start()
