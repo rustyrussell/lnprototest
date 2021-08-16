@@ -140,16 +140,10 @@ Relevant portion from `clightning.py/Runner#start`
 
 
 ### Initializing the funding for the tests with `submitblock`
-Note that the c-lightning runner file includes a Bitcoind process as well.
-This is started up when the runner is initialized. In particular, when
-the bitcoind instance starts, it submits a block to the regtest
-chain. This block contains a coinbase output that is spendable by the
-`tx_spendable`, as found in `lnprototest/helpers.py`.
 
-Your bitcoind should do the same. Here's the relevant code block from `clightning.py`.
-
-
-        # Block #1.
-        # Privkey the coinbase spends to:
-        #    cUB4V7VCk6mX32981TWviQVLkj3pa2zBcXrjMZ9QwaZB5Kojhp59
-        self.rpc.submitblock('0000002006226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f84591a56720aabc8023cecf71801c5e0f9d049d0c550ab42412ad12a67d89f3a3dbb6c60ffff7f200400000001020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0200f2052a0100000016001419f5016f07fe815f611df3a2a0802dbd74e634c40000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000')
+Note that the bitcoind backend in `lnprototest/backend/bitcoind.py`
+creates an initial block spendable by the privkey
+`cUB4V7VCk6mX32981TWviQVLkj3pa2zBcXrjMZ9QwaZB5Kojhp59`, then an
+additional 100 blocks so it's mature.  `tests/helpers.py` has
+`tx_spendable` which spends this into several useful outputs, and many
+tests rely on this.
