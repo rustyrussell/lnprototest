@@ -10,8 +10,44 @@ import subprocess
 import logging
 
 from ephemeral_port_reserve import reserve
-from pyln.testing.utils import SimpleBitcoinProxy
+from bitcoin.rpc import RawProxy
 from .backend import Backend
+
+
+class BitcoinProxy:
+    """Wrapper for BitcoinProxy to reconnect.
+
+    Long wait times between calls to the Bitcoin RPC could result in
+    `bitcoind` closing the connection, so here we just create
+    throwaway connections. This is easier than to reach into the RPC
+    library to close, reopen and reauth upon failure.
+    """
+    def __init__(self, btc_conf_file, *args, **kwargs):
+        self.btc_conf_file = btc_conf_file
+
+    def __getattr__(self, name):
+        if name.startswith('__') and name.endswith('__'):
+            # Python internal stuff
+            raise AttributeError
+
+        def f(*args):
+            self.__proxy = RawProxy(btc_conf_file=self.btc_conf_file)
+
+            logging.debug("Calling {name} with arguments {args}".format(
+                name=name,
+                args=args
+            ))
+            res = self.__proxy._call(name, *args)
+            logging.debug("Result for {name} call: {res}".format(
+                name=name,
+                res=res,
+            ))
+            return res
+
+        # Make debuggers show <function bitcoin.rpc.name> rather than <function
+        # bitcoin.rpc.<lambda>>
+        f.__name__ = name
+        return f
 
 
 class Bitcoind(Backend):
@@ -39,7 +75,7 @@ class Bitcoind(Backend):
             f.write("rpcpassword=rpcpass\n")
             f.write("[regtest]\n")
             f.write("rpcport={}\n".format(self.port))
-        self.rpc = SimpleBitcoinProxy(btc_conf_file=self.bitcoin_conf)
+        self.rpc = BitcoinProxy(btc_conf_file=self.bitcoin_conf)
 
     def version_compatibility(self) -> None:
         """

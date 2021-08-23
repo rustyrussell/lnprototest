@@ -20,7 +20,7 @@ from .bitfield import bitfield, has_bit, bitfield_len
 from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
-from .utils import Side, regtest_hash, privkey_expand
+from .utils import Side, regtest_hash, privkey_expand, wait_for
 from .funding import AcceptFunding, CreateFunding, CreateDualFunding, Funding, AddInput, AddOutput, FinalizeFunding, AddWitnesses
 from .proposals import dual_fund_csv, channel_type_csv
 
