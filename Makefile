@@ -3,6 +3,7 @@
 PYTHONFILES := $(shell find * -name '*.py')
 POSSIBLE_PYTEST_NAMES=pytest-3 pytest3 pytest
 PYTEST := $(shell for p in $(POSSIBLE_PYTEST_NAMES); do if type $$p > /dev/null; then echo $$p; break; fi done)
+TEST_DIR=tests
 
 default: check-source check check-quotes
 
@@ -10,7 +11,7 @@ check-pytest-found:
 	@if [ -z "$(PYTEST)" ]; then echo "Cannot find any pytest: $(POSSIBLE_PYTEST_NAMES)" >&2; exit 1; fi
 
 check: check-pytest-found
-	$(PYTEST) $(PYTEST_ARGS)
+	$(PYTEST) $(PYTEST_ARGS) $(TEST_DIR)
 
 check-source: check-flake8 check-mypy check-internal-tests
 

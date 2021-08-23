@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  lightningd:
+    build: 
+      context: ../
+      dockerfile: ./docker/Dockerfile.clightning
+    environment: 
+      - CLIGHTNING_ENABLED=1
