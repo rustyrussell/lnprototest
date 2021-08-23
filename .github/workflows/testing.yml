@@ -1,0 +1,16 @@
+name: Integration testing
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { LN_IMPL: clightning }
+    steps:
+      - uses: actions/checkout@v2
+      - name: Integration testing
+        run: |
+          docker build -f docker/Dockerfile.${{matrix.LN_IMPL}} -t lnprototest-${{matrix.LN_IMPL}} .
+          docker run lnprototest-${{matrix.LN_IMPL}}

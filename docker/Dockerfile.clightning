@@ -59,14 +59,17 @@ RUN git clone https://github.com/ElementsProject/lightning.git && \
     ./configure --enable-developer && \
     make -j$(nproc)
 
-COPY . .
+RUN mkdir lnprototest
 
-RUN virtualenv .venv && \
-    . ./.venv/bin/activate && \
+COPY . lnprototest
+
+RUN cd lnprototest && \
+	pip3 install --upgrade -vv setuptools && \
     pip3 install -r requirements.txt && \ 
     cd lnprototest/clightning && \ 
-    pip3 install -r requirements.txt
-    
-RUN pip3 install -e .
-
-CMD ["./docker/entrypoint.sh"]
+    pip3 install -r requirements.txt && \
+	cd .. && cd .. && \
+	pip3 install -e . && \
+	pip3 install pytest
+	
+CMD ["./lnprototest/docker/entrypoint.sh"]
