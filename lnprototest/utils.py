@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 import string
 import coincurve
+import time
 from enum import IntEnum
 
 # regtest chain hash (hash of regtest genesis block)
@@ -28,3 +29,16 @@ def check_hex(val: str, digits: int) -> str:
 def privkey_expand(secret: str) -> coincurve.PrivateKey:
     # Privkey can be truncated, since we use tiny values a lot.
     return coincurve.PrivateKey(bytes.fromhex(secret).rjust(32, bytes(1)))
+
+
+def wait_for(success, timeout=180):
+    start_time = time.time()
+    interval = 0.25
+    while not success():
+        time_left = start_time + timeout - time.time()
+        if time_left <= 0:
+            raise ValueError("Timeout while waiting for {}", success)
+        time.sleep(min(interval, time_left))
+        interval *= 2
+        if interval > 5:
+            interval = 5
