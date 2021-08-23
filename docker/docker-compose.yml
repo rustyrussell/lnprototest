@@ -5,5 +5,3 @@ services:
     build: 
       context: ../
       dockerfile: ./docker/Dockerfile.clightning
-    environment: 
-      - CLIGHTNING_ENABLED=1

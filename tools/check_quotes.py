@@ -76,8 +76,8 @@ def gather_quotes(args: Namespace) -> Dict[int, List[Quote]]:
     curbolt = 0
     filestart = ''
     linestart = 0
-    for l in fileinput.input(args.files):
-        line = l.strip()
+    for file_line in fileinput.input(args.files):
+        line = file_line.strip()
         boltnum, quote = get_boltstart(args, line, fileinput.filename(), fileinput.filelineno())
         if boltnum is not None:
             if curquote is not None:
