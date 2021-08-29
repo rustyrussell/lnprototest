@@ -47,7 +47,7 @@ far, c-lightning is supported.  You will need:
    `../lightning` relative to this directory, otherwise use
    `export LIGHTNING_SRC=dirname`.
 3. Install any python requirements by
-   `pip3 install lnprototest/clightning/requirements.txt`.
+   `pip3 install -r lnprototest/clightning/requirements.txt`.
 
 Then you can run
 
