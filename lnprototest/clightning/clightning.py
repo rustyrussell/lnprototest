@@ -43,7 +43,7 @@ class Runner(lnprototest.Runner):
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
 
-        directory = tempfile.mkdtemp(prefix='lnprototest-clightning-')
+        directory = tempfile.mkdtemp(prefix='lnpt-cl-')
         self.bitcoind = Bitcoind(directory)
         self.bitcoind.start()
         self.executor = futures.ThreadPoolExecutor(max_workers=20)
