@@ -91,4 +91,5 @@ __all__ = [
     "Wait",
     "dual_fund_csv",
     "channel_type_csv",
+    "wait_for",
 ]

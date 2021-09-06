@@ -11,8 +11,8 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
     with_proposal(channel_type_csv)
 
     # This is not a feature bit, so use support_ to mark it.
-    if runner.has_option('supports_open_accept_channel_types') is None:
-        pytest.skip('Needs supports_open_accept_channel_types')
+    if runner.has_option('supports_open_accept_channel_type') is None:
+        pytest.skip('Needs supports_open_accept_channel_type')
 
     local_funding_privkey = '20'
 
@@ -24,7 +24,7 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
 
     avail_types = []
     # We expect them to ignore the first (bogus) one!
-    for t in (bitfield(8), bitfield(13), '', bitfield(13, 21)):
+    for t in (bitfield(8), bitfield(12), '', bitfield(12, 20)):
         avail_types.append('{features=' + t + '}')
 
     test = [Block(blockheight=102, txs=[tx_spendable]),
@@ -37,9 +37,7 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
                 Msg('init', globalfeatures='', features=bitfield(13, 21)),
                 # BOLT #9:
                 # | 12/13 | `option_static_remotekey`        | Static key for remote output
-                Msg('init', globalfeatures='', features=bitfield(13)),
-                # And not.
-                Msg('init', globalfeatures='', features='')),
+                Msg('init', globalfeatures='', features=bitfield(13))),
 
             Msg('open_channel',
                 chain_hash=regtest_hash,
@@ -61,17 +59,14 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
                 htlc_basepoint=local_keyset.htlc_basepoint(),
                 first_per_commitment_point=local_keyset.per_commit_point(0),
                 channel_flags=1,
-                tlvs='{channel_types={types=[' + ','.join(avail_types) + ']}}'),
+                # We negotiate *down* to a simple static channel
+                tlvs='{channel_type={type=' + bitfield(12) + '}}'),
 
             # BOLT #2
             #   - if it sets `channel_type`:
-            #     - MUST set it to one of the `channel_types` from `open_channel`
+            #     - MUST set it to the `channel_type` from `open_channel`
             OneOf([ExpectMsg('accept_channel',
-                             tlvs='{channel_type={type={features=' + bitfield(13) + '}}}')],
-                  [ExpectMsg('accept_channel',
-                             tlvs='{channel_type={type={features=' + bitfield(13, 21) + '}}}')],
-                  [ExpectMsg('accept_channel',
-                             tlvs='{channel_type={type={features=' + '' + '}}}')])]
+                             tlvs='{channel_type={type=' + bitfield(12) + '}}')])]
 
     runner.run(test)
 
@@ -81,8 +76,8 @@ def test_open_channel_bad_type(runner: Runner, with_proposal: Any) -> None:
     with_proposal(channel_type_csv)
 
     # This is not a feature bit, so use support_ to mark it.
-    if runner.has_option('supports_open_accept_channel_types') is None:
-        pytest.skip('Needs supports_open_accept_channel_types')
+    if runner.has_option('supports_open_accept_channel_type') is None:
+        pytest.skip('Needs supports_open_accept_channel_type')
 
     local_funding_privkey = '20'
 
@@ -99,10 +94,10 @@ def test_open_channel_bad_type(runner: Runner, with_proposal: Any) -> None:
             TryAll(
                 # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
                 # | 20/21 | `option_anchor_outputs`          | Anchor outputs
-                Msg('init', globalfeatures='', features=bitfield(13, 21)),
+                Msg('init', globalfeatures='', features=bitfield(12, 20)),
                 # BOLT #9:
                 # | 12/13 | `option_static_remotekey`        | Static key for remote output
-                Msg('init', globalfeatures='', features=bitfield(13)),
+                Msg('init', globalfeatures='', features=bitfield(12)),
                 # And not.
                 Msg('init', globalfeatures='', features='')),
 
@@ -126,7 +121,7 @@ def test_open_channel_bad_type(runner: Runner, with_proposal: Any) -> None:
                 htlc_basepoint=local_keyset.htlc_basepoint(),
                 first_per_commitment_point=local_keyset.per_commit_point(0),
                 channel_flags=1,
-                tlvs='{channel_types={types=[{features=' + bitfield(1) + '}]}}'),
+                tlvs='{channel_type={type=' + bitfield(100) + '}}'),
 
             # BOLT #2
             # The receiving node MUST fail the channel if:
