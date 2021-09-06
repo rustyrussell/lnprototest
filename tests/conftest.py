@@ -34,14 +34,18 @@ def namespaceoverride(pytestconfig: Any) -> Generator[Callable[[MessageNamespace
 @pytest.fixture()
 def with_proposal(pytestconfig: Any) -> Generator[Callable[[List[str]], None], None, None]:
     """Use this to add additional messages to the namespace
-       Useful for testing proposed (but not yet merged) spec mods"""
+       Useful for testing proposed (but not yet merged) spec mods.  Noop if it seems already merged. """
     def _setter(proposal_csv: List[str]) -> None:
-        # We merge *csv*, because then you can add tlv entries; merging
-        # namespaces with duplicate TLVs complains of a clash.
-        lnprototest.assign_namespace(lnprototest.make_namespace(pyln.spec.bolt1.csv
-                                                                + pyln.spec.bolt2.csv
-                                                                + pyln.spec.bolt7.csv
-                                                                + proposal_csv))
+        # Testing first line is cheap, pretty effective.
+        if proposal_csv[0] not in (pyln.spec.bolt1.csv
+                                   + pyln.spec.bolt2.csv
+                                   + pyln.spec.bolt7.csv):
+            # We merge *csv*, because then you can add tlv entries; merging
+            # namespaces with duplicate TLVs complains of a clash.
+            lnprototest.assign_namespace(lnprototest.make_namespace(pyln.spec.bolt1.csv
+                                                                    + pyln.spec.bolt2.csv
+                                                                    + pyln.spec.bolt7.csv
+                                                                    + proposal_csv))
 
     yield _setter
 
