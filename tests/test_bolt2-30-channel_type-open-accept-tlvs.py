@@ -22,11 +22,6 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
                           delayed_payment_base_secret='23',
                           shachain_seed='00' * 32)
 
-    avail_types = []
-    # We expect them to ignore the first (bogus) one!
-    for t in (bitfield(8), bitfield(12), '', bitfield(12, 20)):
-        avail_types.append('{features=' + t + '}')
-
     test = [Block(blockheight=102, txs=[tx_spendable]),
             Connect(connprivkey='02'),
             ExpectMsg('init'),
@@ -65,8 +60,8 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
             # BOLT #2
             #   - if it sets `channel_type`:
             #     - MUST set it to the `channel_type` from `open_channel`
-            OneOf([ExpectMsg('accept_channel',
-                             tlvs='{channel_type={type=' + bitfield(12) + '}}')])]
+            ExpectMsg('accept_channel',
+                      tlvs='{channel_type={type=' + bitfield(12) + '}}')]
 
     runner.run(test)
 
