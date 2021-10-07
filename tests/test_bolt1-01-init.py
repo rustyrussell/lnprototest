@@ -86,8 +86,8 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
                  # init msg with unknown odd global bit (99): no error
                  Msg('init', globalfeatures=bitfield(99), features='')],
 
-                # Sanity check that bits 34 and 35 are not used!
-                [ExpectMsg('init', if_match=functools.partial(no_feature, [34, 35])),
+                # Sanity check that bits 98 and 99 are not used!
+                [ExpectMsg('init', if_match=functools.partial(no_feature, [98, 99])),
                  # BOLT #1:
                  # The receiving node:...
                  #  - upon receiving unknown _odd_ feature bits that are non-zero:
@@ -101,12 +101,12 @@ def test_init(runner: Runner, namespaceoverride: Any) -> None:
                 #  - upon receiving unknown _even_ feature bits that are non-zero:
                 #    - MUST fail the connection.
                 [ExpectMsg('init'),
-                 Msg('init', globalfeatures='', features=bitfield(34)),
+                 Msg('init', globalfeatures='', features=bitfield(98)),
                  ExpectError()],
 
-                # init msg with unknown even global bit (34): you will error
+                # init msg with unknown even global bit (98): you will error
                 [ExpectMsg('init'),
-                 Msg('init', globalfeatures=bitfield(34), features=''),
+                 Msg('init', globalfeatures=bitfield(98), features=''),
                  ExpectError()],
 
                 # If you don't support `option_data_loss_protect`, you will be ok if
