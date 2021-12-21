@@ -98,6 +98,10 @@ class Connect(Event):
         if runner.find_conn(self.connprivkey):
             raise SpecFileError(self, "Already have connection to {}"
                                 .format(self.connprivkey))
+        # This is a hack: if we've already got a connection, wait 1 second
+        # for gossip to be processed before connecting another one!
+        if len(runner.conns) != 0:
+            time.sleep(1)
         runner.connect(self, self.connprivkey)
         return True
 
