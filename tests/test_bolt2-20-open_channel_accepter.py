@@ -3,9 +3,66 @@
 
 from hashlib import sha256
 from pyln.proto.message import Message
-from lnprototest import TryAll, Connect, Block, FundChannel, InitRbf, ExpectMsg, Msg, RawMsg, KeySet, CreateFunding, Commit, Runner, remote_funding_pubkey, remote_revocation_basepoint, remote_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_delayed_payment_basepoint, Side, msat, remote_funding_privkey, regtest_hash, bitfield, Event, DualFundAccept, OneOf, CreateDualFunding, EventError, Funding, privkey_expand, AddInput, AddOutput, FinalizeFunding, AddWitnesses, dual_fund_csv, ExpectError, Disconnect
-from lnprototest.stash import sent, rcvd, commitsig_to_send, commitsig_to_recv, funding_txid, funding_tx, funding, locking_script, get_member, witnesses
-from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of, tx_out_for_index, privkey_for_index, utxo_amount
+from lnprototest import (
+    TryAll,
+    Connect,
+    Block,
+    FundChannel,
+    InitRbf,
+    ExpectMsg,
+    Msg,
+    RawMsg,
+    KeySet,
+    CreateFunding,
+    Commit,
+    Runner,
+    remote_funding_pubkey,
+    remote_revocation_basepoint,
+    remote_payment_basepoint,
+    remote_htlc_basepoint,
+    remote_per_commitment_point,
+    remote_delayed_payment_basepoint,
+    Side,
+    msat,
+    remote_funding_privkey,
+    regtest_hash,
+    bitfield,
+    Event,
+    DualFundAccept,
+    OneOf,
+    CreateDualFunding,
+    EventError,
+    Funding,
+    privkey_expand,
+    AddInput,
+    AddOutput,
+    FinalizeFunding,
+    AddWitnesses,
+    dual_fund_csv,
+    ExpectError,
+    Disconnect,
+)
+from lnprototest.stash import (
+    sent,
+    rcvd,
+    commitsig_to_send,
+    commitsig_to_recv,
+    funding_txid,
+    funding_tx,
+    funding,
+    locking_script,
+    get_member,
+    witnesses,
+)
+from helpers import (
+    utxo,
+    tx_spendable,
+    funding_amount_for_utxo,
+    pubkey_of,
+    tx_out_for_index,
+    privkey_for_index,
+    utxo_amount,
+)
 from typing import Any, Callable, List
 
 

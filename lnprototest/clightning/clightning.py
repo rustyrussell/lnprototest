@@ -17,7 +17,15 @@ import struct
 from concurrent import futures
 from ephemeral_port_reserve import reserve
 from lnprototest.backend import Bitcoind
-from lnprototest import Event, EventError, SpecFileError, KeySet, Conn, namespace, MustNotMsg
+from lnprototest import (
+    Event,
+    EventError,
+    SpecFileError,
+    KeySet,
+    Conn,
+    namespace,
+    MustNotMsg,
+)
 from lnprototest import wait_for
 from typing import Dict, Any, Callable, List, Optional, cast
 

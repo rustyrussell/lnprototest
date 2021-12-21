@@ -1,12 +1,20 @@
 #! /usr/bin/python3
+import coincurve
+import functools
+
 from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
-import coincurve
-import functools
-from typing import Dict, Optional, List, Union, Any, Callable
+from typing import (
+    Dict,
+    Optional,
+    List,
+    Union,
+    Any,
+    Callable,
+)
 
 
 class Conn(object):
