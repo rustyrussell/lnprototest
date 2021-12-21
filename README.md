@@ -1,4 +1,23 @@
-# lnprototest: a Testsuite for the Lightning Network Protocol
+<div align="center">
+  <h1>lnprototest</h1>
+
+  <p>
+    <strong>a Testsuite for the Lightning Network Protocol</strong>
+  </p>
+
+  <h4>
+    <a href="https://github.com/rustyrussell/lnprototest">Project Homepage</a>
+  </h4>
+ 
+  <a href="https://github.com/rustyrussell/lnprototest/actions">
+    <img alt="GitHub Workflow Status (branch)" src="https://img.shields.io/github/workflow/status/rustyrussell/lnprototest/Integration%20testing/master?style=flat-square"/>
+  </a>
+  
+  <a href="https://github.com/vincenzopalazzo/lnprototest/blob/vincenzopalazzo/styles/HACKING.md">
+    <img src="https://img.shields.io/badge/doc-hacking-orange?style=flat-square" />
+  </a>
+
+</div>
 
 lnprototest is a set of test helpers written in Python3, designed to
 make it easy to write new tests when you propose changes to the
