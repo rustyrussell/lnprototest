@@ -8,4 +8,4 @@ coincurve==13.0.0
 python-bitcoinlib>=0.11.0
 mypy>=0.790
 crc32c==2.2
-ephemeral-port-reserve>=1.1.1
+ephemeral-port-reserve>=1.1.*
