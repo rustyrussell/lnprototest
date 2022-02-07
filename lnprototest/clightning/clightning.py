@@ -30,18 +30,24 @@ from lnprototest import wait_for
 from typing import Dict, Any, Callable, List, Optional, cast
 
 TIMEOUT = int(os.getenv("TIMEOUT", "30"))
-LIGHTNING_SRC = os.path.join(os.getcwd(), os.getenv("LIGHTNING_SRC", '../lightning/'))
+LIGHTNING_SRC = os.path.join(os.getcwd(), os.getenv("LIGHTNING_SRC", "../lightning/"))
 
 
 class CLightningConn(lnprototest.Conn):
     def __init__(self, connprivkey: str, port: int):
         super().__init__(connprivkey)
         # FIXME: pyln.proto.wire should just use coincurve PrivateKey!
-        self.connection = pyln.proto.wire.connect(pyln.proto.wire.PrivateKey(bytes.fromhex(self.connprivkey.to_hex())),
-                                                  # FIXME: Ask node for pubkey
-                                                  pyln.proto.wire.PublicKey(bytes.fromhex("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")),
-                                                  '127.0.0.1',
-                                                  port)
+        self.connection = pyln.proto.wire.connect(
+            pyln.proto.wire.PrivateKey(bytes.fromhex(self.connprivkey.to_hex())),
+            # FIXME: Ask node for pubkey
+            pyln.proto.wire.PublicKey(
+                bytes.fromhex(
+                    "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                )
+            ),
+            "127.0.0.1",
+            port,
+        )
 
 
 class Runner(lnprototest.Runner):
@@ -51,7 +57,7 @@ class Runner(lnprototest.Runner):
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
 
-        directory = tempfile.mkdtemp(prefix='lnpt-cl-')
+        directory = tempfile.mkdtemp(prefix="lnpt-cl-")
         self.bitcoind = Bitcoind(directory)
         self.bitcoind.start()
         self.executor = futures.ThreadPoolExecutor(max_workers=20)
@@ -65,49 +71,66 @@ class Runner(lnprototest.Runner):
         for flag in config.getoption("runner_args"):
             self.startup_flags.append("--{}".format(flag))
 
-        opts = subprocess.run(['{}/lightningd/lightningd'.format(LIGHTNING_SRC),
-                               '--list-features-only'],
-                              stdout=subprocess.PIPE, check=True).stdout.decode('utf-8').splitlines()
+        opts = (
+            subprocess.run(
+                [
+                    "{}/lightningd/lightningd".format(LIGHTNING_SRC),
+                    "--list-features-only",
+                ],
+                stdout=subprocess.PIPE,
+                check=True,
+            )
+            .stdout.decode("utf-8")
+            .splitlines()
+        )
         self.options: Dict[str, str] = {}
         for o in opts:
             if o.startswith("supports_"):
                 self.options[o] = "true"
             else:
-                k, v = o.split('/')
+                k, v = o.split("/")
                 self.options[k] = v
 
     def get_keyset(self) -> KeySet:
-        return KeySet(revocation_base_secret='0000000000000000000000000000000000000000000000000000000000000011',
-                      payment_base_secret='0000000000000000000000000000000000000000000000000000000000000012',
-                      delayed_payment_base_secret='0000000000000000000000000000000000000000000000000000000000000013',
-                      htlc_base_secret='0000000000000000000000000000000000000000000000000000000000000014',
-                      shachain_seed='FF' * 32)
+        return KeySet(
+            revocation_base_secret="0000000000000000000000000000000000000000000000000000000000000011",
+            payment_base_secret="0000000000000000000000000000000000000000000000000000000000000012",
+            delayed_payment_base_secret="0000000000000000000000000000000000000000000000000000000000000013",
+            htlc_base_secret="0000000000000000000000000000000000000000000000000000000000000014",
+            shachain_seed="FF" * 32,
+        )
 
     def get_node_privkey(self) -> str:
-        return '01'
+        return "01"
 
     def get_node_bitcoinkey(self) -> str:
-        return '0000000000000000000000000000000000000000000000000000000000000010'
+        return "0000000000000000000000000000000000000000000000000000000000000010"
 
     def start(self) -> None:
-        self.proc = subprocess.Popen(['{}/lightningd/lightningd'.format(LIGHTNING_SRC),
-                                      '--lightning-dir={}'.format(self.lightning_dir),
-                                      '--funding-confirms=3',
-                                      '--dev-force-privkey=0000000000000000000000000000000000000000000000000000000000000001',
-                                      '--dev-force-bip32-seed=0000000000000000000000000000000000000000000000000000000000000001',
-                                      '--dev-force-channel-secrets=0000000000000000000000000000000000000000000000000000000000000010/0000000000000000000000000000000000000000000000000000000000000011/0000000000000000000000000000000000000000000000000000000000000012/0000000000000000000000000000000000000000000000000000000000000013/0000000000000000000000000000000000000000000000000000000000000014/FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-                                      '--dev-bitcoind-poll=1',
-                                      '--dev-fast-gossip',
-                                      '--dev-no-htlc-timeout',
-                                      '--bind-addr=127.0.0.1:{}'.format(self.lightning_port),
-                                      '--network=regtest',
-                                      '--bitcoin-rpcuser=rpcuser',
-                                      '--bitcoin-rpcpassword=rpcpass',
-                                      '--bitcoin-rpcport={}'.format(self.bitcoind.port),
-                                      '--log-level=debug',
-                                      '--log-file=log']
-                                     + self.startup_flags)
-        self.rpc = pyln.client.LightningRpc(os.path.join(self.lightning_dir, "regtest", "lightning-rpc"))
+        self.proc = subprocess.Popen(
+            [
+                "{}/lightningd/lightningd".format(LIGHTNING_SRC),
+                "--lightning-dir={}".format(self.lightning_dir),
+                "--funding-confirms=3",
+                "--dev-force-privkey=0000000000000000000000000000000000000000000000000000000000000001",
+                "--dev-force-bip32-seed=0000000000000000000000000000000000000000000000000000000000000001",
+                "--dev-force-channel-secrets=0000000000000000000000000000000000000000000000000000000000000010/0000000000000000000000000000000000000000000000000000000000000011/0000000000000000000000000000000000000000000000000000000000000012/0000000000000000000000000000000000000000000000000000000000000013/0000000000000000000000000000000000000000000000000000000000000014/FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                "--dev-bitcoind-poll=1",
+                "--dev-fast-gossip",
+                "--dev-no-htlc-timeout",
+                "--bind-addr=127.0.0.1:{}".format(self.lightning_port),
+                "--network=regtest",
+                "--bitcoin-rpcuser=rpcuser",
+                "--bitcoin-rpcpassword=rpcpass",
+                "--bitcoin-rpcport={}".format(self.bitcoind.port),
+                "--log-level=debug",
+                "--log-file=log",
+            ]
+            + self.startup_flags
+        )
+        self.rpc = pyln.client.LightningRpc(
+            os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
+        )
 
         def node_ready(rpc: pyln.client.LightningRpc) -> bool:
             try:
@@ -147,7 +170,7 @@ class Runner(lnprototest.Runner):
     def connect(self, event: Event, connprivkey: str) -> None:
         self.add_conn(CLightningConn(connprivkey, self.lightning_port))
 
-    def __enter__(self) -> 'Runner':
+    def __enter__(self) -> "Runner":
         self.start()
         return self
 
@@ -155,7 +178,7 @@ class Runner(lnprototest.Runner):
         self.stop()
 
     def restart(self) -> None:
-        if self.config.getoption('verbose'):
+        if self.config.getoption("verbose"):
             print("[RESTART]")
         for cb in self.cleanup_callbacks:
             cb()
@@ -183,7 +206,7 @@ class Runner(lnprototest.Runner):
             self.bitcoind.rpc.sendrawtransaction(tx)
         self.bitcoind.rpc.generatetoaddress(n, self.bitcoind.rpc.getnewaddress())
 
-        wait_for(lambda: self.rpc.getinfo()['blockheight'] == self.getblockheight())
+        wait_for(lambda: self.rpc.getinfo()["blockheight"] == self.getblockheight())
 
     def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
         try:
@@ -191,116 +214,156 @@ class Runner(lnprototest.Runner):
         except BrokenPipeError:
             # This happens when they've sent an error and closed; try
             # reading it to figure out what went wrong.
-            fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
+            fut = self.executor.submit(
+                cast(CLightningConn, conn).connection.read_message
+            )
             try:
                 msg = fut.result(1)
             except futures.TimeoutError:
                 msg = None
             if msg:
-                raise EventError(event, "Connection closed after sending {}".format(msg.hex()))
+                raise EventError(
+                    event, "Connection closed after sending {}".format(msg.hex())
+                )
             else:
                 raise EventError(event, "Connection closed")
 
-    def fundchannel(self,
-                    event: Event,
-                    conn: Conn,
-                    amount: int,
-                    feerate: int = 253,
-                    expect_fail: bool = False) -> None:
+    def fundchannel(
+        self,
+        event: Event,
+        conn: Conn,
+        amount: int,
+        feerate: int = 253,
+        expect_fail: bool = False,
+    ) -> None:
         """
-            event       - the event which cause this, for error logging
-            conn        - which conn (i.e. peer) to fund.
-            amount      - amount to fund the channel with
-            feerate     - feerate, in kiloweights
-            expect_fail - true if this command is expected to error/fail
+        event       - the event which cause this, for error logging
+        conn        - which conn (i.e. peer) to fund.
+        amount      - amount to fund the channel with
+        feerate     - feerate, in kiloweights
+        expect_fail - true if this command is expected to error/fail
         """
         # First, check that another fundchannel isn't already running
         if self.fundchannel_future:
             if not self.fundchannel_future.done():
-                raise RuntimeError("{} called fundchannel while another channel funding (fundchannel/init_rbf) is still in process".format(event))
+                raise RuntimeError(
+                    "{} called fundchannel while another channel funding (fundchannel/init_rbf) is still in process".format(
+                        event
+                    )
+                )
             self.fundchannel_future = None
 
-        def _fundchannel(runner: Runner, conn: Conn, amount: int, feerate: int, expect_fail: bool = False) -> str:
+        def _fundchannel(
+            runner: Runner,
+            conn: Conn,
+            amount: int,
+            feerate: int,
+            expect_fail: bool = False,
+        ) -> str:
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
-            return runner.rpc.fundchannel(peer_id, amount, feerate='{}perkw'.format(feerate))
+            return runner.rpc.fundchannel(
+                peer_id, amount, feerate="{}perkw".format(feerate)
+            )
 
         def _done(fut: Any) -> None:
             exception = fut.exception(0)
             if exception and not self.is_fundchannel_kill and not expect_fail:
-                raise(exception)
+                raise (exception)
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)
 
-        fut = self.executor.submit(_fundchannel, self, conn, amount, feerate, expect_fail)
+        fut = self.executor.submit(
+            _fundchannel, self, conn, amount, feerate, expect_fail
+        )
         fut.add_done_callback(_done)
         self.fundchannel_future = fut
         self.cleanup_callbacks.append(self.kill_fundchannel)
 
-    def init_rbf(self, event: Event, conn: Conn,
-                 channel_id: str, amount: int,
-                 utxo_txid: str, utxo_outnum: int, feerate: int) -> None:
+    def init_rbf(
+        self,
+        event: Event,
+        conn: Conn,
+        channel_id: str,
+        amount: int,
+        utxo_txid: str,
+        utxo_outnum: int,
+        feerate: int,
+    ) -> None:
 
         if self.fundchannel_future:
             self.kill_fundchannel()
 
         startweight = 42 + 172  # base weight, funding output
         # Build a utxo using the given utxo
-        fmt_feerate = '{}perkw'.format(feerate)
-        utxos = ['{}:{}'.format(utxo_txid, utxo_outnum)]
-        initial_psbt = self.rpc.utxopsbt(amount,
-                                         fmt_feerate,
-                                         startweight, utxos,
-                                         reservedok=True,
-                                         min_witness_weight=110,
-                                         locktime=0, excess_as_change=True)['psbt']
+        fmt_feerate = "{}perkw".format(feerate)
+        utxos = ["{}:{}".format(utxo_txid, utxo_outnum)]
+        initial_psbt = self.rpc.utxopsbt(
+            amount,
+            fmt_feerate,
+            startweight,
+            utxos,
+            reservedok=True,
+            min_witness_weight=110,
+            locktime=0,
+            excess_as_change=True,
+        )["psbt"]
 
         def _run_rbf(runner: Runner, conn: Conn) -> Dict[str, Any]:
-            bump = runner.rpc.openchannel_bump(channel_id, amount, initial_psbt,
-                                               funding_feerate=fmt_feerate)
-            update = runner.rpc.openchannel_update(channel_id, bump['psbt'])
+            bump = runner.rpc.openchannel_bump(
+                channel_id, amount, initial_psbt, funding_feerate=fmt_feerate
+            )
+            update = runner.rpc.openchannel_update(channel_id, bump["psbt"])
 
             # Run until they're done sending us updates
-            while not update['commitments_secured']:
-                update = runner.rpc.openchannel_update(channel_id, update['psbt'])
-            signed_psbt = runner.rpc.signpsbt(update['psbt'])['signed_psbt']
+            while not update["commitments_secured"]:
+                update = runner.rpc.openchannel_update(channel_id, update["psbt"])
+            signed_psbt = runner.rpc.signpsbt(update["psbt"])["signed_psbt"]
             return runner.rpc.openchannel_signed(channel_id, signed_psbt)
 
         def _done(fut: Any) -> None:
             exception = fut.exception(0)
             if exception:
-                raise(exception)
+                raise (exception)
 
         fut = self.executor.submit(_run_rbf, self, conn)
         fut.add_done_callback(_done)
 
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
-        self.rpc.invoice(msatoshi=amount,
-                         label=str(event),
-                         description='invoice from {}'.format(event),
-                         preimage=preimage)
+        self.rpc.invoice(
+            msatoshi=amount,
+            label=str(event),
+            description="invoice from {}".format(event),
+            preimage=preimage,
+        )
 
     def accept_add_fund(self, event: Event) -> None:
-        self.rpc.call('funderupdate', {'policy': 'match',
-                                       'policy_mod': 100,
-                                       'fuzz_percent': 0,
-                                       'leases_only': False})
+        self.rpc.call(
+            "funderupdate",
+            {
+                "policy": "match",
+                "policy_mod": 100,
+                "fuzz_percent": 0,
+                "leases_only": False,
+            },
+        )
 
-    def addhtlc(self, event: Event, conn: Conn,
-                amount: int, preimage: str) -> None:
+    def addhtlc(self, event: Event, conn: Conn, amount: int, preimage: str) -> None:
         payhash = hashlib.sha256(bytes.fromhex(preimage)).hexdigest()
         routestep = {
-            'msatoshi': amount,
-            'id': conn.pubkey.format().hex(),
+            "msatoshi": amount,
+            "id": conn.pubkey.format().hex(),
             # We internally add one.
-            'delay': 4,
+            "delay": 4,
             # We actually ignore this.
-            'channel': '1x1x1'
+            "channel": "1x1x1",
         }
         self.rpc.sendpay([routestep], payhash)
 
-    def get_output_message(self, conn: Conn, event: Event, timeout: int = TIMEOUT) -> Optional[bytes]:
+    def get_output_message(
+        self, conn: Conn, event: Event, timeout: int = TIMEOUT
+    ) -> Optional[bytes]:
         fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
         try:
             return fut.result(timeout)
@@ -315,7 +378,13 @@ class Runner(lnprototest.Runner):
             return None
         return msg.hex()
 
-    def check_final_error(self, event: Event, conn: Conn, expected: bool, must_not_events: List[MustNotMsg]) -> None:
+    def check_final_error(
+        self,
+        event: Event,
+        conn: Conn,
+        expected: bool,
+        must_not_events: List[MustNotMsg],
+    ) -> None:
         if not expected:
             # Inject raw packet to ensure it hangs up *after* processing all previous ones.
             cast(CLightningConn, conn).connection.connection.send(bytes(18))
@@ -326,14 +395,14 @@ class Runner(lnprototest.Runner):
                     break
                 for e in must_not_events:
                     if e.matches(binmsg):
-                        raise EventError(event, "Got msg banned by {}: {}"
-                                         .format(e, binmsg.hex()))
+                        raise EventError(
+                            event, "Got msg banned by {}: {}".format(e, binmsg.hex())
+                        )
 
                 # Don't assume it's a message type we know!
-                msgtype = struct.unpack('>H', binmsg[:2])[0]
-                if msgtype == namespace().get_msgtype('error').number:
-                    raise EventError(event, "Got error msg: {}"
-                                     .format(binmsg.hex()))
+                msgtype = struct.unpack(">H", binmsg[:2])[0]
+                if msgtype == namespace().get_msgtype("error").number:
+                    raise EventError(event, "Got error msg: {}".format(binmsg.hex()))
 
         cast(CLightningConn, conn).connection.connection.close()
 
@@ -345,8 +414,16 @@ class Runner(lnprototest.Runner):
         try:
             wait_for(lambda: revtxid in self.bitcoind.rpc.getrawmempool())
         except ValueError:
-            raise EventError(event, "Did not broadcast the txid {}, just {}"
-                             .format(revtxid, [(txid, self.bitcoind.rpc.getrawtransaction(txid)) for txid in self.bitcoind.rpc.getrawmempool()]))
+            raise EventError(
+                event,
+                "Did not broadcast the txid {}, just {}".format(
+                    revtxid,
+                    [
+                        (txid, self.bitcoind.rpc.getrawtransaction(txid))
+                        for txid in self.bitcoind.rpc.getrawmempool()
+                    ],
+                ),
+            )
 
     def has_option(self, optname: str) -> Optional[str]:
         """Returns None if it doesn't support, otherwise 'even' or 'odd' (required or supported)"""
@@ -355,6 +432,6 @@ class Runner(lnprototest.Runner):
         return None
 
     def add_startup_flag(self, flag: str) -> None:
-        if self.config.getoption('verbose'):
-            print('[ADD STARTUP FLAG \'{}\']'.format(flag))
+        if self.config.getoption("verbose"):
+            print("[ADD STARTUP FLAG '{}']".format(flag))
         self.startup_flags.append("--{}".format(flag))

@@ -11,17 +11,66 @@ reference material, and the tutorial should get you started.
 
 """
 from .errors import EventError, SpecFileError
-from .event import Event, Connect, Disconnect, Msg, RawMsg, ExpectMsg, MustNotMsg, Block, ExpectTx, FundChannel, InitRbf, Invoice, AddHtlc, CheckEq, ExpectError, ResolvableInt, ResolvableStr, Resolvable, ResolvableBool, msat, negotiated, DualFundAccept, Wait
+from .event import (
+    Event,
+    Connect,
+    Disconnect,
+    Msg,
+    RawMsg,
+    ExpectMsg,
+    MustNotMsg,
+    Block,
+    ExpectTx,
+    FundChannel,
+    InitRbf,
+    Invoice,
+    AddHtlc,
+    CheckEq,
+    ExpectError,
+    ResolvableInt,
+    ResolvableStr,
+    Resolvable,
+    ResolvableBool,
+    msat,
+    negotiated,
+    DualFundAccept,
+    Wait,
+)
 from .structure import Sequence, OneOf, AnyOrder, TryAll
-from .runner import Runner, Conn, remote_revocation_basepoint, remote_payment_basepoint, remote_delayed_payment_basepoint, remote_htlc_basepoint, remote_per_commitment_point, remote_per_commitment_secret, remote_funding_pubkey, remote_funding_privkey
+from .runner import (
+    Runner,
+    Conn,
+    remote_revocation_basepoint,
+    remote_payment_basepoint,
+    remote_delayed_payment_basepoint,
+    remote_htlc_basepoint,
+    remote_per_commitment_point,
+    remote_per_commitment_secret,
+    remote_funding_pubkey,
+    remote_funding_privkey,
+)
 from .dummyrunner import DummyRunner
-from .namespace import peer_message_namespace, namespace, assign_namespace, make_namespace
+from .namespace import (
+    peer_message_namespace,
+    namespace,
+    assign_namespace,
+    make_namespace,
+)
 from .bitfield import bitfield, has_bit, bitfield_len
 from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
 from .utils import Side, regtest_hash, privkey_expand, wait_for
-from .funding import AcceptFunding, CreateFunding, CreateDualFunding, Funding, AddInput, AddOutput, FinalizeFunding, AddWitnesses
+from .funding import (
+    AcceptFunding,
+    CreateFunding,
+    CreateDualFunding,
+    Funding,
+    AddInput,
+    AddOutput,
+    FinalizeFunding,
+    AddWitnesses,
+)
 from .proposals import dual_fund_csv, channel_type_csv
 
 __all__ = [
