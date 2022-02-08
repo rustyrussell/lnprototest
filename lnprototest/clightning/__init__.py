@@ -16,6 +16,4 @@ where the binaries are (default ../lightning).
 
 from .clightning import Runner
 
-__all__ = [
-    "Runner"
-]
+__all__ = ["Runner"]

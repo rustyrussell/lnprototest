@@ -13,7 +13,7 @@ check-pytest-found:
 check: check-pytest-found
 	$(PYTEST) $(PYTEST_ARGS) $(TEST_DIR)
 
-check-source: check-flake8 check-mypy check-internal-tests
+check-source: check-fmt check-flake8 check-mypy check-internal-tests
 
 check-flake8:
 	flake8 --ignore=E501,E731,W503
@@ -28,6 +28,12 @@ check-quotes/%: %
 	tools/check_quotes.py $*
 
 check-quotes: $(PYTHONFILES:%=check-quotes/%)
+
+check-fmt:
+	black --check .
+
+fmt:
+	black .
 
 TAGS:
 	etags `find . -name '*.py'`

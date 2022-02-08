@@ -33,5 +33,5 @@ def bitfield(*args: int) -> str:
     bytelen = (max(args) + 8) // 8
     bfield = bytearray(bytelen)
     for bitnum in args:
-        bfield[bytelen - 1 - bitnum // 8] |= (1 << (bitnum % 8))
+        bfield[bytelen - 1 - bitnum // 8] |= 1 << (bitnum % 8)
     return bfield.hex()

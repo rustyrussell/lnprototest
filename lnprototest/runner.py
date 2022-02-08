@@ -19,9 +19,10 @@ from typing import (
 
 class Conn(object):
     """Class for connections.  Details filled in by the particular runner."""
+
     def __init__(self, connprivkey: str):
         """Create a connection from a node with the given hex privkey: we use
-trivial values for private keys, so we simply left-pad with zeroes"""
+        trivial values for private keys, so we simply left-pad with zeroes"""
         self.name = connprivkey
         self.connprivkey = privkey_expand(connprivkey)
         self.pubkey = coincurve.PublicKey.from_secret(self.connprivkey.secret)
@@ -35,10 +36,11 @@ trivial values for private keys, so we simply left-pad with zeroes"""
 class Runner(object):
     """Abstract base class for runners.
 
-Most of the runner parameters can be extracted at runtime, but we do
-require that minimum_depth be 3, just for test simplicity.
+    Most of the runner parameters can be extracted at runtime, but we do
+    require that minimum_depth be 3, just for test simplicity.
 
     """
+
     def __init__(self, config: Any):
         self.config = config
         # key == connprivkey, value == Conn
@@ -111,7 +113,13 @@ require that minimum_depth be 3, just for test simplicity.
     def connect(self, event: Event, connprivkey: str) -> None:
         raise NotImplementedError()
 
-    def check_final_error(self, event: Event, conn: Conn, expected: bool, must_not_events: List[MustNotMsg]) -> None:
+    def check_final_error(
+        self,
+        event: Event,
+        conn: Conn,
+        expected: bool,
+        must_not_events: List[MustNotMsg],
+    ) -> None:
         raise NotImplementedError()
 
     def start(self) -> None:
@@ -144,26 +152,29 @@ require that minimum_depth be 3, just for test simplicity.
     def accept_add_fund(self, event: Event) -> None:
         raise NotImplementedError()
 
-    def fundchannel(self,
-                    event: Event,
-                    conn: Conn,
-                    amount: int,
-                    feerate: int = 0,
-                    expect_fail: bool = False) -> None:
+    def fundchannel(
+        self,
+        event: Event,
+        conn: Conn,
+        amount: int,
+        feerate: int = 0,
+        expect_fail: bool = False,
+    ) -> None:
         raise NotImplementedError()
 
-    def init_rbf(self,
-                 event: Event,
-                 conn: Conn,
-                 channel_id: str,
-                 amount: int,
-                 utxo_txid: str,
-                 utxo_outnum: int,
-                 feerate: int) -> None:
+    def init_rbf(
+        self,
+        event: Event,
+        conn: Conn,
+        channel_id: str,
+        amount: int,
+        utxo_txid: str,
+        utxo_outnum: int,
+        feerate: int,
+    ) -> None:
         raise NotImplementedError()
 
-    def addhtlc(self, event: Event, conn: Conn,
-                amount: int, preimage: str) -> None:
+    def addhtlc(self, event: Event, conn: Conn, amount: int, preimage: str) -> None:
         raise NotImplementedError()
 
     def get_keyset(self) -> KeySet:
@@ -184,6 +195,7 @@ require that minimum_depth be 3, just for test simplicity.
 
 def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote revocation basepoint"""
+
     def _remote_revocation_basepoint(runner: Runner, event: Event, field: str) -> str:
         return runner.get_keyset().revocation_basepoint()
 
@@ -192,48 +204,72 @@ def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
 
 def remote_payment_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote payment basepoint"""
+
     def _remote_payment_basepoint(runner: Runner, event: Event, field: str) -> str:
         return runner.get_keyset().payment_basepoint()
+
     return _remote_payment_basepoint
 
 
 def remote_delayed_payment_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote delayed_payment basepoint"""
-    def _remote_delayed_payment_basepoint(runner: Runner, event: Event, field: str) -> str:
+
+    def _remote_delayed_payment_basepoint(
+        runner: Runner, event: Event, field: str
+    ) -> str:
         return runner.get_keyset().delayed_payment_basepoint()
+
     return _remote_delayed_payment_basepoint
 
 
 def remote_htlc_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote htlc basepoint"""
+
     def _remote_htlc_basepoint(runner: Runner, event: Event, field: str) -> str:
         return runner.get_keyset().htlc_basepoint()
+
     return _remote_htlc_basepoint
 
 
 def remote_funding_pubkey() -> Callable[[Runner, Event, str], str]:
     """Get the remote funding pubkey (FIXME: we assume there's only one!)"""
+
     def _remote_funding_pubkey(runner: Runner, event: Event, field: str) -> str:
-        return coincurve.PublicKey.from_secret(privkey_expand(runner.get_node_bitcoinkey()).secret).format().hex()
+        return (
+            coincurve.PublicKey.from_secret(
+                privkey_expand(runner.get_node_bitcoinkey()).secret
+            )
+            .format()
+            .hex()
+        )
+
     return _remote_funding_pubkey
 
 
 def remote_funding_privkey() -> Callable[[Runner, Event, str], str]:
     """Get the remote funding privkey (FIXME: we assume there's only one!)"""
+
     def _remote_funding_privkey(runner: Runner, event: Event, field: str) -> str:
         return runner.get_node_bitcoinkey()
+
     return _remote_funding_privkey
 
 
 def remote_per_commitment_point(n: int) -> Callable[[Runner, Event, str], str]:
     """Get the n'th remote per-commitment point"""
-    def _remote_per_commitment_point(n: int, runner: Runner, event: Event, field: str) -> str:
+
+    def _remote_per_commitment_point(
+        n: int, runner: Runner, event: Event, field: str
+    ) -> str:
         return runner.get_keyset().per_commit_point(n)
+
     return functools.partial(_remote_per_commitment_point, n)
 
 
 def remote_per_commitment_secret(n: int) -> Callable[[Runner, Event, str], str]:
     """Get the n'th remote per-commitment secret"""
+
     def _remote_per_commitment_secret(runner: Runner, event: Event, field: str) -> str:
         return runner.get_keyset().per_commit_secret(n)
+
     return _remote_per_commitment_secret
