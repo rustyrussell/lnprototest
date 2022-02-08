@@ -113,7 +113,7 @@ def privkey_for_index(index: int = 0) -> str:
 
 
 def utxo_amount(index: int = 0) -> int:
-    """How much is this utxo worth """
+    """How much is this utxo worth"""
     _, _, amt, _, _ = utxo(index)
     return amt
 

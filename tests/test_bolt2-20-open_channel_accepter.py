@@ -1445,7 +1445,7 @@ def accepter_tx_creation(
     local_keyset: KeySet,
     runner: Runner,
 ) -> List[Event]:
-    """ Repeated tx construction protocols, for accepter tests """
+    """Repeated tx construction protocols, for accepter tests"""
     txid_in, tx_index_in, sats_in, spending_privkey, fee = utxo(input_index)
     fee = sats_in - funding_amt if is_rbf else fee
 
@@ -1596,7 +1596,7 @@ def opener_tx_creation(
     local_keyset: KeySet,
     runner: Runner,
 ) -> List[Event]:
-    """ Repeated tx construction protocols, for opener tests """
+    """Repeated tx construction protocols, for opener tests"""
     txid_in, tx_index_in, sats_in, spending_privkey, fee = utxo(input_index)
     fee = sats_in - funding_amt if is_rbf else fee
 
@@ -2550,7 +2550,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
 
 
 def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
-    """ The proposed rbf doesn't have any overlapping inputs """
+    """The proposed rbf doesn't have any overlapping inputs"""
     with_proposal(dual_fund_csv)
     runner.add_startup_flag("experimental-dual-fund")
 

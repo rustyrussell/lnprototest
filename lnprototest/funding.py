@@ -188,7 +188,7 @@ class Funding(object):
         self.outputs.append({"output": txout, "serial_id": serial_id})
 
     def our_witnesses(self) -> str:
-        """ Extract expected witness data for our node """
+        """Extract expected witness data for our node"""
         witnesses = []
         # these were sorted in `build_tx`
         for _in in self.inputs:
