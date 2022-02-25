@@ -6,3 +6,4 @@ tags
 .venv
 **.egg-info
 .idea
+poetry.lock
