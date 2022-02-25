@@ -35,5 +35,10 @@ check-fmt:
 fmt:
 	black .
 
+clean:
+	find lnprototest -name '*.egg-info' -delete;
+	find lnprototest -name '.*_cache' -delete
+
+
 TAGS:
 	etags `find . -name '*.py'`
