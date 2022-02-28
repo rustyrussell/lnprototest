@@ -63,7 +63,8 @@ RUN mkdir lnprototest
 
 COPY . lnprototest
 
-RUN cd lnprototest && \
+RUN git submodule update --init --recursive && \
+    cd lnprototest && \
 	pip3 install poetry && \
     poetry install && \
     cd lnprototest/clightning && \ 
