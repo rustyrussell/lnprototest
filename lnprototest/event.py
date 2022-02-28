@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 import traceback
-from pyln.proto.message import Message
+from pyln_spec.core.message import Message
 import collections
 import os.path
 import io

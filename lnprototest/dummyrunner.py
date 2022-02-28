@@ -5,7 +5,7 @@ from .runner import Runner, Conn
 from .event import Event, ExpectMsg, MustNotMsg
 from typing import List, Optional
 from .keyset import KeySet
-from pyln.proto.message import (
+from pyln_spec.core.message import (
     Message,
     FieldType,
     DynamicArrayType,

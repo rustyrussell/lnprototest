@@ -7,3 +7,5 @@ tags
 **.egg-info
 .idea
 poetry.lock
+
+*.lock

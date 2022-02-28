@@ -28,8 +28,8 @@ import time
 import io
 import zlib
 import crc32c
-from pyln.spec.bolt7 import channel_update_timestamps
-from pyln.proto.message import Message
+from pyln_spec.bolt7 import channel_update_timestamps
+from pyln_spec.core.message import Message
 
 # Note for gossip_channel_range: we are *allowed* to return a superset
 # of what they ask, so if someone does that this test must be modified

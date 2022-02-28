@@ -2,7 +2,7 @@
 # Variations on open_channel
 
 from hashlib import sha256
-from pyln.proto.message import Message
+from pyln_spec.core.message import Message
 from lnprototest import (
     TryAll,
     Connect,

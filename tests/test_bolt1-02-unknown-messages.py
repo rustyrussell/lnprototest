@@ -3,13 +3,13 @@
 #
 
 from lnprototest import TryAll, Connect, ExpectMsg, Msg, RawMsg, ExpectError, Runner
-import pyln.spec.bolt1
+import pyln_spec.bolt1
 from typing import Any
 
 
 def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
     # We override default namespace since we only need BOLT1
-    namespaceoverride(pyln.spec.bolt1.namespace)
+    namespaceoverride(pyln_spec.bolt1.namespace)
     test = [
         Connect(connprivkey="03"),
         ExpectMsg("init"),

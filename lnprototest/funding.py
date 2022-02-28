@@ -5,7 +5,7 @@ from .event import Event, ResolvableInt, ResolvableStr
 from .namespace import namespace
 from .runner import Runner
 from .signature import Sig
-from pyln.proto.message import Message
+from pyln_spec.core.message import Message
 from hashlib import sha256
 import coincurve
 import io

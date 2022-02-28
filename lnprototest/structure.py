@@ -3,7 +3,7 @@ import io
 from .event import Event, ExpectMsg, ResolvableBool
 from .errors import SpecFileError, EventError
 from .namespace import namespace
-from pyln.proto.message import Message
+from pyln_spec.core.message import Message
 from typing import Union, List, Optional, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:

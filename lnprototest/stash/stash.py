@@ -1,6 +1,6 @@
 from lnprototest import Runner, Event, Side, SpecFileError, Funding
 from typing import Callable, Optional, Any
-from pyln.proto.message import Message
+from pyln_spec.core.message import Message
 import functools
 import time
 import coincurve

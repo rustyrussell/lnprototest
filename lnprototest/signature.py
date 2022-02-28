@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 import coincurve
 from io import BufferedIOBase
-from pyln.proto.message import FieldType, split_field
+from pyln_spec.core.message import FieldType, split_field
 from .utils import check_hex, privkey_expand
 from typing import Union, Tuple, Dict, Any, Optional, cast
 

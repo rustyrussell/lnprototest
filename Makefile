@@ -1,6 +1,7 @@
 #! /usr/bin/make
 
 PYTHONFILES := $(shell find * -name '*.py')
+CC=poetry run
 POSSIBLE_PYTEST_NAMES=pytest-3 pytest3 pytest
 PYTEST := $(shell for p in $(POSSIBLE_PYTEST_NAMES); do if type $$p > /dev/null; then echo $$p; break; fi done)
 TEST_DIR=tests

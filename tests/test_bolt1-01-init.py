@@ -19,8 +19,8 @@ from lnprototest import (
     SpecFileError,
 )
 from lnprototest.stash import rcvd
-import pyln.spec.bolt1
-from pyln.proto.message import Message
+import pyln_spec.bolt1
+from pyln_spec.core.message import Message
 from typing import List, Any
 
 import functools
@@ -70,7 +70,7 @@ def has_one_feature(
 
 def test_namespace_override(runner: Runner, namespaceoverride: Any) -> None:
     # Truncate the namespace to just BOLT1
-    namespaceoverride(pyln.spec.bolt1.namespace)
+    namespaceoverride(pyln_spec.bolt1.namespace)
 
     # Try to send a message that's not in BOLT1
     with pytest.raises(SpecFileError, match=r"Unknown msgtype open_channel"):
@@ -79,7 +79,7 @@ def test_namespace_override(runner: Runner, namespaceoverride: Any) -> None:
 
 def test_init(runner: Runner, namespaceoverride: Any) -> None:
     # We override default namespace since we only need BOLT1
-    namespaceoverride(pyln.spec.bolt1.namespace)
+    namespaceoverride(pyln_spec.bolt1.namespace)
     test = [
         Connect(connprivkey="03"),
         ExpectMsg("init"),

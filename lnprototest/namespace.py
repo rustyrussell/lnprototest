@@ -1,8 +1,8 @@
 #! /usr/bin/python3
-import pyln.spec.bolt1
-import pyln.spec.bolt2
-import pyln.spec.bolt7
-from pyln.proto.message import MessageNamespace
+import pyln_spec.bolt1
+import pyln_spec.bolt2
+import pyln_spec.bolt7
+from pyln_spec.core.message import MessageNamespace
 from .signature import SigType
 from typing import List
 
@@ -20,7 +20,7 @@ def make_namespace(csv: List[str]) -> MessageNamespace:
 def peer_message_namespace() -> MessageNamespace:
     """Namespace containing all the peer messages"""
     return make_namespace(
-        pyln.spec.bolt1.csv + pyln.spec.bolt2.csv + pyln.spec.bolt7.csv
+        pyln_spec.bolt1.csv + pyln_spec.bolt2.csv + pyln_spec.bolt7.csv
     )
 
 
