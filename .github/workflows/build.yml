@@ -1,5 +1,5 @@
-name: lnprototest build and code check
-on: push
+name: Code Styel checking
+on: [push, pull_request]
 
 jobs:
   test:
@@ -33,5 +33,5 @@ jobs:
         run: poetry install --no-interaction --no-root
       - name: Install library
         run: poetry install --no-interaction
-      - name: Code checking
-        run: make
+      - name: Check check source code
+        run: make && make check
