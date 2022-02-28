@@ -1,0 +1,3 @@
+[submodule "external/pyln-spec"]
+	path = external/pyln-spec
+	url = https://github.com/vincenzopalazzo/pyln-spec.git
