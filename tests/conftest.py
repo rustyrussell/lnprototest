@@ -56,7 +56,7 @@ def with_proposal(
     def _setter(proposal_csv: List[str]) -> None:
         # Testing first line is cheap, pretty effective.
         if proposal_csv[0] not in (
-           pyln_spec.bolt1.csv + pyln_spec.bolt2.csv + pyln_spec.bolt7.csv
+            pyln_spec.bolt1.csv + pyln_spec.bolt2.csv + pyln_spec.bolt7.csv
         ):
             # We merge *csv*, because then you can add tlv entries; merging
             # namespaces with duplicate TLVs complains of a clash.
