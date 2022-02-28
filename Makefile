@@ -31,10 +31,10 @@ check-quotes/%: %
 check-quotes: $(PYTHONFILES:%=check-quotes/%)
 
 check-fmt:
-	black --check .
+	$(CC) black --check .
 
 fmt:
-	black .
+	$(CC) black .
 
 clean:
 	find lnprototest -name '*.egg-info' -delete;
