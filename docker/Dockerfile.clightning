@@ -66,9 +66,10 @@ COPY . lnprototest
 RUN cd lnprototest && \
 	git submodule update --init --recursive && \
 	pip3 install poetry && \
+	pip3 uninstall virtualenv -y && \
 	poetry shell && \
     poetry install && \
     cd lnprototest/clightning && \ 
     pip3 install -r requirements.txt
-	
+
 CMD ["./lnprototest/docker/entrypoint.sh"]
