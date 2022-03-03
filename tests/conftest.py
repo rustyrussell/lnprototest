@@ -27,8 +27,7 @@ def pytest_addoption(parser: Any) -> None:
 @pytest.fixture()  # type: ignore
 def runner(pytestconfig: Any) -> Any:
     parts = pytestconfig.getoption("runner").rpartition(".")
-    runner = importlib.import_module(parts[0]).__dict__[parts[2]](pytestconfig)
-    yield runner
+    yield importlib.import_module(parts[0]).__dict__[parts[2]](pytestconfig)
 
 
 @pytest.fixture()

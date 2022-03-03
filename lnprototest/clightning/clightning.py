@@ -55,6 +55,7 @@ class Runner(lnprototest.Runner):
     def __init__(self, config: Any):
         super().__init__(config)
         self.running = False
+        self.rpc = None
         self.cleanup_callbacks: List[Callable[[], None]] = []
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
@@ -81,8 +82,8 @@ class Runner(lnprototest.Runner):
                 stdout=subprocess.PIPE,
                 check=True,
             )
-                .stdout.decode("utf-8")
-                .splitlines()
+            .stdout.decode("utf-8")
+            .splitlines()
         )
         self.options: Dict[str, str] = {}
         for o in opts:
@@ -91,6 +92,7 @@ class Runner(lnprototest.Runner):
             else:
                 k, v = o.split("/")
                 self.options[k] = v
+        self.start()
 
     def get_keyset(self) -> KeySet:
         return KeySet(
@@ -111,7 +113,7 @@ class Runner(lnprototest.Runner):
         return self.running
 
     def start(self) -> None:
-        if self.running:
+        if self.is_running():
             return
         self.proc = subprocess.Popen(
             [
@@ -139,6 +141,7 @@ class Runner(lnprototest.Runner):
         self.rpc = pyln.client.LightningRpc(
             os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
         )
+
         def node_ready(rpc: pyln.client.LightningRpc) -> bool:
             try:
                 rpc.getinfo()
@@ -152,6 +155,20 @@ class Runner(lnprototest.Runner):
         for i in range(5):
             self.rpc.newaddr()
 
+    def shutdown(self) -> None:
+        for cb in self.cleanup_callbacks:
+            cb()
+
+    def stop(self) -> None:
+        if not self.running:
+            return
+        self.shutdown()
+        self.rpc.stop()
+        self.bitcoind.stop()
+        self.running = False
+        for c in self.conns.values():
+            cast(CLightningConn, c).connection.connection.close()
+
     def kill_fundchannel(self) -> None:
         fut = self.fundchannel_future
         self.fundchannel_future = None
@@ -161,20 +178,6 @@ class Runner(lnprototest.Runner):
                 fut.result(0)
             except (SpecFileError, futures.TimeoutError):
                 pass
-
-    def shutdown(self) -> None:
-        for cb in self.cleanup_callbacks:
-            cb()
-
-    def stop(self) -> None:
-        if self.running is False:
-            return
-        self.shutdown()
-        self.rpc.stop()
-        self.bitcoind.stop()
-        self.running = False
-        for c in self.conns.values():
-            cast(CLightningConn, c).connection.connection.close()
 
     def connect(self, event: Event, connprivkey: str) -> None:
         self.add_conn(CLightningConn(connprivkey, self.lightning_port))
@@ -223,12 +226,12 @@ class Runner(lnprototest.Runner):
                 raise EventError(event, "Connection closed")
 
     def fundchannel(
-            self,
-            event: Event,
-            conn: Conn,
-            amount: int,
-            feerate: int = 253,
-            expect_fail: bool = False,
+        self,
+        event: Event,
+        conn: Conn,
+        amount: int,
+        feerate: int = 253,
+        expect_fail: bool = False,
     ) -> None:
         """
         event       - the event which cause this, for error logging
@@ -248,11 +251,11 @@ class Runner(lnprototest.Runner):
             self.fundchannel_future = None
 
         def _fundchannel(
-                runner: Runner,
-                conn: Conn,
-                amount: int,
-                feerate: int,
-                expect_fail: bool = False,
+            runner: Runner,
+            conn: Conn,
+            amount: int,
+            feerate: int,
+            expect_fail: bool = False,
         ) -> str:
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
@@ -276,14 +279,14 @@ class Runner(lnprototest.Runner):
         self.cleanup_callbacks.append(self.kill_fundchannel)
 
     def init_rbf(
-            self,
-            event: Event,
-            conn: Conn,
-            channel_id: str,
-            amount: int,
-            utxo_txid: str,
-            utxo_outnum: int,
-            feerate: int,
+        self,
+        event: Event,
+        conn: Conn,
+        channel_id: str,
+        amount: int,
+        utxo_txid: str,
+        utxo_outnum: int,
+        feerate: int,
     ) -> None:
 
         if self.fundchannel_future:
@@ -356,7 +359,7 @@ class Runner(lnprototest.Runner):
         self.rpc.sendpay([routestep], payhash)
 
     def get_output_message(
-            self, conn: Conn, event: Event, timeout: int = TIMEOUT
+        self, conn: Conn, event: Event, timeout: int = TIMEOUT
     ) -> Optional[bytes]:
         fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
         try:
@@ -373,11 +376,11 @@ class Runner(lnprototest.Runner):
         return msg.hex()
 
     def check_final_error(
-            self,
-            event: Event,
-            conn: Conn,
-            expected: bool,
-            must_not_events: List[MustNotMsg],
+        self,
+        event: Event,
+        conn: Conn,
+        expected: bool,
+        must_not_events: List[MustNotMsg],
     ) -> None:
         if not expected:
             # Inject raw packet to ensure it hangs up *after* processing all previous ones.

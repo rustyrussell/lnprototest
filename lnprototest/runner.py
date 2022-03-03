@@ -49,7 +49,8 @@ class Runner(ABC):
         self.stash: Dict[str, Dict[str, Any]] = {}
 
     def __enter__(self) -> "Runner":
-        """Call the method when enter inside the class the first time"""
+        """Call the method when enter inside the class the first time.
+        doc: https://docs.python.org/3/reference/datamodel.html#with-statement-context-managers"""
         self.start()
         return self
 
@@ -232,6 +233,7 @@ class Runner(ABC):
         """Close the channel with a specific {channel_id} and
         a boolean value if it succeeded with success"""
         pass
+
 
 def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote revocation basepoint"""
