@@ -121,6 +121,7 @@ class Bitcoind(Backend):
 
     def stop(self) -> None:
         self.proc.kill()
+        shutil.rmtree(self.bitcoin_dir)
 
     def restart(self) -> None:
         # Only restart if we have to.

@@ -7,6 +7,7 @@ from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
+from abc import ABC, abstractmethod
 from typing import (
     Dict,
     Optional,
@@ -33,12 +34,11 @@ class Conn(object):
         return self.name
 
 
-class Runner(object):
+class Runner(ABC):
     """Abstract base class for runners.
 
     Most of the runner parameters can be extracted at runtime, but we do
     require that minimum_depth be 3, just for test simplicity.
-
     """
 
     def __init__(self, config: Any):
@@ -47,6 +47,15 @@ class Runner(object):
         self.conns: Dict[str, Conn] = {}
         self.last_conn: Optional[Conn] = None
         self.stash: Dict[str, Dict[str, Any]] = {}
+
+    def __enter__(self) -> "Runner":
+        """Call the method when enter inside the class the first time"""
+        self.start()
+        return self
+
+    def __del__(self):
+        """Call the method when the class is out of scope"""
+        self.stop()
 
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
@@ -109,10 +118,18 @@ class Runner(object):
             raise SpecFileError(event, "Unknown stash name {}".format(stashname))
         return self.stash[stashname]
 
-    # You need to implement these!
-    def connect(self, event: Event, connprivkey: str) -> None:
-        raise NotImplementedError()
+    @abstractmethod
+    def is_running(self) -> bool:
+        """Return a boolean value that tells whether the runner is running
+        or not.
+        Is leave up to the runner implementation to keep the runner state"""
+        pass
 
+    @abstractmethod
+    def connect(self, event: Event, connprivkey: str) -> None:
+        pass
+
+    @abstractmethod
     def check_final_error(
         self,
         event: Event,
@@ -120,38 +137,49 @@ class Runner(object):
         expected: bool,
         must_not_events: List[MustNotMsg],
     ) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def start(self) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def stop(self) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def get_output_message(self, conn: Conn, event: ExpectMsg) -> Optional[bytes]:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def getblockheight(self) -> int:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def trim_blocks(self, newheight: int) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def add_blocks(self, event: Event, txs: List[str], n: int) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def expect_tx(self, event: Event, txid: str) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def invoice(self, event: Event, amount: int, preimage: str) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def accept_add_fund(self, event: Event) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def fundchannel(
         self,
         event: Event,
@@ -160,8 +188,9 @@ class Runner(object):
         feerate: int = 0,
         expect_fail: bool = False,
     ) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def init_rbf(
         self,
         event: Event,
@@ -172,26 +201,37 @@ class Runner(object):
         utxo_outnum: int,
         feerate: int,
     ) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def addhtlc(self, event: Event, conn: Conn, amount: int, preimage: str) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def get_keyset(self) -> KeySet:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def get_node_privkey(self) -> str:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def get_node_bitcoinkey(self) -> str:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def has_option(self, optname: str) -> Optional[str]:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def add_startup_flag(self, flag: str) -> None:
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
+    def close_channel(self, channel_id: str) -> bool:
+        """Close the channel with a specific {channel_id} and
+        a boolean value if it succeeded with success"""
+        pass
 
 def remote_revocation_basepoint() -> Callable[[Runner, Event, str], str]:
     """Get the remote revocation basepoint"""

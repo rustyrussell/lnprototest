@@ -16,6 +16,7 @@ from typing import Any
 
 
 class DummyRunner(Runner):
+
     def __init__(self, config: Any):
         super().__init__(config)
 
@@ -86,12 +87,12 @@ class DummyRunner(Runner):
             print("[RECV {} {}]".format(event, outbuf.hex()))
 
     def fundchannel(
-        self,
-        event: Event,
-        conn: Conn,
-        amount: int,
-        feerate: int = 253,
-        expect_fail: bool = False,
+            self,
+            event: Event,
+            conn: Conn,
+            amount: int,
+            feerate: int = 253,
+            expect_fail: bool = False,
     ) -> None:
         if self.config.getoption("verbose"):
             print(
@@ -101,14 +102,14 @@ class DummyRunner(Runner):
             )
 
     def init_rbf(
-        self,
-        event: Event,
-        conn: Conn,
-        channel_id: str,
-        amount: int,
-        utxo_txid: str,
-        utxo_outnum: int,
-        feerate: int,
+            self,
+            event: Event,
+            conn: Conn,
+            channel_id: str,
+            amount: int,
+            utxo_txid: str,
+            utxo_outnum: int,
+            feerate: int,
     ) -> None:
         if self.config.getoption("verbose"):
             print(
@@ -143,21 +144,21 @@ class DummyRunner(Runner):
             if ftype.elemtype.name == "byte":
                 return "00" * ftype.arraysize
             return (
-                "["
-                + ",".join([DummyRunner.fake_field(ftype.elemtype)] * ftype.arraysize)
-                + "]"
+                    "["
+                    + ",".join([DummyRunner.fake_field(ftype.elemtype)] * ftype.arraysize)
+                    + "]"
             )
         elif ftype.name in (
-            "byte",
-            "u8",
-            "u16",
-            "u32",
-            "u64",
-            "tu16",
-            "tu32",
-            "tu64",
-            "bigsize",
-            "varint",
+                "byte",
+                "u8",
+                "u16",
+                "u32",
+                "u64",
+                "tu16",
+                "tu32",
+                "tu64",
+                "bigsize",
+                "varint",
         ):
             return "0"
         elif ftype.name in ("chain_hash", "channel_id", "sha256"):
@@ -200,10 +201,18 @@ class DummyRunner(Runner):
         return "Dummy error"
 
     def check_final_error(
-        self,
-        event: Event,
-        conn: Conn,
-        expected: bool,
-        must_not_events: List[MustNotMsg],
+            self,
+            event: Event,
+            conn: Conn,
+            expected: bool,
+            must_not_events: List[MustNotMsg],
     ) -> None:
         pass
+
+    def close_channel(self, channel_id: str) -> bool:
+        if self.config.getoption("verbose"):
+            print("[CLOSE-CHANNEL {}]".format(channel_id))
+        return True
+
+    def is_running(self) -> bool:
+        return True

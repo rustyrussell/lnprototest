@@ -13,6 +13,7 @@ import tempfile
 import lnprototest
 import bitcoin.core
 import struct
+import shutil
 
 from concurrent import futures
 from ephemeral_port_reserve import reserve
@@ -53,13 +54,13 @@ class CLightningConn(lnprototest.Conn):
 class Runner(lnprototest.Runner):
     def __init__(self, config: Any):
         super().__init__(config)
+        self.running = False
         self.cleanup_callbacks: List[Callable[[], None]] = []
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
 
         directory = tempfile.mkdtemp(prefix="lnpt-cl-")
         self.bitcoind = Bitcoind(directory)
-        self.bitcoind.start()
         self.executor = futures.ThreadPoolExecutor(max_workers=20)
 
         self.lightning_dir = os.path.join(directory, "lightningd")
@@ -80,8 +81,8 @@ class Runner(lnprototest.Runner):
                 stdout=subprocess.PIPE,
                 check=True,
             )
-            .stdout.decode("utf-8")
-            .splitlines()
+                .stdout.decode("utf-8")
+                .splitlines()
         )
         self.options: Dict[str, str] = {}
         for o in opts:
@@ -106,7 +107,12 @@ class Runner(lnprototest.Runner):
     def get_node_bitcoinkey(self) -> str:
         return "0000000000000000000000000000000000000000000000000000000000000010"
 
+    def is_running(self) -> bool:
+        return self.running
+
     def start(self) -> None:
+        if self.running:
+            return
         self.proc = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),
@@ -128,10 +134,11 @@ class Runner(lnprototest.Runner):
             ]
             + self.startup_flags
         )
+        self.running = True
+        self.bitcoind.start()
         self.rpc = pyln.client.LightningRpc(
             os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
         )
-
         def node_ready(rpc: pyln.client.LightningRpc) -> bool:
             try:
                 rpc.getinfo()
@@ -160,38 +167,25 @@ class Runner(lnprototest.Runner):
             cb()
 
     def stop(self) -> None:
-        for cb in self.cleanup_callbacks:
-            cb()
+        if self.running is False:
+            return
+        self.shutdown()
         self.rpc.stop()
         self.bitcoind.stop()
+        self.running = False
         for c in self.conns.values():
             cast(CLightningConn, c).connection.connection.close()
 
     def connect(self, event: Event, connprivkey: str) -> None:
         self.add_conn(CLightningConn(connprivkey, self.lightning_port))
 
-    def __enter__(self) -> "Runner":
-        self.start()
-        return self
-
-    def __exit__(self, type: Any, value: Any, tb: Any) -> None:
-        self.stop()
-
     def restart(self) -> None:
+        super().restart()
         if self.config.getoption("verbose"):
             print("[RESTART]")
-        for cb in self.cleanup_callbacks:
-            cb()
-        self.rpc.stop()
-        self.bitcoind.restart()
-        for c in self.conns.values():
-            cast(CLightningConn, c).connection.connection.close()
-
+        self.stop()
         # Make a clean start
-        os.remove(os.path.join(self.lightning_dir, "regtest", "gossip_store"))
-        os.remove(os.path.join(self.lightning_dir, "regtest", "lightningd.sqlite3"))
-        os.remove(os.path.join(self.lightning_dir, "regtest", "log"))
-        super().restart()
+        shutil.rmtree(self.lightning_dir)
         self.start()
 
     def getblockheight(self) -> int:
@@ -229,12 +223,12 @@ class Runner(lnprototest.Runner):
                 raise EventError(event, "Connection closed")
 
     def fundchannel(
-        self,
-        event: Event,
-        conn: Conn,
-        amount: int,
-        feerate: int = 253,
-        expect_fail: bool = False,
+            self,
+            event: Event,
+            conn: Conn,
+            amount: int,
+            feerate: int = 253,
+            expect_fail: bool = False,
     ) -> None:
         """
         event       - the event which cause this, for error logging
@@ -254,11 +248,11 @@ class Runner(lnprototest.Runner):
             self.fundchannel_future = None
 
         def _fundchannel(
-            runner: Runner,
-            conn: Conn,
-            amount: int,
-            feerate: int,
-            expect_fail: bool = False,
+                runner: Runner,
+                conn: Conn,
+                amount: int,
+                feerate: int,
+                expect_fail: bool = False,
         ) -> str:
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
@@ -282,14 +276,14 @@ class Runner(lnprototest.Runner):
         self.cleanup_callbacks.append(self.kill_fundchannel)
 
     def init_rbf(
-        self,
-        event: Event,
-        conn: Conn,
-        channel_id: str,
-        amount: int,
-        utxo_txid: str,
-        utxo_outnum: int,
-        feerate: int,
+            self,
+            event: Event,
+            conn: Conn,
+            channel_id: str,
+            amount: int,
+            utxo_txid: str,
+            utxo_outnum: int,
+            feerate: int,
     ) -> None:
 
         if self.fundchannel_future:
@@ -362,7 +356,7 @@ class Runner(lnprototest.Runner):
         self.rpc.sendpay([routestep], payhash)
 
     def get_output_message(
-        self, conn: Conn, event: Event, timeout: int = TIMEOUT
+            self, conn: Conn, event: Event, timeout: int = TIMEOUT
     ) -> Optional[bytes]:
         fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
         try:
@@ -379,11 +373,11 @@ class Runner(lnprototest.Runner):
         return msg.hex()
 
     def check_final_error(
-        self,
-        event: Event,
-        conn: Conn,
-        expected: bool,
-        must_not_events: List[MustNotMsg],
+            self,
+            event: Event,
+            conn: Conn,
+            expected: bool,
+            must_not_events: List[MustNotMsg],
     ) -> None:
         if not expected:
             # Inject raw packet to ensure it hangs up *after* processing all previous ones.
@@ -435,3 +429,13 @@ class Runner(lnprototest.Runner):
         if self.config.getoption("verbose"):
             print("[ADD STARTUP FLAG '{}']".format(flag))
         self.startup_flags.append("--{}".format(flag))
+
+    def close_channel(self, channel_id: str) -> bool:
+        if self.config.getoption("verbose"):
+            print("[CLOSE CHANNEL '{}']".format(channel_id))
+        try:
+            self.rpc.close(peer_id=channel_id)
+        except Exception as ex:
+            print(ex)
+            return False
+        return True
