@@ -215,3 +215,6 @@ class DummyRunner(Runner):
 
     def is_running(self) -> bool:
         return True
+
+    def teardown(self):
+        pass

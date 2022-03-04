@@ -1,4 +1,8 @@
 #! /usr/bin/python3
+import logging
+import shutil
+import tempfile
+
 import coincurve
 import functools
 
@@ -43,20 +47,28 @@ class Runner(ABC):
 
     def __init__(self, config: Any):
         self.config = config
+        self.directory = tempfile.mkdtemp(prefix="lnpt-cl-")
         # key == connprivkey, value == Conn
         self.conns: Dict[str, Conn] = {}
         self.last_conn: Optional[Conn] = None
         self.stash: Dict[str, Dict[str, Any]] = {}
+        self.logger = logging.getLogger(__name__)
+        if self.config.getoption("verbose"):
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
 
     def __enter__(self) -> "Runner":
-        """Call the method when enter inside the class the first time.
+        """Call the method when enter the with block.
         doc: https://docs.python.org/3/reference/datamodel.html#with-statement-context-managers"""
         self.start()
         return self
 
-    def __del__(self):
-        """Call the method when the class is out of scope"""
+    def __exit__(self, exc_type, exc_val, exc_tb) -> "Runner":
+        """Call the method when exist from the with block.
+        doc: see __enter__"""
         self.stop()
+        return self
 
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
@@ -118,6 +130,11 @@ class Runner(ABC):
                 return default
             raise SpecFileError(event, "Unknown stash name {}".format(stashname))
         return self.stash[stashname]
+
+    def teardown(self):
+        """The Teardown method is called at the end of the test,
+        and it is used to clean up the root dir where the tests are run."""
+        shutil.rmtree(self.directory)
 
     @abstractmethod
     def is_running(self) -> bool:

@@ -9,11 +9,11 @@ import pyln.client
 import pyln.proto.wire
 import os
 import subprocess
-import tempfile
 import lnprototest
 import bitcoin.core
 import struct
 import shutil
+import logging
 
 from concurrent import futures
 from ephemeral_port_reserve import reserve
@@ -56,17 +56,12 @@ class Runner(lnprototest.Runner):
         super().__init__(config)
         self.running = False
         self.rpc = None
+        self.bitcoind = None
+        self.proc = None
         self.cleanup_callbacks: List[Callable[[], None]] = []
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
-
-        directory = tempfile.mkdtemp(prefix="lnpt-cl-")
-        self.bitcoind = Bitcoind(directory)
         self.executor = futures.ThreadPoolExecutor(max_workers=20)
-
-        self.lightning_dir = os.path.join(directory, "lightningd")
-        if not os.path.exists(self.lightning_dir):
-            os.makedirs(self.lightning_dir)
         self.lightning_port = reserve()
 
         self.startup_flags = []
@@ -92,7 +87,12 @@ class Runner(lnprototest.Runner):
             else:
                 k, v = o.split("/")
                 self.options[k] = v
-        self.start()
+
+    def __init_sandbox_dir(self):
+        """Create the tmp directory for lnprotest and lightningd"""
+        self.lightning_dir = os.path.join(self.directory, "lightningd")
+        if not os.path.exists(self.lightning_dir):
+            os.makedirs(self.lightning_dir)
 
     def get_keyset(self) -> KeySet:
         return KeySet(
@@ -113,8 +113,9 @@ class Runner(lnprototest.Runner):
         return self.running
 
     def start(self) -> None:
-        if self.is_running():
-            return
+        self.logger.debug("[START]")
+        self.__init_sandbox_dir()
+        self.bitcoind = Bitcoind(self.directory)
         self.proc = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),
@@ -137,19 +138,26 @@ class Runner(lnprototest.Runner):
             + self.startup_flags
         )
         self.running = True
-        self.bitcoind.start()
+        try:
+            self.bitcoind.start()
+        except Exception as ex:
+            self.logger.info(f"Exception with message {ex}")
+        self.logger.info("RUN Bitcoind")
         self.rpc = pyln.client.LightningRpc(
             os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
         )
+        self.logger.info("RUN clightning")
 
         def node_ready(rpc: pyln.client.LightningRpc) -> bool:
             try:
                 rpc.getinfo()
                 return True
-            except Exception:
+            except Exception as ex:
+                logging.debug(f"waiting for c-lightning: Exception received {ex}")
                 return False
 
         wait_for(lambda: node_ready(self.rpc))
+        logging.info("Waiting fro c-lightning")
 
         # Make sure that we see any funds that come to our wallet
         for i in range(5):
@@ -158,16 +166,23 @@ class Runner(lnprototest.Runner):
     def shutdown(self) -> None:
         for cb in self.cleanup_callbacks:
             cb()
-
-    def stop(self) -> None:
-        if not self.running:
-            return
-        self.shutdown()
         self.rpc.stop()
         self.bitcoind.stop()
+
+    def stop(self) -> None:
+        self.logger.debug("[STOP]")
+        self.shutdown()
         self.running = False
         for c in self.conns.values():
             cast(CLightningConn, c).connection.connection.close()
+        shutil.rmtree(os.path.join(self.lightning_dir, "regtest"))
+
+    def restart(self) -> None:
+        self.logger.debug("[RESTART]")
+        self.stop()
+        # Make a clean start
+        super().restart()
+        self.start()
 
     def kill_fundchannel(self) -> None:
         fut = self.fundchannel_future
@@ -181,15 +196,6 @@ class Runner(lnprototest.Runner):
 
     def connect(self, event: Event, connprivkey: str) -> None:
         self.add_conn(CLightningConn(connprivkey, self.lightning_port))
-
-    def restart(self) -> None:
-        super().restart()
-        if self.config.getoption("verbose"):
-            print("[RESTART]")
-        self.stop()
-        # Make a clean start
-        shutil.rmtree(self.lightning_dir)
-        self.start()
 
     def getblockheight(self) -> int:
         return self.bitcoind.rpc.getblockcount()

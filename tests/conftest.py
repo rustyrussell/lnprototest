@@ -24,10 +24,12 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-@pytest.fixture()  # type: ignore
+@pytest.fixture(scope="session")  # type: ignore
 def runner(pytestconfig: Any) -> Any:
     parts = pytestconfig.getoption("runner").rpartition(".")
-    yield importlib.import_module(parts[0]).__dict__[parts[2]](pytestconfig)
+    runner = importlib.import_module(parts[0]).__dict__[parts[2]](pytestconfig)
+    yield runner
+    runner.teardown()
 
 
 @pytest.fixture()
