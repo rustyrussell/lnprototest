@@ -54,6 +54,7 @@ Here are some other useful pytest options:
 5. `-k foo` to only run tests with 'foo' in their name.
 6. `tests/test_bolt1-01-init.py` to only run tests in that file.
 7. `tests/test_bolt1-01-init.py::test_init` to only run that test.
+8. `--log-cli-level={LEVEL_NAME}` to enable the logging during the test execution.
 
 ### Running Against A Real Node.
 
