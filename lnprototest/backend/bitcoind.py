@@ -55,6 +55,7 @@ class BitcoinProxy:
 
 class Bitcoind(Backend):
     """Starts regtest bitcoind on an ephemeral port, and returns the RPC proxy"""
+
     def __init__(self, basedir: str):
         self.rpc = None
         self.proc = None
