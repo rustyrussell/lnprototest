@@ -141,12 +141,12 @@ class Runner(lnprototest.Runner):
         try:
             self.bitcoind.start()
         except Exception as ex:
-            self.logger.info(f"Exception with message {ex}")
-        self.logger.info("RUN Bitcoind")
+            self.logger.debug(f"Exception with message {ex}")
+        self.logger.debug("RUN Bitcoind")
         self.rpc = pyln.client.LightningRpc(
             os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
         )
-        self.logger.info("RUN clightning")
+        self.logger.debug("RUN c-lightning")
 
         def node_ready(rpc: pyln.client.LightningRpc) -> bool:
             try:
@@ -157,7 +157,7 @@ class Runner(lnprototest.Runner):
                 return False
 
         wait_for(lambda: node_ready(self.rpc))
-        logging.info("Waiting fro c-lightning")
+        logging.debug("Waited fro c-lightning")
 
         # Make sure that we see any funds that come to our wallet
         for i in range(5):

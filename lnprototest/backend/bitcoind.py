@@ -60,7 +60,7 @@ class Bitcoind(Backend):
         self.rpc = None
         self.proc = None
         self.base_dir = basedir
-        logging.info(f"Base dir is {basedir}")
+        logging.debug(f"Base dir is {basedir}")
         self.bitcoin_dir = os.path.join(basedir, "bitcoind")
         self.bitcoin_conf = os.path.join(self.bitcoin_dir, "bitcoin.conf")
         self.cmd_line = [
