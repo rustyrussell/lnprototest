@@ -58,18 +58,6 @@ class Runner(ABC):
         else:
             self.logger.setLevel(logging.INFO)
 
-    def __enter__(self) -> "Runner":
-        """Call the method when enter the with block.
-        doc: https://docs.python.org/3/reference/datamodel.html#with-statement-context-managers"""
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> "Runner":
-        """Call the method when exist from the with block.
-        doc: see __enter__"""
-        self.stop()
-        return self
-
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
         return False
