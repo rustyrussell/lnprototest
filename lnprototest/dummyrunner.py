@@ -207,3 +207,14 @@ class DummyRunner(Runner):
         must_not_events: List[MustNotMsg],
     ) -> None:
         pass
+
+    def close_channel(self, channel_id: str) -> bool:
+        if self.config.getoption("verbose"):
+            print("[CLOSE-CHANNEL {}]".format(channel_id))
+        return True
+
+    def is_running(self) -> bool:
+        return True
+
+    def teardown(self):
+        pass

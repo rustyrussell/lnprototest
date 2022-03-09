@@ -57,9 +57,11 @@ class Bitcoind(Backend):
     """Starts regtest bitcoind on an ephemeral port, and returns the RPC proxy"""
 
     def __init__(self, basedir: str):
+        self.rpc = None
+        self.proc = None
+        self.base_dir = basedir
+        logging.debug(f"Base dir is {basedir}")
         self.bitcoin_dir = os.path.join(basedir, "bitcoind")
-        if not os.path.exists(self.bitcoin_dir):
-            os.makedirs(self.bitcoin_dir)
         self.bitcoin_conf = os.path.join(self.bitcoin_dir, "bitcoin.conf")
         self.cmd_line = [
             "bitcoind",
@@ -71,9 +73,17 @@ class Bitcoind(Backend):
         ]
         self.port = reserve()
         self.btc_version = None
-        print("Port is {}, dir is {}".format(self.port, self.bitcoin_dir))
+        logging.debug("Port is {}, dir is {}".format(self.port, self.bitcoin_dir))
+
+    def __init_bitcoin_conf(self):
+        """Init the bitcoin core directory with all the necessary information
+        to startup the node"""
+        if not os.path.exists(self.bitcoin_dir):
+            os.makedirs(self.bitcoin_dir)
+            logging.debug(f"Creating {self.bitcoin_dir} directory")
         # For after 0.16.1 (eg. 3f398d7a17f136cd4a67998406ca41a124ae2966), this
         # needs its own [regtest] section.
+        logging.debug(f"Writing bitcoin conf file at {self.bitcoin_conf}")
         with open(self.bitcoin_conf, "w") as f:
             f.write("regtest=1\n")
             f.write("rpcuser=rpcuser\n")
@@ -82,13 +92,13 @@ class Bitcoind(Backend):
             f.write("rpcport={}\n".format(self.port))
         self.rpc = BitcoinProxy(btc_conf_file=self.bitcoin_conf)
 
-    def version_compatibility(self) -> None:
+    def __version_compatibility(self) -> None:
         """
-        This method try to manage the compatibility between
-        different version of Bitcoin Core implementation.
+        This method tries to manage the compatibility between
+        different versions of Bitcoin Core implementation.
 
-        This method could be useful sometimes when is necessary
-        run the test with different version of Bitcoin core.
+        This method could sometimes be useful when it is necessary to
+        run the test with a different version of Bitcoin core.
         """
         if self.rpc is None:
             # Sanity check
@@ -96,21 +106,37 @@ class Bitcoind(Backend):
 
         self.btc_version = self.rpc.getnetworkinfo()["version"]
         assert self.btc_version is not None
-        logging.info("Bitcoin Core version {}".format(self.btc_version))
+        logging.debug("Bitcoin Core version {}".format(self.btc_version))
         if self.btc_version >= 210000:
             # Maintains the compatibility between wallet
             # different ln implementation can use the main wallet (?)
             self.rpc.createwallet("main")  # Automatically loads
 
+    def __is__bitcoind_ready(self) -> bool:
+        """Check if bitcoind is ready during the execution"""
+        if self.rpc is None:
+            # Sanity check
+            raise ValueError("bitcoind not initialized")
+
+        try:
+            self.btc_version = self.rpc.getnetworkinfo()
+            return True
+        except Exception as ex:
+            logging.debug(f"{ex}")
+            return False
+
     def start(self) -> None:
+        if self.rpc is None:
+            self.__init_bitcoin_conf()
+        # TODO: We can move this to a single call and not use Popen
         self.proc = subprocess.Popen(self.cmd_line, stdout=subprocess.PIPE)
         assert self.proc.stdout
 
         # Wait for it to startup.
-        while b"Done loading" not in self.proc.stdout.readline():
-            pass
+        while not self.__is__bitcoind_ready():
+            logging.debug("Bitcoin core is loading")
 
-        self.version_compatibility()
+        self.__version_compatibility()
         # Block #1.
         # Privkey the coinbase spends to:
         #    cUB4V7VCk6mX32981TWviQVLkj3pa2zBcXrjMZ9QwaZB5Kojhp59
@@ -121,10 +147,10 @@ class Bitcoind(Backend):
 
     def stop(self) -> None:
         self.proc.kill()
+        shutil.rmtree(os.path.join(self.bitcoin_dir, "regtest"))
 
     def restart(self) -> None:
         # Only restart if we have to.
         if self.rpc.getblockcount() != 101 or self.rpc.getrawmempool() != []:
             self.stop()
-            shutil.rmtree(os.path.join(self.bitcoin_dir, "regtest"))
             self.start()
