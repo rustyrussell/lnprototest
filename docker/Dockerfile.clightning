@@ -64,12 +64,12 @@ RUN mkdir lnprototest
 COPY . lnprototest
 
 RUN cd lnprototest && \
-	  #pip3 install --upgrade -vv setuptools && \
-    pip3 install -r requirements.txt && \ 
-    cd lnprototest/clightning && \ 
-    pip3 install -r requirements.txt && \
-	  cd .. && cd .. && \
-	  pip3 install -e . && \
-	  pip3 install pytest
-	
+    pip3 install -U pip && \
+    pip3 install -U poetry
+
+RUN cd lnprototest && \
+    poetry config virtualenvs.create false && \
+    poetry install
+RUN cd lnprototest && ls -lha
+
 CMD ["./lnprototest/docker/entrypoint.sh"]
