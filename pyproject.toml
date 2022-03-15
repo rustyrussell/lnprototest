@@ -19,6 +19,8 @@ pyln-bolt7 = ">=1.0.2.186,<1.0.100"
 pyln-proto = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
+black = "^22.1.0"
+flake8 = "^4.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
