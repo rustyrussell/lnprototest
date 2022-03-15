@@ -28,13 +28,9 @@ lightning network protocol, as well as test existing implementations.
 To install the necessary dependences
 
 ```bash
-pip3 install -r requirements.txt 
-```
-
-To install lnprototest
-
-```bash
-pip3 install -e .
+pip3 install poetry
+poetry shell
+poetry install
 ```
 
 Well, now we can run the test
@@ -57,12 +53,12 @@ Here are some other useful pytest options:
 
 ### Running Against A Real Node.
 
-The more useful way to run is to use an existing implementation.  So
+The more useful way to run is to use an existing implementation. So
 far, c-lightning is supported.  You will need:
 
 1. `bitcoind` installed, and in your path.
 2. [`lightningd`](https://github.com/ElementsProject/lightning/) compiled with
-   `--enable-developer`.  By default the source directory should be
+   `--enable-developer`. By default the source directory should be
    `../lightning` relative to this directory, otherwise use
    `export LIGHTNING_SRC=dirname`.
 3. Install any python requirements by
