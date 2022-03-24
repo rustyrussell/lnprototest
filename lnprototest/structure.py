@@ -186,7 +186,13 @@ class AnyOrder(Event):
             except ValueError as ve:
                 raise EventError(self, "Invalid msg {}: {}".format(binmsg.hex(), ve))
 
-            if Sequence.ignored_by_all(msg, sequences):
+            ignored = Sequence.ignored_by_all(msg, self.enabled_sequences(runner))
+            # If they gave us responses, send those now.
+            if ignored is not None:
+                for msg in ignored:
+                    binm = io.BytesIO()
+                    msg.write(binm)
+                    runner.recv(self, conn, binm.getvalue())
                 continue
 
             seq = Sequence.match_which_sequence(runner, msg, sequences)
