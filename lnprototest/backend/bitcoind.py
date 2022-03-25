@@ -114,16 +114,14 @@ class Bitcoind(Backend):
 
     def __is__bitcoind_ready(self) -> bool:
         """Check if bitcoind is ready during the execution"""
-        if self.rpc is None:
+        if self.proc is None:
             # Sanity check
             raise ValueError("bitcoind not initialized")
 
-        try:
-            self.btc_version = self.rpc.getnetworkinfo()
-            return True
-        except Exception as ex:
-            logging.debug(f"{ex}")
-            return False
+        # Wait for it to startup.
+        while b"Done loading" not in self.proc.stdout.readline():
+            pass
+        return True
 
     def start(self) -> None:
         if self.rpc is None:
