@@ -27,9 +27,8 @@ def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
             #     - MUST close the connection.
             #     - MAY fail the channels.
             [RawMsg(bytes.fromhex("2710")), ExpectError()],
-
             # BOLT #1:
-            #A receiving node:
+            # A receiving node:
             # -upon receiving a message with an extension:
             #   -MAY ignore the extension.
             #   -Otherwise, if the extension is invalid:
