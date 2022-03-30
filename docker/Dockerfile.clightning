@@ -53,19 +53,20 @@ RUN cd /tmp/ && \
     mv /tmp/bitcoin-$BITCOIN_VERSION/bin/bitcoin* /usr/local/bin/ && \
     rm -rf bitcoin.tar.gz /tmp/bitcoin-$BITCOIN_VERSION
 
+RUN pip3 install -U pip && \
+    pip3 install -U poetry
+
 RUN git clone https://github.com/ElementsProject/lightning.git && \
     cd lightning && \
-    git checkout v$CLIGHTNING_VERSION && \
+    # git checkout v$CLIGHTNING_VERSION && \
+    poetry config virtualenvs.create false && \
+    poetry install && \
     ./configure --enable-developer && \
     make -j$(nproc)
 
 RUN mkdir lnprototest
 
 COPY . lnprototest
-
-RUN cd lnprototest && \
-    pip3 install -U pip && \
-    pip3 install -U poetry
 
 RUN cd lnprototest && \
     poetry config virtualenvs.create false && \
