@@ -116,6 +116,11 @@ class Runner(lnprototest.Runner):
         self.logger.debug("[START]")
         self.__init_sandbox_dir()
         self.bitcoind = Bitcoind(self.directory)
+        try:
+            self.bitcoind.start()
+        except Exception as ex:
+            self.logger.debug(f"Exception with message {ex}")
+        self.logger.debug("RUN Bitcoind")
         self.proc = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),
@@ -138,11 +143,6 @@ class Runner(lnprototest.Runner):
             + self.startup_flags
         )
         self.running = True
-        try:
-            self.bitcoind.start()
-        except Exception as ex:
-            self.logger.debug(f"Exception with message {ex}")
-        self.logger.debug("RUN Bitcoind")
         self.rpc = pyln.client.LightningRpc(
             os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
         )
