@@ -157,7 +157,7 @@ class Msg(PerConnEvent):
         self,
         msgtypename: str,
         connprivkey: Optional[str] = None,
-        **kwargs: Union[ResolvableStr, ResolvableInt]
+        **kwargs: Union[ResolvableStr, ResolvableInt],
     ):
         super().__init__(connprivkey)
         self.msgtype = namespace().get_msgtype(msgtypename)
@@ -286,7 +286,7 @@ class ExpectMsg(PerConnEvent):
         if_match: Callable[["ExpectMsg", Message, "Runner"], None] = _default_if_match,
         ignore: Optional[Callable[[Message], Optional[List[Message]]]] = None,
         connprivkey: Optional[str] = None,
-        **kwargs: Union[str, Resolvable]
+        **kwargs: Union[str, Resolvable],
     ):
         super().__init__(connprivkey)
         self.msgtype = namespace().get_msgtype(msgtypename)
@@ -315,7 +315,9 @@ class ExpectMsg(PerConnEvent):
         while True:
             binmsg = runner.get_output_message(conn, self)
             if binmsg is None:
-                raise EventError(self, "Did not receive a message from runner")
+                raise EventError(
+                    self, f"Did not receive a message {self.msgtype} from runner"
+                )
 
             for e in conn.must_not_events:
                 if e.matches(binmsg):
@@ -530,6 +532,20 @@ class CheckEq(Event):
         if a != b and not runner._is_dummy():
             raise EventError(self, "{} != {}".format(a, b))
         return True
+
+
+class CloseChannel(Event):
+    """Implementing the lnprototest event related to the
+    close channel operation.
+    BOLT 2"""
+
+    def __init__(self, channel_id: str):
+        super(CloseChannel, self).__init__()
+        self.channel_id = channel_id
+
+    def action(self, runner: "Runner") -> bool:
+        super().action(runner)
+        return runner.close_channel(self.channel_id)
 
 
 def msg_to_stash(runner: "Runner", event: Event, msg: Message) -> None:

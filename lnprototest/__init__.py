@@ -35,6 +35,7 @@ from .event import (
     negotiated,
     DualFundAccept,
     Wait,
+    CloseChannel,
 )
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import (
@@ -141,4 +142,5 @@ __all__ = [
     "dual_fund_csv",
     "channel_type_csv",
     "wait_for",
+    "CloseChannel",
 ]

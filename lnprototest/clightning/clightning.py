@@ -15,6 +15,7 @@ import struct
 import shutil
 import logging
 
+from datetime import date
 from concurrent import futures
 from ephemeral_port_reserve import reserve
 from lnprototest.backend import Bitcoind
@@ -88,7 +89,7 @@ class Runner(lnprototest.Runner):
                 k, v = o.split("/")
                 self.options[k] = v
 
-    def __init_sandbox_dir(self):
+    def __init_sandbox_dir(self) -> None:
         """Create the tmp directory for lnprotest and lightningd"""
         self.lightning_dir = os.path.join(self.directory, "lightningd")
         if not os.path.exists(self.lightning_dir):
@@ -169,12 +170,22 @@ class Runner(lnprototest.Runner):
         self.rpc.stop()
         self.bitcoind.stop()
 
-    def stop(self) -> None:
+    def stop(self, print_logs: bool = False) -> None:
         self.logger.debug("[STOP]")
         self.shutdown()
         self.running = False
         for c in self.conns.values():
             cast(CLightningConn, c).connection.connection.close()
+        if print_logs:
+            log_path = f"{self.lightning_dir}/regtest/log"
+            with open(log_path) as log:
+                self.logger.info("---------- c-lightning logging ----------------")
+                self.logger.info(log.read())
+                # now we make a backup of the log
+                shutil.copy(
+                    log_path,
+                    f'/tmp/c-lightning-log_{date.today().strftime("%b-%d-%Y")}',
+                )
         shutil.rmtree(os.path.join(self.lightning_dir, "regtest"))
 
     def restart(self) -> None:
