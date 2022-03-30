@@ -1,7 +1,10 @@
+import logging
+import traceback
+
 import bitcoin.core
 import coincurve
-from typing import Tuple
-from lnprototest import privkey_expand
+from typing import Tuple, Union, Sequence, List
+from lnprototest import privkey_expand, KeySet, Runner, Event
 
 # Here are the keys to spend funds, derived from BIP32 seed
 # `0000000000000000000000000000000000000000000000000000000000000001`:
@@ -134,3 +137,43 @@ def pubkey_of(privkey: str) -> str:
     return (
         coincurve.PublicKey.from_secret(privkey_expand(privkey).secret).format().hex()
     )
+
+
+def gen_random_keyset(counter: int = 20) -> KeySet:
+    """Helper function to generate a random keyset."""
+    return KeySet(
+        revocation_base_secret=f"{counter + 1}",
+        payment_base_secret=f"{counter + 2}",
+        htlc_base_secret=f"{counter + 3}",
+        delayed_payment_base_secret=f"{counter + 4}",
+        shachain_seed="00" * 32,
+    )
+
+
+def get_traceback(e: Exception) -> str:
+    lines = traceback.format_exception(type(e), e, e.__traceback__)
+    return "".join(lines)
+
+
+def run_runner(runner: Runner, test: Union[Sequence, List[Event], Event]) -> None:
+    """
+    The pytest using the assertion as safe failure, and the exception it is only
+    an event that must not happen.
+
+    From design, lnprototest fails with an exception, and for this reason, if the
+    lnprototest throws an exception, we catch it, and we fail with an assent.
+    """
+    try:
+        runner.run(test)
+    except Exception as ex:
+        runner.stop(print_logs=True)
+        logging.error(get_traceback(ex))
+        assert False, ex
+
+
+def merge_events_sequences(
+    pre: Union[Sequence, List[Event], Event], post: Union[Sequence, List[Event], Event]
+) -> Union[Sequence, List[Event], Event]:
+    """Merge the two list in the pre-post order"""
+    pre.extend(post)
+    return pre
