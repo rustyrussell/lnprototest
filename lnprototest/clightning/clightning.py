@@ -184,7 +184,7 @@ class Runner(lnprototest.Runner):
                 # now we make a backup of the log
                 shutil.copy(
                     log_path,
-                    f'/tmp/c-lightning-log_{date.today().strftime("%b-%d-%Y")}',
+                    f'/tmp/c-lightning-log_{date.today().strftime("%b-%d-%Y_%H:%M:%S")}',
                 )
         shutil.rmtree(os.path.join(self.lightning_dir, "regtest"))
 
