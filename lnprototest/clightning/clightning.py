@@ -283,7 +283,7 @@ class Runner(lnprototest.Runner):
         def _done(fut: Any) -> None:
             exception = fut.exception(0)
             if exception and not self.is_fundchannel_kill and not expect_fail:
-                raise (exception)
+                raise exception
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)

@@ -1,7 +1,8 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 # Variations on open_channel
 
 from hashlib import sha256
+
 from pyln.proto.message import Message
 from lnprototest import (
     TryAll,
@@ -62,6 +63,7 @@ from helpers import (
     tx_out_for_index,
     privkey_for_index,
     utxo_amount,
+    run_runner,
 )
 from typing import Any, Callable, List
 
@@ -1028,7 +1030,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -> None:
