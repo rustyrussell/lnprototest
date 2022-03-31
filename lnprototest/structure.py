@@ -106,9 +106,10 @@ class OneOf(Event):
         assert conn
 
         while True:
-            binmsg = runner.get_output_message(conn, self.sequences[0].events[0])
+            event = self.sequences[0].events[0]
+            binmsg = runner.get_output_message(conn, event)
             if binmsg is None:
-                raise EventError(self, "Did not receive a message from runner")
+                raise EventError(self, f"Did not receive a message {event} from runner")
 
             try:
                 msg = Message.read(namespace(), io.BytesIO(binmsg))

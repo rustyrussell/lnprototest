@@ -150,7 +150,14 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def stop(self) -> None:
+    def stop(self, print_logs: bool = False) -> None:
+        """
+        Stop the runner, and print all the log that the ln
+        implementation produced.
+
+        Print the log is useful when we have a failure e we need
+        to debug what happens during the tests.
+        """
         pass
 
     @abstractmethod

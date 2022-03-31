@@ -34,7 +34,8 @@ def test_gossip(runner: Runner) -> None:
         Msg("init", globalfeatures="", features=""),
         Block(blockheight=103, number=6, txs=[funding_tx]),
         RawMsg(funding.channel_announcement("103x1x0", "")),
-        # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement, as there is no channel_update.
+        # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement, as there is no
+        # channel_update.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features="08"),

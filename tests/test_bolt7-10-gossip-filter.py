@@ -55,7 +55,8 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                 Side.local, "", (1, 2, 3), "foobar", b"", timestamp1
             )
         ),
-        # New peer connects, asks for gossip_timestamp_filter=all.  We *won't* relay channel_announcement, as there is no channel_update.
+        # New peer connects, asks for gossip_timestamp_filter=all. We *won't* relay channel_announcement,
+        # as there is no channel_update.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
         # BOLT #9:
