@@ -118,11 +118,7 @@ class Runner(lnprototest.Runner):
         self.__init_sandbox_dir()
         if self.bitcoind is None:
             self.bitcoind = Bitcoind(self.directory)
-            try:
-                self.bitcoind.start()
-            except Exception as ex:
-                self.logger.debug(f"Exception with message {ex}")
-                self.logger.debug("RUN Bitcoind")
+            self.bitcoind.start()
         self.proc = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),

@@ -71,9 +71,8 @@ class Bitcoind(Backend):
             "-logtimestamps",
             "-nolisten",
         ]
-        self.port = reserve()
         self.btc_version = None
-        logging.debug("Port is {}, dir is {}".format(self.port, self.bitcoin_dir))
+        logging.debug("dir is {}".format(self.bitcoin_dir))
 
     def __init_bitcoin_conf(self):
         """Init the bitcoin core directory with all the necessary information
@@ -124,6 +123,10 @@ class Bitcoind(Backend):
         return True
 
     def start(self) -> None:
+        # Now we're about to start, we can allocate the port.
+        # We used to do this at init, but in parallel cases another
+        # bitcoin could use the port when we restart!
+        self.port = reserve()
         if self.rpc is None:
             self.__init_bitcoin_conf()
         # TODO: We can move this to a single call and not use Popen
@@ -148,7 +151,7 @@ class Bitcoind(Backend):
         shutil.rmtree(os.path.join(self.bitcoin_dir, "regtest"))
 
     def restart(self) -> None:
-        # Only restart if we have to.
+        # Only restart if we have to: may change port!
         if self.rpc.getblockcount() != 101 or self.rpc.getrawmempool() != []:
             self.stop()
             self.start()
