@@ -116,12 +116,13 @@ class Runner(lnprototest.Runner):
     def start(self) -> None:
         self.logger.debug("[START]")
         self.__init_sandbox_dir()
-        self.bitcoind = Bitcoind(self.directory)
-        try:
-            self.bitcoind.start()
-        except Exception as ex:
-            self.logger.debug(f"Exception with message {ex}")
-        self.logger.debug("RUN Bitcoind")
+        if self.bitcoind is None:
+            self.bitcoind = Bitcoind(self.directory)
+            try:
+                self.bitcoind.start()
+            except Exception as ex:
+                self.logger.debug(f"Exception with message {ex}")
+                self.logger.debug("RUN Bitcoind")
         self.proc = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),
@@ -164,15 +165,16 @@ class Runner(lnprototest.Runner):
         for i in range(5):
             self.rpc.newaddr()
 
-    def shutdown(self) -> None:
+    def shutdown(self, stop_bitcoind=True) -> None:
         for cb in self.cleanup_callbacks:
             cb()
         self.rpc.stop()
-        self.bitcoind.stop()
+        if stop_bitcoind:
+            self.bitcoind.stop()
 
     def stop(self, print_logs: bool = False) -> None:
         self.logger.debug("[STOP]")
-        self.shutdown()
+        self.shutdown(stop_bitcoind=False)
         self.running = False
         for c in self.conns.values():
             cast(CLightningConn, c).connection.connection.close()
@@ -193,6 +195,7 @@ class Runner(lnprototest.Runner):
         self.stop()
         # Make a clean start
         super().restart()
+        self.bitcoind.restart()
         self.start()
 
     def kill_fundchannel(self) -> None:
