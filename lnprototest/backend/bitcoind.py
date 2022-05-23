@@ -127,8 +127,7 @@ class Bitcoind(Backend):
         # We used to do this at init, but in parallel cases another
         # bitcoin could use the port when we restart!
         self.port = reserve()
-        if self.rpc is None:
-            self.__init_bitcoin_conf()
+        self.__init_bitcoin_conf()
         # TODO: We can move this to a single call and not use Popen
         self.proc = subprocess.Popen(self.cmd_line, stdout=subprocess.PIPE)
         assert self.proc.stdout
