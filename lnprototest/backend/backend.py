@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 class Backend(ABC):
     """
     Generic implementation of Bitcoin backend
-    This is useful when the LN node use different type
+    This is useful when the LN node uses different type
     of bitcoin backend.
     """
 

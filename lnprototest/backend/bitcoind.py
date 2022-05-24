@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#!/usr/bin/python3
 # This script exercises the c-lightning implementation
 
 # Released by Rusty Russell under CC0:
@@ -8,9 +8,10 @@ import os
 import shutil
 import subprocess
 import logging
+import socket
 
+from contextlib import closing
 from typing import Any, Callable
-from ephemeral_port_reserve import reserve
 from bitcoin.rpc import RawProxy
 from .backend import Backend
 
@@ -71,9 +72,20 @@ class Bitcoind(Backend):
             "-logtimestamps",
             "-nolisten",
         ]
-        self.port = reserve()
         self.btc_version = None
-        logging.debug("Port is {}, dir is {}".format(self.port, self.bitcoin_dir))
+
+    def __reserve(self) -> int:
+        """
+        When python will ask for a free port for the os, it is possible that
+        with concurrence access the port that python picks will be free
+        anymore when we will go to bind the daemon like bitcoind port.
+
+        Source: https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number
+        """
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(("", 0))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            return s.getsockname()[1]
 
     def __init_bitcoin_conf(self):
         """Init the bitcoin core directory with all the necessary information
@@ -81,6 +93,8 @@ class Bitcoind(Backend):
         if not os.path.exists(self.bitcoin_dir):
             os.makedirs(self.bitcoin_dir)
             logging.debug(f"Creating {self.bitcoin_dir} directory")
+        self.port = self.__reserve()
+        logging.debug("Port is {}, dir is {}".format(self.port, self.bitcoin_dir))
         # For after 0.16.1 (eg. 3f398d7a17f136cd4a67998406ca41a124ae2966), this
         # needs its own [regtest] section.
         logging.debug(f"Writing bitcoin conf file at {self.bitcoin_conf}")
@@ -144,6 +158,7 @@ class Bitcoind(Backend):
         self.rpc.generatetoaddress(100, self.rpc.getnewaddress())
 
     def stop(self) -> None:
+        self.rpc.stop()
         self.proc.kill()
         shutil.rmtree(os.path.join(self.bitcoin_dir, "regtest"))
 

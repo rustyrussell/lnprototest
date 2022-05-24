@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#!/usr/bin/python3
 # This script exercises the c-lightning implementation
 
 # Released by Rusty Russell under CC0:
@@ -14,10 +14,11 @@ import bitcoin.core
 import struct
 import shutil
 import logging
+import socket
 
+from contextlib import closing
 from datetime import date
 from concurrent import futures
-from ephemeral_port_reserve import reserve
 from lnprototest.backend import Bitcoind
 from lnprototest import (
     Event,
@@ -63,7 +64,7 @@ class Runner(lnprototest.Runner):
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
         self.executor = futures.ThreadPoolExecutor(max_workers=20)
-        self.lightning_port = reserve()
+        self.lightning_port = self.__reserve()
 
         self.startup_flags = []
         for flag in config.getoption("runner_args"):
@@ -89,6 +90,19 @@ class Runner(lnprototest.Runner):
                 k, v = o.split("/")
                 self.options[k] = v
 
+    def __reserve(self) -> int:
+        """
+        When python will ask for a free port for the os, it is possible that
+        with concurrence access the port that python picks will be free
+        anymore when we will go to bind the daemon like bitcoind port.
+
+        Source: https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number
+        """
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(("", 0))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            return s.getsockname()[1]
+
     def __init_sandbox_dir(self) -> None:
         """Create the tmp directory for lnprotest and lightningd"""
         self.lightning_dir = os.path.join(self.directory, "lightningd")
@@ -113,15 +127,16 @@ class Runner(lnprototest.Runner):
     def is_running(self) -> bool:
         return self.running
 
-    def start(self) -> None:
+    def start(self, also_bitcoind: bool = True) -> None:
         self.logger.debug("[START]")
         self.__init_sandbox_dir()
-        self.bitcoind = Bitcoind(self.directory)
-        try:
-            self.bitcoind.start()
-        except Exception as ex:
-            self.logger.debug(f"Exception with message {ex}")
-        self.logger.debug("RUN Bitcoind")
+        if also_bitcoind:
+            self.bitcoind = Bitcoind(self.directory)
+            try:
+                self.bitcoind.start()
+            except Exception as ex:
+                self.logger.debug(f"Exception with message {ex}")
+            self.logger.debug("RUN Bitcoind")
         self.proc = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),
@@ -164,15 +179,16 @@ class Runner(lnprototest.Runner):
         for i in range(5):
             self.rpc.newaddr()
 
-    def shutdown(self) -> None:
+    def shutdown(self, also_bitcoind: bool = True) -> None:
         for cb in self.cleanup_callbacks:
             cb()
         self.rpc.stop()
-        self.bitcoind.stop()
+        if also_bitcoind:
+            self.bitcoind.stop()
 
-    def stop(self, print_logs: bool = False) -> None:
+    def stop(self, print_logs: bool = False, also_bitcoind: bool = True) -> None:
         self.logger.debug("[STOP]")
-        self.shutdown()
+        self.shutdown(also_bitcoind=also_bitcoind)
         self.running = False
         for c in self.conns.values():
             cast(CLightningConn, c).connection.connection.close()
@@ -190,10 +206,11 @@ class Runner(lnprototest.Runner):
 
     def restart(self) -> None:
         self.logger.debug("[RESTART]")
-        self.stop()
+        self.stop(also_bitcoind=False)
         # Make a clean start
         super().restart()
-        self.start()
+        self.bitcoind.restart()
+        self.start(also_bitcoind=False)
 
     def kill_fundchannel(self) -> None:
         fut = self.fundchannel_future
