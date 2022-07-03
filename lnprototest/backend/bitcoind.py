@@ -76,9 +76,9 @@ class Bitcoind(Backend):
 
     def __reserve(self) -> int:
         """
-        When python will ask for a free port for the os, it is possible that
-        with concurrence access the port that python picks a port that it is free
-        anymore when we will go to bind the daemon like bitcoind port.
+        When python asks for a free port from the os, it is possible that
+        with concurrent access, the port that is picked is a port that is not free
+        anymore when we go to bind the daemon like bitcoind port.
 
         Source: https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number
         """

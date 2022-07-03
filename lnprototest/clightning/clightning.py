@@ -64,7 +64,6 @@ class Runner(lnprototest.Runner):
         self.fundchannel_future: Optional[Any] = None
         self.is_fundchannel_kill = False
         self.executor = futures.ThreadPoolExecutor(max_workers=20)
-        self.lightning_port = self.__reserve()
 
         self.startup_flags = []
         for flag in config.getoption("runner_args"):
@@ -92,9 +91,9 @@ class Runner(lnprototest.Runner):
 
     def __reserve(self) -> int:
         """
-        When python will ask for a free port for the os, it is possible that
-        with concurrence access the port that python picks a port that it is free
-        anymore when we will go to bind the daemon like bitcoind port.
+        When python asks for a free port from the os, it is possible that
+        with concurrent access, the port that is picked is a port that is not free
+        anymore when we go to bind the daemon like bitcoind port.
 
         Source: https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number
         """
@@ -130,6 +129,7 @@ class Runner(lnprototest.Runner):
     def start(self, also_bitcoind: bool = True) -> None:
         self.logger.debug("[START]")
         self.__init_sandbox_dir()
+        self.lightning_port = self.__reserve()
         if also_bitcoind:
             self.bitcoind = Bitcoind(self.directory)
             try:

@@ -9,6 +9,7 @@ from pyln.proto.message import Message
 from hashlib import sha256
 import coincurve
 import io
+import logging
 from bitcoin.core import (
     COutPoint,
     CScript,
@@ -683,7 +684,7 @@ class AcceptFunding(Event):
                     "remote_node_privkey": self.remote_node_privkey,
                     "remote_funding_privkey": self.remote_funding_privkey,
                 },
-            )
+            ),
         )
         runner.add_stash("Funding", funding)
         return True
@@ -735,7 +736,7 @@ class CreateFunding(Event):
                     "remote_node_privkey": self.remote_node_privkey,
                     "remote_funding_privkey": self.remote_funding_privkey,
                 },
-            )
+            ),
         )
 
         runner.add_stash("Funding", funding)
@@ -782,7 +783,7 @@ class CreateDualFunding(Event):
                     "remote_node_privkey": self.remote_node_privkey,
                     "locktime": self.locktime,
                 },
-            )
+            ),
         )
 
         runner.add_stash("Funding", funding)
@@ -865,7 +866,7 @@ class FinalizeFunding(Event):
         tx = funding.build_tx()
         funding.sign_our_inputs()
         # FIXME: sanity checks?
-        print("finalized funding", tx)
+        logging.debug(f"finalized funding {tx}")
         return True
 
 
