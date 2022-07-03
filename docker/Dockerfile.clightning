@@ -56,7 +56,9 @@ RUN cd /tmp/ && \
 RUN pip3 install -U pip && \
     pip3 install -U poetry
 
-RUN git clone https://github.com/ElementsProject/lightning.git && \
+RUN git config --global user.name "John Doe" && \
+	git config --global user.email johndoe@example.com && \
+	git clone https://github.com/ElementsProject/lightning.git && \
     cd lightning && \
     # git checkout v$CLIGHTNING_VERSION && \
 	# fetch core lightning patch
