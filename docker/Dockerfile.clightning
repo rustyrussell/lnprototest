@@ -59,6 +59,8 @@ RUN pip3 install -U pip && \
 RUN git clone https://github.com/ElementsProject/lightning.git && \
     cd lightning && \
     # git checkout v$CLIGHTNING_VERSION && \
+	# fetch core lightning patch
+	git pull origin pull/5367/head && \
     poetry config virtualenvs.create false && \
     poetry install && \
     ./configure --enable-developer && \
