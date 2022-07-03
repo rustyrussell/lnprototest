@@ -87,8 +87,11 @@ class Runner(ABC):
 
     def post_check(self, sequence: Sequence) -> None:
         # Make sure no connection had an error.
-        while len(self.conns) != 0:
-            self.disconnect(sequence, next(iter(self.conns.values())))
+        for conn_name in list(self.conns.keys()):
+            logging.info(
+                f"disconnection connection with key={conn_name} and value={self.conns[conn_name]}"
+            )
+            self.disconnect(sequence, self.conns[conn_name])
 
     def restart(self) -> None:
         self.conns = {}
