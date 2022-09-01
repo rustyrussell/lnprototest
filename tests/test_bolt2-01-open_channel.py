@@ -144,14 +144,14 @@ def test_open_channel(runner: Runner) -> None:
                 # Mine it and get it deep enough to confirm channel.
                 Block(blockheight=103, number=3, txs=[funding_tx()]),
                 ExpectMsg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=channel_id(),
-                    next_per_commitment_point="032405cbd0f41225d5f203fe4adac8401321a9e05767c5f8af97d51d2e81fbb206",
+                    second_per_commitment_point="032405cbd0f41225d5f203fe4adac8401321a9e05767c5f8af97d51d2e81fbb206",
                 ),
                 Msg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=channel_id(),
-                    next_per_commitment_point="027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d",
+                    second_per_commitment_point="027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d",
                 ),
                 # Ignore unknown odd messages
                 TryAll([], RawMsg(bytes.fromhex("270F"))),
@@ -239,14 +239,14 @@ def test_open_channel(runner: Runner) -> None:
                 # Mine three blocks to confirm channel.
                 Block(blockheight=103, number=3),
                 Msg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=sent(),
-                    next_per_commitment_point=local_keyset.per_commit_point(1),
+                    second_per_commitment_point=local_keyset.per_commit_point(1),
                 ),
                 ExpectMsg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=sent(),
-                    next_per_commitment_point=remote_per_commitment_point(1),
+                    second_per_commitment_point=remote_per_commitment_point(1),
                 ),
                 # Ignore unknown odd messages
                 TryAll([], RawMsg(bytes.fromhex("270F"))),

@@ -168,14 +168,14 @@ def test_htlc_add(runner: Runner) -> None:
         # Mine it and get it deep enough to confirm channel.
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         # We try both a dust and a non-dust htlc.
         TryAll(
@@ -230,9 +230,9 @@ def test_htlc_add(runner: Runner) -> None:
                 #   - otherwise:
                 #     - MUST NOT retransmit `funding_locked`.
                 ExpectMsg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=channel_id(),
-                    next_per_commitment_point=remote_per_commitment_point(1),
+                    second_per_commitment_point=remote_per_commitment_point(1),
                     ignore=ExpectMsg.ignore_all_gossip,
                 ),
                 # BOLT #2:
@@ -265,7 +265,7 @@ def test_htlc_add(runner: Runner) -> None:
             "revoke_and_ack",
             channel_id=channel_id(),
             per_commitment_secret=remote_per_commitment_secret(0),
-            next_per_commitment_point=remote_per_commitment_point(2),
+            second_per_commitment_point=remote_per_commitment_point(2),
             ignore=ExpectMsg.ignore_all_gossip,
         ),
         ExpectMsg(
@@ -311,7 +311,7 @@ def test_htlc_add(runner: Runner) -> None:
                             "revoke_and_ack",
                             channel_id=channel_id(),
                             per_commitment_secret=remote_per_commitment_secret(0),
-                            next_per_commitment_point=remote_per_commitment_point(2),
+                            second_per_commitment_point=remote_per_commitment_point(2),
                             ignore=ExpectMsg.ignore_all_gossip,
                         ),
                         ExpectMsg(
