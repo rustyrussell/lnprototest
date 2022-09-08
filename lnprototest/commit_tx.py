@@ -9,10 +9,10 @@ from bitcoin.core import (
     CTxWitness,
     CScriptWitness,
 )
+from bitcoin.core.contrib.ripemd160 import ripemd160
 import bitcoin.core.script as script
 from bitcoin.core.script import CScript
 import struct
-import hashlib
 from hashlib import sha256
 from .keyset import KeySet
 from .errors import SpecFileError, EventError
@@ -111,9 +111,7 @@ class Commitment(object):
 
     @staticmethod
     def ripemd160(b: bytes) -> bytes:
-        hasher = hashlib.new("ripemd160")
-        hasher.update(b)
-        return hasher.digest()
+        return ripemd160(b)
 
     def revocation_privkey(self, side: Side) -> coincurve.PrivateKey:
         """Derive the privkey used for the revocation of side's commitment transaction."""
