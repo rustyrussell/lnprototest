@@ -40,12 +40,7 @@ class BitcoinProxy:
                 "Calling {name} with arguments {args}".format(name=name, args=args)
             )
             res = self.__proxy._call(name, *args)
-            logging.debug(
-                "Result for {name} call: {res}".format(
-                    name=name,
-                    res=res,
-                )
-            )
+            logging.debug("Result for {name} call: {res}".format(name=name, res=res))
             return res
 
         # Make debuggers show <function bitcoin.rpc.name> rather than <function

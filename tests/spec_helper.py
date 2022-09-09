@@ -30,12 +30,7 @@ from lnprototest import (
     msat,
     CreateFunding,
 )
-from helpers import (
-    utxo,
-    pubkey_of,
-    gen_random_keyset,
-    funding_amount_for_utxo,
-)
+from helpers import utxo, pubkey_of, gen_random_keyset, funding_amount_for_utxo
 from lnprototest.stash import (
     rcvd,
     funding,
