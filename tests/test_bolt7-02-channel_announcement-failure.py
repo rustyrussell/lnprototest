@@ -66,7 +66,7 @@ def test_premature_channel_announcement(runner: Runner) -> None:
                 fee_base_msat=1000,
                 fee_proportional_millionths=10,
                 timestamp=int(time.time()),
-                htlc_maximum_msat=None,
+                htlc_maximum_msat=2000000,
             )
         ),
         # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement.
@@ -174,7 +174,7 @@ def test_bad_announcement(runner: Runner) -> None:
                                 fee_base_msat=1000,
                                 fee_proportional_millionths=10,
                                 timestamp=int(time.time()),
-                                htlc_maximum_msat=None,
+                                htlc_maximum_msat=2000000,
                             )
                         ),
                     ],
@@ -191,7 +191,7 @@ def test_bad_announcement(runner: Runner) -> None:
                                 fee_base_msat=1000,
                                 fee_proportional_millionths=10,
                                 timestamp=int(time.time()),
-                                htlc_maximum_msat=None,
+                                htlc_maximum_msat=2000000,
                             )
                         ),
                     ],
@@ -209,7 +209,7 @@ def test_bad_announcement(runner: Runner) -> None:
                         fee_base_msat=1000,
                         fee_proportional_millionths=10,
                         timestamp=int(time.time()),
-                        htlc_maximum_msat=None,
+                        htlc_maximum_msat=2000000,
                     )
                 ),
                 # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement.

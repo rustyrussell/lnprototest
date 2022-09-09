@@ -524,15 +524,14 @@ class Funding(object):
         if disable:
             channel_flags |= 2
 
-        # BOLT #7: The `message_flags` bitfield is used to indicate the
-        # presence of optional fields in the `channel_update` message:
+        # BOLT #7: The message_flags bitfield is used to provide additional
+        # details about the message:
         #
-        # | Bit Position  | Name                      | Field                            |
-        # | ------------- | ------------------------- | -------------------------------- |
-        # | 0             | `option_channel_htlc_max` | `htlc_maximum_msat`              |
-        message_flags = 0
-        if htlc_maximum_msat:
-            message_flags |= 1
+        # | Bit Position  | Name           |
+        # | ------------- | ---------------|
+        # | 0             | `must_be_one`  |
+        # | 1             | `dont_forward` |
+        message_flags = 1
 
         # Begin with a fake signature.
         update = Message(

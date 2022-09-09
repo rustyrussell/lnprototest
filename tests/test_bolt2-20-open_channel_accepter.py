@@ -402,14 +402,14 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
         # Mine the block!
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point="027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d",
+            second_per_commitment_point="027eed8389cf8eb715d73111b73d94d2c2d04bf96dc43dfd5b0970d80b3617009d",
         ),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point="032405cbd0f41225d5f203fe4adac8401321a9e05767c5f8af97d51d2e81fbb206",
+            second_per_commitment_point="032405cbd0f41225d5f203fe4adac8401321a9e05767c5f8af97d51d2e81fbb206",
         ),
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),
@@ -612,14 +612,14 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
         # Mine the block + lock-in
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),
@@ -805,9 +805,9 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
             [
                 Block(blockheight=103, number=3, txs=[funding_tx()]),
                 ExpectMsg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=channel_id_v2(local_keyset),
-                    next_per_commitment_point=remote_per_commitment_point(1),
+                    second_per_commitment_point=remote_per_commitment_point(1),
                 ),
                 # Ignore unknown odd messages
                 TryAll([], RawMsg(bytes.fromhex("270F"))),
@@ -1022,9 +1022,9 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
         # Mine the block!
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),
@@ -1949,9 +1949,9 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
     test += [
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),
@@ -1960,7 +1960,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
     runner.run(test)
 
 
-def test_rbf_accepter_funding_locked(runner: Runner, with_proposal: Any) -> None:
+def test_rbf_accepter_channel_ready(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
     runner.add_startup_flag("experimental-dual-fund")
 
@@ -2062,23 +2062,23 @@ def test_rbf_accepter_funding_locked(runner: Runner, with_proposal: Any) -> None
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
     ]
 
     runner.run(test)
 
 
-def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
+def test_rbf_opener_channel_ready(runner: Runner, with_proposal: Any) -> None:
     """Check that if the funding transaction is published while we're inflight
     everything works as expected"""
     with_proposal(dual_fund_csv)
@@ -2202,14 +2202,14 @@ def test_rbf_opener_funding_locked(runner: Runner, with_proposal: Any) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id_v2(local_keyset),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         # Ignore unknown odd messages
         TryAll([], RawMsg(bytes.fromhex("270F"))),

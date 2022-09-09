@@ -155,6 +155,7 @@ class Runner(lnprototest.Runner):
                 "--bitcoin-rpcport={}".format(self.bitcoind.port),
                 "--log-level=debug",
                 "--log-file=log",
+                "--htlc-maximum-msat=2000sat",
             ]
             + self.startup_flags
         )

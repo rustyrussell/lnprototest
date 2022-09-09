@@ -83,7 +83,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                 fee_base_msat=1000,
                 fee_proportional_millionths=10,
                 timestamp=timestamp1,
-                htlc_maximum_msat=None,
+                htlc_maximum_msat=2000000,
             ),
             connprivkey="03",
         ),
@@ -179,7 +179,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                 fee_base_msat=1000,
                 fee_proportional_millionths=10,
                 timestamp=timestamp2,
-                htlc_maximum_msat=None,
+                htlc_maximum_msat=2000000,
             )
         ),
         RawMsg(
@@ -192,7 +192,7 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
                 fee_base_msat=1000,
                 fee_proportional_millionths=10,
                 timestamp=timestamp2,
-                htlc_maximum_msat=None,
+                htlc_maximum_msat=2000000,
             )
         ),
         RawMsg(

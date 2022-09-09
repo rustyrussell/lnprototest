@@ -168,14 +168,14 @@ def test_htlc_add(runner: Runner) -> None:
         # Mine it and get it deep enough to confirm channel.
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         # We try both a dust and a non-dust htlc.
         TryAll(
@@ -226,13 +226,13 @@ def test_htlc_add(runner: Runner) -> None:
                 # A node:
                 #   - if `next_commitment_number` is 1 in both the
                 #     `channel_reestablish` it sent and received:
-                #     - MUST retransmit `funding_locked`.
+                #     - MUST retransmit `channel_ready`.
                 #   - otherwise:
-                #     - MUST NOT retransmit `funding_locked`.
+                #     - MUST NOT retransmit `channel_ready`.
                 ExpectMsg(
-                    "funding_locked",
+                    "channel_ready",
                     channel_id=channel_id(),
-                    next_per_commitment_point=remote_per_commitment_point(1),
+                    second_per_commitment_point=remote_per_commitment_point(1),
                     ignore=ExpectMsg.ignore_all_gossip,
                 ),
                 # BOLT #2:

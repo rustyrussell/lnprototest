@@ -4,7 +4,7 @@ LABEL mantainer="Vincenzo Palazzo vincenzopalazzodev@gmail.com"
 WORKDIR /work
 
 ENV BITCOIN_VERSION=23.0
-ENV CLIGHTNING_VERSION=0.11.0
+ENV CLIGHTNING_VERSION=0.12.0
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -qq update && \
@@ -59,10 +59,8 @@ RUN pip3 install -U pip && \
 RUN git config --global user.name "John Doe" && \
 	git config --global user.email johndoe@example.com && \
 	git clone https://github.com/ElementsProject/lightning.git && \
-    cd lightning && \
-    # git checkout v$CLIGHTNING_VERSION && \
-	# fetch core lightning patch
-	git pull origin pull/5367/head && \
+        cd lightning && \
+        git checkout v$CLIGHTNING_VERSION && \
     poetry config virtualenvs.create false && \
     poetry install && \
     ./configure --enable-developer && \
