@@ -1,6 +1,6 @@
 #! /usr/bin/make
 
-PYTHONFILES := $(shell find * -name '*.py')
+PYTHONFILES := $(shell find * ! -path "build/*" ! -path "venv/*" -name '*.py')
 POSSIBLE_PYTEST_NAMES=pytest-3 pytest3 pytest
 PYTEST := $(shell for p in $(POSSIBLE_PYTEST_NAMES); do if type $$p > /dev/null; then echo $$p; break; fi done)
 TEST_DIR=tests
@@ -16,7 +16,7 @@ check: check-pytest-found
 check-source: check-fmt check-flake8 check-mypy check-internal-tests
 
 check-flake8:
-	flake8 --ignore=E501,E731,W503
+	flake8 --ignore=E501,E731,W503 --exclude=venv\/,build\/
 
 check-mypy:
 	mypy --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs $(PYTHONFILES)
