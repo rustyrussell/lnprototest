@@ -30,12 +30,7 @@ from lnprototest import (
     msat,
     CreateFunding,
 )
-from helpers import (
-    utxo,
-    pubkey_of,
-    gen_random_keyset,
-    funding_amount_for_utxo,
-)
+from helpers import utxo, pubkey_of, gen_random_keyset, funding_amount_for_utxo
 from lnprototest.stash import (
     rcvd,
     funding,
@@ -140,13 +135,13 @@ def open_and_announce_channel_helper(
         # Mine it and get it deep enough to confirm channel.
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
     ]

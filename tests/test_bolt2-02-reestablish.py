@@ -147,14 +147,14 @@ def test_reestablish(runner: Runner) -> None:
         # Mine it and get it deep enough to confirm channel.
         Block(blockheight=103, number=3, txs=[funding_tx()]),
         ExpectMsg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=remote_per_commitment_point(1),
+            second_per_commitment_point=remote_per_commitment_point(1),
         ),
         Msg(
-            "funding_locked",
+            "channel_ready",
             channel_id=channel_id(),
-            next_per_commitment_point=local_keyset.per_commit_point(1),
+            second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         Disconnect(),
         Connect(connprivkey="02"),

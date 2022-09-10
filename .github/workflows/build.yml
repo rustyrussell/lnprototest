@@ -31,7 +31,7 @@ jobs:
           black . --check --diff
       - name: flake8 check
         run: |
-          flake8 --ignore=E501,E731,W503
+          make check-flake8
       - name: Test with pytest
         run: |
           pytest tests

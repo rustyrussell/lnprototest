@@ -12,14 +12,7 @@ from .event import Event, MustNotMsg, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
 from abc import ABC, abstractmethod
-from typing import (
-    Dict,
-    Optional,
-    List,
-    Union,
-    Any,
-    Callable,
-)
+from typing import Dict, Optional, List, Union, Any, Callable
 
 
 class Conn(object):

@@ -203,7 +203,7 @@ def test_query_channel_range(runner: Runner) -> None:
         fee_base_msat=1000,
         fee_proportional_millionths=10,
         timestamp=timestamp_103x1x0_LOCAL,
-        htlc_maximum_msat=None,
+        htlc_maximum_msat=2000000,
     )
     update_109x1x0_LOCAL = funding2.channel_update(
         side=Side.local,
@@ -214,7 +214,7 @@ def test_query_channel_range(runner: Runner) -> None:
         fee_base_msat=1000,
         fee_proportional_millionths=10,
         timestamp=timestamp_109x1x0_LOCAL,
-        htlc_maximum_msat=None,
+        htlc_maximum_msat=2000000,
     )
     update_109x1x0_REMOTE = funding2.channel_update(
         side=Side.remote,
@@ -225,7 +225,7 @@ def test_query_channel_range(runner: Runner) -> None:
         fee_base_msat=1000,
         fee_proportional_millionths=10,
         timestamp=timestamp_109x1x0_REMOTE,
-        htlc_maximum_msat=None,
+        htlc_maximum_msat=2000000,
     )
 
     csums_103x1x0 = update_checksums(*funding1.node_id_sort(update_103x1x0_LOCAL, None))
