@@ -1,5 +1,6 @@
 #! /bin/bash
 cd lnprototest || exit
+
 for i in range{0..14};
 do
   if make check PYTEST_ARGS='--runner=lnprototest.clightning.Runner -n4 --dist=loadfile --log-cli-level=DEBUG'; then
