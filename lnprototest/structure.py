@@ -1,5 +1,7 @@
 #! /usr/bin/python3
 import io
+import logging
+
 from .event import Event, ExpectMsg, ResolvableBool
 from .errors import SpecFileError, EventError
 from .namespace import namespace
@@ -44,6 +46,7 @@ class Sequence(Event):
         super().action(runner)
         all_done = True
         for e in self.events:
+            logging.debug(f"receiving event {e}")
             if not e.enabled(runner):
                 continue
             if skip_first:
