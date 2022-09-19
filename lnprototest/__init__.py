@@ -61,7 +61,15 @@ from .bitfield import bitfield, has_bit, bitfield_len
 from .signature import SigType, Sig
 from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
-from .utils import Side, regtest_hash, privkey_expand, wait_for
+from .utils import (
+    Side,
+    regtest_hash,
+    privkey_expand,
+    wait_for,
+    LightningUtils,
+    ScriptType,
+    BitcoinUtils,
+)
 from .funding import (
     AcceptFunding,
     CreateFunding,

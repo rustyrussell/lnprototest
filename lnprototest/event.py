@@ -1,4 +1,5 @@
 #! /usr/bin/python3
+import logging
 import traceback
 from pyln.proto.message import Message
 import collections
@@ -69,9 +70,6 @@ class Event(object):
             ret[field] = self.resolve_arg(field, runner, str_or_func)
         return ret
 
-    def __repr__(self) -> str:
-        return self.name
-
 
 class PerConnEvent(Event):
     """An event which takes a connprivkey arg"""
@@ -129,7 +127,7 @@ class MustNotMsg(PerConnEvent):
             name = msgtype.name
         else:
             name = str(msgnum)
-
+        logging.info(f"msg {name} != from what we are looking for {self.must_not}?")
         return name == self.must_not
 
     def action(self, runner: "Runner") -> bool:
