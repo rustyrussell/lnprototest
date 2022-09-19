@@ -17,7 +17,7 @@ from helpers import tx_spendable, utxo
 import time
 
 
-def test_gossip(runner: Runner) -> None:
+def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
     # Make up a channel between nodes 02 and 03, using bitcoin privkeys 10 and 20
     funding, funding_tx = Funding.from_utxo(
         *utxo(0),
@@ -68,13 +68,9 @@ def test_gossip(runner: Runner) -> None:
         ),
         Disconnect(),
         # BOLT #7:
-        # A node:
-        #   - SHOULD monitor the funding transactions in the blockchain, to
-        #   identify channels that are being closed.
-        #  - if the funding output of a channel is being spent:
-        #    - SHOULD be removed from the local network view AND be
-        #      considered closed.
-        Block(blockheight=109, txs=[funding.close_tx(200, "99")]),
+        # - once its funding output has been spent OR reorganized out:
+        #   - SHOULD forget a channel after a 12-block delay.
+        Block(blockheight=109, number=13, txs=[funding.close_tx(200, "99")]),
         Connect(connprivkey="05"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features="08"),
