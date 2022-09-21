@@ -41,6 +41,7 @@ from lnprototest.stash import (
     funding_txid,
     funding_tx,
 )
+from lnprototest.utils import LightningUtils
 
 
 def connect_to_node_helper(
@@ -65,7 +66,14 @@ def open_and_announce_channel_helper(
     # Make up a channel between nodes 02 and 03, using bitcoin privkeys 10 and 20
     local_keyset = gen_random_keyset()
     local_funding_privkey = "20"
+    if "block_height" in opts:
+        block_height = opts["block_height"]
+    else:
+        block_height = 103
 
+    short_channel_id = LightningUtils.derive_short_channel_id(block_height, 1, 0)
+    opts["short_channel_id"] = short_channel_id
+    opts["block_height"] = block_height + 6
     return [
         Msg(
             "open_channel",
@@ -143,5 +151,24 @@ def open_and_announce_channel_helper(
             "channel_ready",
             channel_id=channel_id(),
             second_per_commitment_point=local_keyset.per_commit_point(1),
+        ),
+        # wait confirmations
+        Block(blockheight=103, number=6),
+        # FIXME: implement all the utils function for the announcement_signatures
+        ExpectMsg(
+            "announcement_signatures",
+            channel_id=channel_id(),
+            short_channel_id=short_channel_id,
+            # TODO: How build signatures without hard coding it here?
+            node_signature="5ffb05bfb1ef2941cd26e02eea9bfcd6862a08dcfd58473cd1e7da879c2127d6650159c731ae07cd07ff00f4fe7d344aef7997384465f34d7c57add4795a7b09",
+            bitcoin_signature="138c93afb2013c39f959e70a163c3d6d8128cf72f8ae143f87b9d1fd6bb0ad30321116b9c58d69fca9fb33c214f681b664e53d5640abc2fdb972dc62a5571053",
+        ),
+        Msg(
+            "announcement_signatures",
+            channel_id=channel_id(),
+            short_channel_id=short_channel_id,
+            # TODO: How build signatures without hard coding it here?
+            node_signature="5ffb05bfb1ef2941cd26e02eea9bfcd6862a08dcfd58473cd1e7da879c2127d6650159c731ae07cd07ff00f4fe7d344aef7997384465f34d7c57add4795a7b09",
+            bitcoin_signature="138c93afb2013c39f959e70a163c3d6d8128cf72f8ae143f87b9d1fd6bb0ad30321116b9c58d69fca9fb33c214f681b664e53d5640abc2fdb972dc62a5571053",
         ),
     ]

@@ -6,6 +6,7 @@ import typing
 from enum import IntEnum
 
 # regtest chain hash (hash of regtest genesis block)
+# deprecated, use instead the BitcoinUtils.get_blockhain_hash()
 regtest_hash = "06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f"
 
 

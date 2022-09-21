@@ -59,8 +59,7 @@ RUN pip3 install -U pip && \
 RUN git config --global user.name "John Doe" && \
 	git config --global user.email johndoe@example.com && \
 	git clone https://github.com/ElementsProject/lightning.git && \
-        cd lightning && \
-        git checkout v$CLIGHTNING_VERSION && \
+    cd lightning && \
     poetry config virtualenvs.create false && \
     poetry install && \
     ./configure --enable-developer && \
