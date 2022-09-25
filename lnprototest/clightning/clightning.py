@@ -325,6 +325,10 @@ class Runner(lnprototest.Runner):
         self.fundchannel_future = fut
         self.cleanup_callbacks.append(self.kill_fundchannel)
 
+    def close_channel(self, channel_id: str) -> None:
+        logging.debug("[CLOSE CHANNEL with channel id: '{}']".format(channel_id))
+        self.rpc.close(peer_id=channel_id)
+
     def kill_fundchannel(self) -> None:
         fut = self.fundchannel_future
         self.fundchannel_future = None
@@ -348,7 +352,6 @@ class Runner(lnprototest.Runner):
         utxo_outnum: int,
         feerate: int,
     ) -> None:
-
         if self.fundchannel_future:
             self.kill_fundchannel()
 
@@ -493,16 +496,5 @@ class Runner(lnprototest.Runner):
         return None
 
     def add_startup_flag(self, flag: str) -> None:
-        if self.config.getoption("verbose"):
-            print("[ADD STARTUP FLAG '{}']".format(flag))
+        logging.debug("[ADD STARTUP FLAG '{}']".format(flag))
         self.startup_flags.append("--{}".format(flag))
-
-    def close_channel(self, channel_id: str) -> bool:
-        if self.config.getoption("verbose"):
-            print("[CLOSE CHANNEL '{}']".format(channel_id))
-        try:
-            self.rpc.close(peer_id=channel_id)
-        except Exception as ex:
-            print(ex)
-            return False
-        return True

@@ -139,7 +139,6 @@ class Funding(object):
         locktime: int,
         chain_hash: str = regtest_hash,
     ) -> "Funding":
-
         # Create dummy one to start: we will fill in txid at the end
         return Funding(
             "",

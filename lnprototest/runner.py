@@ -81,6 +81,9 @@ class Runner(ABC):
     def post_check(self, sequence: Sequence) -> None:
         # Make sure no connection had an error.
         for conn_name in list(self.conns.keys()):
+            logging.debug(
+                f"disconnection connection with key={conn_name} and value={self.conns[conn_name]}"
+            )
             self.disconnect(sequence, self.conns[conn_name])
 
     def restart(self) -> None:
@@ -234,9 +237,15 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def close_channel(self, channel_id: str) -> bool:
-        """Close the channel with a specific {channel_id} and
-        a boolean value if it succeeded with success"""
+    def close_channel(self, channel_id: str) -> None:
+        """
+        Close the channel with the specified channel id.
+
+        :param channel_id:  the channel id as string value where the
+        caller want to close;
+        :return No value in case of success is expected,
+        but an `RpcError` is expected in case of err.
+        """
         pass
 
 

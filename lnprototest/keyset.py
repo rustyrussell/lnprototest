@@ -79,7 +79,6 @@ class KeySet(object):
         return self.raw_per_commit_secret(n).secret.hex()
 
     def raw_per_commit_point(self, n: int) -> coincurve.PublicKey:
-
         return coincurve.PublicKey.from_secret(self.raw_per_commit_secret(n).secret)
 
     def per_commit_point(self, n: int) -> str:

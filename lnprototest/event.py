@@ -146,7 +146,7 @@ class MustNotMsg(PerConnEvent):
             name = msgtype.name
         else:
             name = str(msgnum)
-        logging.info(f"msg {name} != from what we are looking for {self.must_not}?")
+        logging.debug(f"msg {name} != from what we are looking for {self.must_not}?")
         return name == self.must_not
 
     def action(self, runner: "Runner") -> bool:
@@ -574,16 +574,17 @@ class CheckEq(Event):
 
 class CloseChannel(Event):
     """Implementing the lnprototest event related to the
-    close channel operation.
-    BOLT 2"""
+    close channel operation."""
 
-    def __init__(self, channel_id: str):
+    def __init__(self, channel_id: ResolvableStr):
         super(CloseChannel, self).__init__()
         self.channel_id = channel_id
 
     def action(self, runner: "Runner") -> bool:
         super().action(runner)
-        return runner.close_channel(self.channel_id)
+        channel_id = self.resolve_arg("channel_id", runner, self.channel_id)
+        runner.close_channel(channel_id)
+        return True
 
 
 def msg_to_stash(runner: "Runner", event: Event, msg: Message) -> None:

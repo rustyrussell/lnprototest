@@ -24,6 +24,7 @@ BOLT 2 proposal https://github.com/lightning/bolts/pull/972
 
  author: https://github.com/vincenzopalazzo
 """
+import pytest
 from lnprototest import (
     ExpectMsg,
     Msg,
@@ -34,6 +35,7 @@ from helpers import run_runner, merge_events_sequences, tx_spendable
 from lnprototest.stash import channel_id
 from spec_helper import open_and_announce_channel_helper, connect_to_node_helper
 from lnprototest.utils import BitcoinUtils, ScriptType
+from lnprototest.event import CloseChannel
 
 
 def test_close_channel_shutdown_msg_normal_case_receiver_side(runner: Runner) -> None:
@@ -85,6 +87,40 @@ def test_close_channel_shutdown_msg_normal_case_receiver_side(runner: Runner) ->
     run_runner(runner, merge_events_sequences(pre=pre_events, post=test))
 
 
+@pytest.mark.skip("working in progress")
+def test_close_channel_shutdown_msg_normal_case_sender_side(runner: Runner) -> None:
+    """Close the channel with the other peer, and check if the
+    shutdown message works in the expected way.
+
+    In particular, this test will check the sender side, with a event flow like:
+     ________________________________
+    | ln-node -> shutdown -> runner |
+    | ln-node <- shutdown <- runner |
+    --------------------------------
+    """
+    # the option that the helper method feels for us
+    test_opts = {}
+    pre_events_conn = connect_to_node_helper(
+        runner, tx_spendable=tx_spendable, conn_privkey="03"
+    )
+    pre_events = open_and_announce_channel_helper(
+        runner, conn_privkey="03", opts=test_opts
+    )
+    # merge the two events
+    pre_events = merge_events_sequences(pre_events_conn, pre_events)
+
+    test = [
+        # runner sent shutdown message to ln implementation
+        # BOLT 2:
+        # - MUST NOT send an `update_add_htlc` after a shutdown.
+        CloseChannel(channel_id=channel_id()),
+        MustNotMsg("update_add_htlc"),
+        Msg("shutdown", ignore=ExpectMsg.ignore_all_gossip, channel_id=channel_id()),
+        ExpectMsg("closing_signed"),
+    ]
+    run_runner(runner, merge_events_sequences(pre=pre_events, post=test))
+
+
 def test_close_channel_shutdown_msg_wrong_script_pubkey_receiver_side(
     runner: Runner,
 ) -> None:
@@ -105,7 +141,6 @@ def test_close_channel_shutdown_msg_wrong_script_pubkey_receiver_side(
     )
     # merge the two events
     pre_events = merge_events_sequences(pre_events_conn, pre_events)
-    channel_idx = channel_id()
 
     script = BitcoinUtils.build_valid_script(ScriptType.INVALID_CLOSE_SCRIPT)
 
@@ -113,7 +148,7 @@ def test_close_channel_shutdown_msg_wrong_script_pubkey_receiver_side(
         # runner sent shutdown message to the ln implementation
         Msg(
             "shutdown",
-            channel_id=channel_idx,
+            channel_id=channel_id(),
             scriptpubkey=script,
         ),
         MustNotMsg("add_htlc"),
