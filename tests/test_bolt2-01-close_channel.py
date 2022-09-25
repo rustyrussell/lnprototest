@@ -109,11 +109,12 @@ def test_close_channel_shutdown_msg_normal_case_sender_side(runner: Runner) -> N
     # merge the two events
     pre_events = merge_events_sequences(pre_events_conn, pre_events)
 
+    short_channel_id = test_opts["short_channel_id"]
     test = [
         # runner sent shutdown message to ln implementation
         # BOLT 2:
         # - MUST NOT send an `update_add_htlc` after a shutdown.
-        CloseChannel(channel_id=channel_id()),
+        CloseChannel(channel_id=short_channel_id),
         MustNotMsg("update_add_htlc"),
         Msg("shutdown", ignore=ExpectMsg.ignore_all_gossip, channel_id=channel_id()),
         ExpectMsg("closing_signed"),
