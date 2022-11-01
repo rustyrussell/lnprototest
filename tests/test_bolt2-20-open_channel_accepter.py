@@ -415,7 +415,7 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
@@ -625,7 +625,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
@@ -815,7 +815,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
         ),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
@@ -1236,7 +1236,7 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
         ExpectError(),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -> None:
@@ -1436,7 +1436,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
         ExpectError(),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def accepter_tx_creation(
@@ -1841,7 +1841,7 @@ def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
         runner,
     )
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
@@ -1957,7 +1957,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_rbf_accepter_channel_ready(runner: Runner, with_proposal: Any) -> None:
@@ -2075,7 +2075,7 @@ def test_rbf_accepter_channel_ready(runner: Runner, with_proposal: Any) -> None:
         ),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_rbf_opener_channel_ready(runner: Runner, with_proposal: Any) -> None:
@@ -2215,7 +2215,7 @@ def test_rbf_opener_channel_ready(runner: Runner, with_proposal: Any) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
@@ -2370,7 +2370,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
         ),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
@@ -2548,7 +2548,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
         Msg("ack_rbf", channel_id=channel_id_v2(local_keyset), funding_satoshis=400000),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
 
 
 def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
@@ -2716,4 +2716,4 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
         ExpectError(),
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
