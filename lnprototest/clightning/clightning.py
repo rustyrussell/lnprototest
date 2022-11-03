@@ -152,7 +152,7 @@ class Runner(lnprototest.Runner):
                 "--network=regtest",
                 "--bitcoin-rpcuser=rpcuser",
                 "--bitcoin-rpcpassword=rpcpass",
-                "--bitcoin-rpcport={}".format(self.bitcoind.port),
+                f"--bitcoin-rpcconnect=localhost:{self.bitcoind.port}",
                 "--log-level=debug",
                 "--log-file=log",
                 "--htlc-maximum-msat=2000sat",
