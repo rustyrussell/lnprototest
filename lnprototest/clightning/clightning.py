@@ -213,16 +213,6 @@ class Runner(lnprototest.Runner):
         self.bitcoind.restart()
         self.start(also_bitcoind=False)
 
-    def kill_fundchannel(self) -> None:
-        fut = self.fundchannel_future
-        self.fundchannel_future = None
-        self.is_fundchannel_kill = True
-        if fut:
-            try:
-                fut.result(0)
-            except (SpecFileError, futures.TimeoutError):
-                pass
-
     def connect(self, event: Event, connprivkey: str) -> None:
         self.add_conn(CLightningConn(connprivkey, self.lightning_port))
 
@@ -294,13 +284,31 @@ class Runner(lnprototest.Runner):
         ) -> str:
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
-            return runner.rpc.fundchannel(
-                peer_id, amount, feerate="{}perkw".format(feerate)
-            )
+            try:
+                return runner.rpc.fundchannel(
+                    peer_id, amount, feerate="{}perkw".format(feerate)
+                )
+            except Exception as ex:
+                # FIXME: this should not return None
+                # but for now that we do not have any
+                # use case where returni value is needed
+                # we keep return null.
+                #
+                # The main reason to do this mess
+                # is that in lnprototest do not have
+                # any custom way to report a spec violation
+                # failure, so for this reason we have different exception
+                # at the same time (because this mess is needed to make stuff async
+                # and look at exchanged message before finish the call). So
+                # the solution is that we log the RPC exception (this may cause a spec
+                # validation failure) and we care just the lnprototest exception as
+                # real reason to abort.
+                logging.error(f"{ex}")
+                return None
 
         def _done(fut: Any) -> None:
-            exception = fut.exception(0)
-            if exception and not self.is_fundchannel_kill and not expect_fail:
+            exception = fut.result()
+            if exception is None and not self.is_fundchannel_kill and not expect_fail:
                 raise exception
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
@@ -312,6 +320,19 @@ class Runner(lnprototest.Runner):
         fut.add_done_callback(_done)
         self.fundchannel_future = fut
         self.cleanup_callbacks.append(self.kill_fundchannel)
+
+    def kill_fundchannel(self) -> None:
+        fut = self.fundchannel_future
+        self.fundchannel_future = None
+        self.is_fundchannel_kill = True
+
+        if fut:
+            try:
+                fut.result(0)
+            except (SpecFileError, futures.TimeoutError):
+                pass
+            except Exception as ex:
+                raise ex from None
 
     def init_rbf(
         self,

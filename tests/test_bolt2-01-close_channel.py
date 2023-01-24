@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 """
 testing bolt2 closing channel operation described in the lightning network speck
 https://github.com/lightning/bolts/blob/master/02-peer-protocol.md#channel-close
