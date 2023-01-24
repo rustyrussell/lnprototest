@@ -2,14 +2,12 @@
 
 from lnprototest import (
     TryAll,
-    Connect,
     Block,
     FundChannel,
     ExpectMsg,
     ExpectTx,
     Msg,
     RawMsg,
-    KeySet,
     AcceptFunding,
     CreateFunding,
     Commit,
@@ -51,8 +49,6 @@ from spec_helper import connect_to_node_helper
 
 def test_open_channel_announce_features(runner: Runner) -> None:
     """Check that the announce features works correctly"""
-    local_funding_privkey = "20"
-    local_keyset = gen_random_keyset(int(local_funding_privkey))
     connections_events = connect_to_node_helper(
         runner=runner, tx_spendable=tx_spendable, conn_privkey="02"
     )
