@@ -1,19 +1,20 @@
 #! /usr/bin/python3
 import logging
 import traceback
-from pyln.proto.message import Message
 import collections
 import os.path
 import io
 import struct
 import time
+import json
+from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING, overload
+from pyln.proto.message import Message
 from .errors import SpecFileError, EventError
 from .namespace import namespace
 from .utils import check_hex
 from .signature import Sig
 from .bitfield import has_bit
 from bitcoin.core import CTransaction
-from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
     # Otherwise a circular dependency
@@ -51,7 +52,7 @@ class Event(object):
     def action(self, runner: "Runner") -> bool:
         """action() returns the False if it needs to be called again"""
         if runner.config.getoption("verbose"):
-            print("# running {}:".format(self))
+            logging.info("# running {}:".format(json.dumps(self)))
         return True
 
     def resolve_arg(self, fieldname: str, runner: "Runner", arg: Resolvable) -> Any:
@@ -69,6 +70,21 @@ class Event(object):
         for field, str_or_func in kwargs.items():
             ret[field] = self.resolve_arg(field, runner, str_or_func)
         return ret
+
+    def to_json(self) -> Dict[any, any]:
+        toks = self.name.split(":")
+        event = self.name
+        file_name = ""
+        pos = ""
+        if len(toks) > 0:
+            event = toks[0]
+            file_name = toks[1]
+            pos = toks[2]
+        return {
+            "event": event,
+            "file": file_name,
+            "pos": pos,
+        }
 
 
 class PerConnEvent(Event):

@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # Variations on open_channel, accepter + opener perspectives
 
 from lnprototest import (
