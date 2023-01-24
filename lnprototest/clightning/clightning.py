@@ -286,8 +286,11 @@ class Runner(lnprototest.Runner):
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
             try:
-                return runner.rpc.fundchannel(
-                    peer_id, amount, feerate="{}perkw".format(feerate)
+                return (
+                    runner.rpc.fundchannel(
+                        peer_id, amount, feerate="{}perkw".format(feerate)
+                    ),
+                    False,
                 )
             except Exception as ex:
                 # FIXME: this should not return None
@@ -305,12 +308,12 @@ class Runner(lnprototest.Runner):
                 # validation failure) and we care just the lnprototest exception as
                 # real reason to abort.
                 logging.error(f"{ex}")
-                return None
+                return str(ex), True
 
         def _done(fut: Any) -> None:
-            exception = fut.result()
-            if exception is None and not self.is_fundchannel_kill and not expect_fail:
-                raise exception
+            result, ok = fut.result()
+            if not ok and not self.is_fundchannel_kill and not expect_fail:
+                raise Exception(result)
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)
