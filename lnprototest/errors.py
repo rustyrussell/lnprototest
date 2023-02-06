@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -14,6 +13,15 @@ class EventError(Exception):
 
     def add_path(self, event: "Event") -> None:
         self.eventpath = [event] + self.eventpath
+
+    def path_to_str(self) -> str:
+        result = "["
+        for event in self.eventpath:
+            result += f"{event},"
+        return f"{result}]"
+
+    def __str__(self) -> str:
+        return f"`{self.message}` on event {self.path_to_str()}"
 
 
 class SpecFileError(Exception):

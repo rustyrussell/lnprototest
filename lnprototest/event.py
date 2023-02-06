@@ -86,6 +86,9 @@ class Event(object):
             "pos": pos,
         }
 
+    def __str__(self) -> str:
+        return json.dumps(self.to_json())
+
 
 class PerConnEvent(Event):
     """An event which takes a connprivkey arg"""
