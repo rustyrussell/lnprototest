@@ -71,7 +71,7 @@ class Event(object):
             ret[field] = self.resolve_arg(field, runner, str_or_func)
         return ret
 
-    def to_json(self) -> Dict[any, any]:
+    def to_json(self) -> Dict[Any, Any]:
         toks = self.name.split(":")
         event = self.name
         file_name = ""
@@ -202,6 +202,7 @@ class Wait(PerConnEvent):
     on the node's end"""
 
     def __init__(self, delay_s: int):
+        super().__init__(None)
         self.delay_s = delay_s
 
     def action(self, runner: "Runner") -> bool:
