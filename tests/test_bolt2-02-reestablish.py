@@ -38,7 +38,7 @@ from lnprototest.stash import (
     funding_tx,
     funding,
 )
-from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
+from helpers import run_runner, utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
 
 # FIXME: bolt9.featurebits?
 # BOLT #9:
@@ -209,4 +209,4 @@ def test_reestablish(runner: Runner) -> None:
         # the wrong info!
     ]
 
-    runner.run(test)
+    run_runner(runner, test)
