@@ -244,7 +244,7 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             funding_feerate_perkw=253,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=0,
@@ -470,7 +470,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             funding_feerate_perkw=253,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=100,
@@ -678,7 +678,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             minimum_depth=3,
             max_accepted_htlcs=483,
-            # We use 5, to be different from c-lightning runner who uses 6
+            # We use 5, to be different from core-lightning runner who uses 6
             to_self_delay=5,
             funding_pubkey=pubkey_of(local_funding_privkey),
             revocation_basepoint=local_keyset.revocation_basepoint(),
@@ -871,7 +871,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             minimum_depth=3,
             max_accepted_htlcs=483,
-            # We use 5, to be different from c-lightning runner who uses 6
+            # We use 5, to be different from core-lightning runner who uses 6
             to_self_delay=5,
             funding_pubkey=pubkey_of(local_funding_privkey),
             revocation_basepoint=local_keyset.revocation_basepoint(),
@@ -1088,7 +1088,7 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
             htlc_minimum_msat=0,
             funding_feerate_perkw=1000,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=100,
@@ -1296,7 +1296,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
             htlc_minimum_msat=0,
             minimum_depth=3,
             max_accepted_htlcs=483,
-            # We use 5, to be different from c-lightning runner who uses 6
+            # We use 5, to be different from core-lightning runner who uses 6
             to_self_delay=5,
             funding_pubkey=pubkey_of(local_funding_privkey),
             revocation_basepoint=local_keyset.revocation_basepoint(),
@@ -1789,7 +1789,7 @@ def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             funding_feerate_perkw=253,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=0,
@@ -1907,7 +1907,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             minimum_depth=3,
             max_accepted_htlcs=483,
-            # We use 5, to be different from c-lightning runner who uses 6
+            # We use 5, to be different from core-lightning runner who uses 6
             to_self_delay=5,
             funding_pubkey=pubkey_of(local_funding_privkey),
             revocation_basepoint=local_keyset.revocation_basepoint(),
@@ -2003,7 +2003,7 @@ def test_rbf_accepter_channel_ready(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             funding_feerate_perkw=253,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=0,
@@ -2144,7 +2144,7 @@ def test_rbf_opener_channel_ready(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             minimum_depth=3,
             max_accepted_htlcs=483,
-            # We use 5, to be different from c-lightning runner who uses 6
+            # We use 5, to be different from core-lightning runner who uses 6
             to_self_delay=5,
             funding_pubkey=pubkey_of(local_funding_privkey),
             revocation_basepoint=local_keyset.revocation_basepoint(),
@@ -2266,7 +2266,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             funding_feerate_perkw=253,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=0,
@@ -2440,7 +2440,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             minimum_depth=3,
             max_accepted_htlcs=483,
-            # We use 5, to be different from c-lightning runner who uses 6
+            # We use 5, to be different from core-lightning runner who uses 6
             to_self_delay=5,
             funding_pubkey=pubkey_of(local_funding_privkey),
             revocation_basepoint=local_keyset.revocation_basepoint(),
@@ -2601,7 +2601,7 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
             htlc_minimum_msat=0,
             funding_feerate_perkw=253,
             commitment_feerate_perkw=253,
-            # We use 5, because c-lightning runner uses 6, so this is different.
+            # We use 5, because core-lightning runner uses 6, so this is different.
             to_self_delay=5,
             max_accepted_htlcs=483,
             locktime=0,

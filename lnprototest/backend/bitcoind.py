@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# This script exercises the c-lightning implementation
+# This script exercises the core-lightning implementation
 
 # Released by Rusty Russell under CC0:
 # https://creativecommons.org/publicdomain/zero/1.0/
