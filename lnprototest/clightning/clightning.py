@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# This script exercises the c-lightning implementation
+# This script exercises the core-lightning implementation
 
 # Released by Rusty Russell under CC0:
 # https://creativecommons.org/publicdomain/zero/1.0/
@@ -163,18 +163,18 @@ class Runner(lnprototest.Runner):
         self.rpc = pyln.client.LightningRpc(
             os.path.join(self.lightning_dir, "regtest", "lightning-rpc")
         )
-        self.logger.debug("RUN c-lightning")
+        self.logger.debug("RUN core-lightning")
 
         def node_ready(rpc: pyln.client.LightningRpc) -> bool:
             try:
                 rpc.getinfo()
                 return True
             except Exception as ex:
-                logging.debug(f"waiting for c-lightning: Exception received {ex}")
+                logging.debug(f"waiting for core-lightning: Exception received {ex}")
                 return False
 
         wait_for(lambda: node_ready(self.rpc))
-        logging.debug("Waited fro c-lightning")
+        logging.debug("Waited for core-lightning")
 
         # Make sure that we see any funds that come to our wallet
         for i in range(5):
@@ -196,7 +196,7 @@ class Runner(lnprototest.Runner):
         if print_logs:
             log_path = f"{self.lightning_dir}/regtest/log"
             with open(log_path) as log:
-                self.logger.info("---------- c-lightning logging ----------------")
+                self.logger.info("---------- core-lightning logging ----------------")
                 self.logger.info(log.read())
                 # now we make a backup of the log
                 shutil.copy(

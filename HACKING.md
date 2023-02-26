@@ -12,7 +12,7 @@ For every test, there is a runner which wraps a particular node
 implementation: using the default "DummyRunner" helps debug the tests
 themselves.
 
-A test consists of one or more Event (e.g. send a message, receive a
+A test consists of one or more Events (e.g. send a message, receive a
 message), in a DAG.  The test runner repeats the test until every
 Event has been covered.  The most important event is probably
 TryAll(), which gives multiple alternative paths of Events, each of
@@ -79,7 +79,7 @@ To add a new runner, you'll need to create a new subclass of Runner, that
 fills in the Runner API. You can find a good skeleton for a new runner in
 `lnprototest/dummyrunner.py`
 
-A completed c-lightning example runner can be found in `lnprototest/clightning/clightning.py`
+A completed core-lightning example runner can be found in `lnprototest/clightning/clightning.py`
 
 Here's a short outline of the current expected methods for a Runner.
 
@@ -97,7 +97,7 @@ Here's a short outline of the current expected methods for a Runner.
 
 - `connect`: Create a connection to the node under test using the provided `connprivkey`.
 - `getblockheight`: Return the blockcount from bitcoind
-- `trim_blocks`: invalidate bitcoind blocks until `newheight`
+- `trim_blocks`: Invalidate bitcoind blocks until `newheight`
 - `add_blocks`: Send provided `txs` (if any). Generate `n` new blocks.
 - `disconnect`: Implemented in the parent Runner, not necessary to implement in child unless necessary.
 - `recv`: Send `outbuf` over `conn` to node under test
@@ -105,7 +105,7 @@ Here's a short outline of the current expected methods for a Runner.
 - `init_rbf`: For v2 channel opens, initiates an RBF attempt. Same as `fundchannel`, must not block.
 - `invoice`: Generate an invoice from the node under test for the given amount and preimage
 - `accept_add_fund`: Configure the node under test to contribute to any incoming v2 open channel offers.
-- `addhtlc`: Add the provided htlc to the the node. clightning does this via the `sendpay` command
+- `addhtlc`: Add the provided htlc to the the node. core lightning does this via the `sendpay` command
 - `get_output_message`: Read a message from the node's connection
 - `expect_tx`: Wait for the provided txid to appear in the mempool
 - `check_error`: Gets message from connection and returns it as hex. Also calls parent Runner method (which marks this as an `expected_error`)
@@ -113,7 +113,7 @@ Here's a short outline of the current expected methods for a Runner.
 
 
 ### Passing cmdline args to the Runner
-Note that the c-lightning runner, in `__init__`, converts
+Note that the core-lightning runner, in `__init__`, converts
 cmdline `runner_args` into a `startup_flag` array, which are then
 passed to the node at `start`
 

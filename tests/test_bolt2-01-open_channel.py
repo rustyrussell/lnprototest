@@ -79,7 +79,7 @@ def test_open_channel(runner: Runner) -> None:
                     channel_reserve_satoshis=9998,
                     htlc_minimum_msat=0,
                     feerate_per_kw=253,
-                    # We use 5, because c-lightning runner uses 6, so this is different.
+                    # We use 5, because core-lightning runner uses 6, so this is different.
                     to_self_delay=5,
                     max_accepted_htlcs=483,
                     funding_pubkey=pubkey_of(local_funding_privkey),
@@ -186,7 +186,7 @@ def test_open_channel(runner: Runner) -> None:
                     htlc_minimum_msat=0,
                     minimum_depth=3,
                     max_accepted_htlcs=483,
-                    # We use 5, because c-lightning runner uses 6, so this is different.
+                    # We use 5, because core-lightning runner uses 6, so this is different.
                     to_self_delay=5,
                     funding_pubkey=pubkey_of(local_funding_privkey),
                     revocation_basepoint=local_keyset.revocation_basepoint(),

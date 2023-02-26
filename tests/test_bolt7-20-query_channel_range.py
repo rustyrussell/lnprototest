@@ -247,7 +247,7 @@ def test_query_channel_range(runner: Runner) -> None:
         RawMsg(funding2.channel_announcement("109x1x0", "")),
         RawMsg(update_109x1x0_LOCAL),
         RawMsg(update_109x1x0_REMOTE),
-        # c-lightning gets a race condition if we dont wait for
+        # core-lightning gets a race condition if we dont wait for
         # these updates to be added to the gossip store
         # FIXME: convert to explicit signal
         Wait(1),

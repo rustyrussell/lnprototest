@@ -1,4 +1,4 @@
-"""Runner for the c-lightning implementation.
+"""Runner for the core-lightning implementation.
 
 This is adapted from the older testcases, so it is overly prescriptive
 of how the node is configured.  A more modern implementation would simply

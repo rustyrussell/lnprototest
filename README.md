@@ -55,7 +55,7 @@ Here are some other useful pytest options:
 ### Running Against A Real Node.
 
 The more useful way to run is to use an existing implementation. So
-far, c-lightning is supported.  You will need:
+far, core-lightning is supported.  You will need:
 
 1. `bitcoind` installed, and in your path.
 2. [`lightningd`](https://github.com/ElementsProject/lightning/) compiled with
