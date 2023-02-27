@@ -8,10 +8,10 @@ be used after this sequence of steps.
 
 author: https://github.com/vincenzopalazzo
 """
-from typing import List, Union
+from typing import List
 
 from lnprototest import (
-    TryAll,
+    Event,
     Connect,
     Block,
     ExpectMsg,
@@ -50,7 +50,7 @@ def connect_to_node_helper(
     conn_privkey: str = "02",
     global_features="",
     features: str = "",
-) -> List[Union[Block, Connect, ExpectMsg, TryAll]]:
+) -> List[Event]:
     """Helper function to make a connection with the node"""
     return [
         Block(blockheight=102, txs=[tx_spendable]),
@@ -62,7 +62,7 @@ def connect_to_node_helper(
 
 def open_and_announce_channel_helper(
     runner: Runner, conn_privkey: str = "02", opts: dict = {}
-) -> List[Union[Block, Connect, ExpectMsg, TryAll]]:
+) -> List[Event]:
     # Make up a channel between nodes 02 and 03, using bitcoin privkeys 10 and 20
     local_keyset = gen_random_keyset()
     local_funding_privkey = "20"

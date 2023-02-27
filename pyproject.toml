@@ -24,8 +24,6 @@ pytest = "^7.2.1"
 black = "^22.1.0"
 flake8 = "^4.0.1"
 pytest-xdist = "^3.1.0"
-
-[tool.poetry.group.dev.dependencies]
 mypy = "^1.0.1"
 
 [build-system]

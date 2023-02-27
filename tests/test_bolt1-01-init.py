@@ -1,7 +1,8 @@
 #! /usr/bin/env python3
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
-
+import pytest
+import pyln.spec.bolt1
 from lnprototest import (
     Runner,
     Event,
@@ -12,19 +13,17 @@ from lnprototest import (
     EventError,
     ExpectMsg,
     Msg,
-    ExpectError,
     has_bit,
     bitfield,
     bitfield_len,
     SpecFileError,
+    ExpectDisconnect,
 )
 from lnprototest.stash import rcvd
-import pyln.spec.bolt1
 from pyln.proto.message import Message
 from typing import List, Any
 from helpers import run_runner
 import functools
-import pytest
 
 
 # BOLT #1: The sending node:
@@ -189,7 +188,7 @@ def test_init_fail_connection_if_receive_an_even_unknown_featurebits(
         #    - MUST fail the connection.
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=bitfield(98)),
-        ExpectError(),
+        ExpectDisconnect(),
     ]
     run_runner(runner, sequences)
 
@@ -209,7 +208,7 @@ def test_init_fail_connection_if_receive_an_even_unknown_globalfeaturebits(
         # init msg with unknown even global bit (98): you will error
         ExpectMsg("init"),
         Msg("init", globalfeatures=bitfield(98), features=""),
-        ExpectError(),
+        ExpectDisconnect(),
     ]
     run_runner(runner, sequences)
 
@@ -299,7 +298,7 @@ def test_init_reject_option_data_loss_protect_if_not_supported(
             [
                 ExpectMsg("init", if_match=functools.partial(no_feature, [20, 21])),
                 Msg("init", globalfeatures="", features=bitfield(20)),
-                ExpectError(),
+                ExpectDisconnect(),
             ],
             enable=not runner.has_option("option_anchor_outputs"),
         ),

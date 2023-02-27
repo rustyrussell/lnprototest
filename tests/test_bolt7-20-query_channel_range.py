@@ -19,7 +19,6 @@ from lnprototest import (
     CheckEq,
     EventError,
     namespace,
-    Wait,
 )
 from helpers import tx_spendable, utxo
 from typing import Optional

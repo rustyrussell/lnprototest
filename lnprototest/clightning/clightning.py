@@ -424,7 +424,11 @@ class Runner(lnprototest.Runner):
         fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
         try:
             return fut.result(timeout)
-        except (futures.TimeoutError, ValueError):
+        except futures.TimeoutError as ex:
+            logging.error(f"timeout exception {ex}")
+            return None
+        except Exception as ex:
+            logging.error(f"{ex}")
             return None
 
     def check_error(self, event: Event, conn: Conn) -> Optional[str]:
