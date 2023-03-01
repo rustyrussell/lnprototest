@@ -70,7 +70,6 @@ from typing import Any, Callable, List
 
 def channel_id_v2(local_keyset: KeySet) -> Callable[[Runner, Event, str], str]:
     def _channel_id_v2(runner: Runner, event: Event, field: str) -> str:
-
         # BOLT-0eebb43e32a513f3b4dd9ced72ad1e915aefdd25 #2:
         #
         # For channels established using the v2 protocol, the `channel_id` is the

@@ -135,7 +135,8 @@ def get_member(
 ) -> str:
     """Get member field from stash for ExpectMsg or Msg.
 
-    If var contains a '.' then we look for that message to extract the field.  If last is True, we get the last message, otherwise the first."""
+    If var contains a '.' then we look for that message to extract the field.  If last is True, we get the last message, otherwise the first.
+    """
     stash = runner.get_stash(event, stashname)
     if "." in var:
         prevname, _, var = var.partition(".")

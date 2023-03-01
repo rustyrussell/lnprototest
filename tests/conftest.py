@@ -51,7 +51,8 @@ def with_proposal(
     pytestconfig: Any,
 ) -> Generator[Callable[[List[str]], None], None, None]:
     """Use this to add additional messages to the namespace
-    Useful for testing proposed (but not yet merged) spec mods.  Noop if it seems already merged."""
+    Useful for testing proposed (but not yet merged) spec mods.  Noop if it seems already merged.
+    """
 
     def _setter(proposal_csv: List[str]) -> None:
         # Testing first line is cheap, pretty effective.
