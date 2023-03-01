@@ -2,7 +2,8 @@
 # Init exchange, with unknown messages
 #
 
-from lnprototest import TryAll, Connect, ExpectMsg, Msg, RawMsg, ExpectError, Runner
+from lnprototest import TryAll, Connect, ExpectMsg, Msg, RawMsg, Runner
+from lnprototest.event import ExpectDisconnect
 import pyln.spec.bolt1
 from typing import Any
 
@@ -26,7 +27,7 @@ def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
             #   - upon receiving a message of _even_, unknown type:
             #     - MUST close the connection.
             #     - MAY fail the channels.
-            [RawMsg(bytes.fromhex("2710")), ExpectError()],
+            [RawMsg(bytes.fromhex("2710")), ExpectDisconnect()],
         ),
     ]
 
