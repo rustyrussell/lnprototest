@@ -36,6 +36,7 @@ from .event import (
     DualFundAccept,
     Wait,
     CloseChannel,
+    ExpectDisconnect,
 )
 from .structure import Sequence, OneOf, AnyOrder, TryAll
 from .runner import (
@@ -151,4 +152,5 @@ __all__ = [
     "channel_type_csv",
     "wait_for",
     "CloseChannel",
+    "ExpectDisconnect",
 ]

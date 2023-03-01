@@ -4,7 +4,6 @@ LABEL mantainer="Vincenzo Palazzo vincenzopalazzodev@gmail.com"
 WORKDIR /work
 
 ENV BITCOIN_VERSION=23.0
-ENV CLIGHTNING_VERSION=0.12.0
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -qq update && \

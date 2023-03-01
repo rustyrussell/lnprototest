@@ -52,7 +52,7 @@ class Event(object):
     def action(self, runner: "Runner") -> bool:
         """action() returns the False if it needs to be called again"""
         if runner.config.getoption("verbose"):
-            logging.info("# running {}:".format(json.dumps(self)))
+            logging.info("# running {}:".format(self.to_json()))
         return True
 
     def resolve_arg(self, fieldname: str, runner: "Runner", arg: Resolvable) -> Any:
@@ -71,7 +71,7 @@ class Event(object):
             ret[field] = self.resolve_arg(field, runner, str_or_func)
         return ret
 
-    def to_json(self) -> Dict[any, any]:
+    def to_json(self) -> Dict[Any, Any]:
         toks = self.name.split(":")
         event = self.name
         file_name = ""
@@ -85,6 +85,9 @@ class Event(object):
             "file": file_name,
             "pos": pos,
         }
+
+    def __str__(self) -> str:
+        return json.dumps(self.to_json())
 
 
 class PerConnEvent(Event):
@@ -199,6 +202,7 @@ class Wait(PerConnEvent):
     on the node's end"""
 
     def __init__(self, delay_s: int):
+        super().__init__(None)
         self.delay_s = delay_s
 
     def action(self, runner: "Runner") -> bool:
@@ -338,7 +342,7 @@ class ExpectMsg(PerConnEvent):
                     raise EventError(
                         self, "Got msg banned by {}: {}".format(e, binmsg.hex())
                     )
-
+            logging.debug(f"raw msg {binmsg}")
             # Might be completely unknown to namespace.
             try:
                 msg = Message.read(namespace(), io.BytesIO(binmsg))
@@ -346,7 +350,7 @@ class ExpectMsg(PerConnEvent):
                 raise EventError(
                     self, "Runner gave bad msg {}: {}".format(binmsg.hex(), ve)
                 )
-
+            logging.debug(f"decoded msg {msg.to_str()}")
             # Ignore function may tell us to respond.
             response = self.ignore(msg)
             if response is not None:
@@ -528,6 +532,26 @@ class ExpectError(PerConnEvent):
         if error is None:
             raise EventError(self, "No error found")
         return True
+
+
+class ExpectDisconnect(PerConnEvent):
+    """This is considerer an hack, because the protocol
+    is not specifing what fail the connection means, so in
+    some case a node close the connection without any message
+    or in a local env the connection got close before sending
+    out the msg, so this event is the simplest way to work around
+    this current issue."""
+
+    def __init__(self, connprivkey: Optional[str] = None):
+        super().__init__(connprivkey)
+
+    def action(self, runner: "Runner") -> bool:
+        super().action(runner)
+        msg = runner.check_error(self, self.find_conn(runner))
+        # in this case of the dummy runner we return a `Dummy error`
+        # but in this case we wan receive an None value
+        # because the connected got close before
+        return msg is None or runner._is_dummy()
 
 
 class CheckEq(Event):

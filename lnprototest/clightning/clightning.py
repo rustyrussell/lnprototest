@@ -147,13 +147,14 @@ class Runner(lnprototest.Runner):
                 "--dev-force-channel-secrets=0000000000000000000000000000000000000000000000000000000000000010/0000000000000000000000000000000000000000000000000000000000000011/0000000000000000000000000000000000000000000000000000000000000012/0000000000000000000000000000000000000000000000000000000000000013/0000000000000000000000000000000000000000000000000000000000000014/FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
                 "--dev-bitcoind-poll=1",
                 "--dev-fast-gossip",
+                "--dev-allow-localhost",
                 "--dev-no-htlc-timeout",
                 "--bind-addr=127.0.0.1:{}".format(self.lightning_port),
                 "--network=regtest",
                 "--bitcoin-rpcuser=rpcuser",
                 "--bitcoin-rpcpassword=rpcpass",
                 f"--bitcoin-rpcconnect=localhost:{self.bitcoind.port}",
-                "--log-level=debug",
+                "--log-level=io",
                 "--log-file=log",
                 "--htlc-maximum-msat=2000sat",
             ]
@@ -285,8 +286,11 @@ class Runner(lnprototest.Runner):
             peer_id = conn.pubkey.format().hex()
             # Need to supply feerate here, since regtest cannot estimate fees
             try:
-                return runner.rpc.fundchannel(
-                    peer_id, amount, feerate="{}perkw".format(feerate)
+                return (
+                    runner.rpc.fundchannel(
+                        peer_id, amount, feerate="{}perkw".format(feerate)
+                    ),
+                    False,
                 )
             except Exception as ex:
                 # FIXME: this should not return None
@@ -304,12 +308,12 @@ class Runner(lnprototest.Runner):
                 # validation failure) and we care just the lnprototest exception as
                 # real reason to abort.
                 logging.error(f"{ex}")
-                return None
+                return str(ex), True
 
         def _done(fut: Any) -> None:
-            exception = fut.result()
-            if exception is None and not self.is_fundchannel_kill and not expect_fail:
-                raise exception
+            result, ok = fut.result()
+            if not ok and not self.is_fundchannel_kill and not expect_fail:
+                raise Exception(result)
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)
@@ -420,7 +424,11 @@ class Runner(lnprototest.Runner):
         fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
         try:
             return fut.result(timeout)
-        except (futures.TimeoutError, ValueError):
+        except futures.TimeoutError as ex:
+            logging.error(f"timeout exception {ex}")
+            return None
+        except Exception as ex:
+            logging.error(f"{ex}")
             return None
 
     def check_error(self, event: Event, conn: Conn) -> Optional[str]:
