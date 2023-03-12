@@ -15,6 +15,7 @@ import struct
 import shutil
 import logging
 import socket
+import time
 
 from contextlib import closing
 from datetime import date
@@ -214,7 +215,7 @@ class Runner(lnprototest.Runner):
         self.bitcoind.restart()
         self.start(also_bitcoind=False)
 
-    def connect(self, event: Event, connprivkey: str) -> None:
+    def connect(self, _: Event, connprivkey: str) -> None:
         self.add_conn(CLightningConn(connprivkey, self.lightning_port))
 
     def getblockheight(self) -> int:
@@ -317,6 +318,12 @@ class Runner(lnprototest.Runner):
             self.fundchannel_future = None
             self.is_fundchannel_kill = False
             self.cleanup_callbacks.remove(self.kill_fundchannel)
+
+        # FIXME core lightning has a race condition
+        # when the core lightning node will go to fund the channel
+        # but it will go to to connect with the node before
+        # This required some more analysis from core lightning side
+        time.sleep(1)
 
         fut = self.executor.submit(
             _fundchannel, self, conn, amount, feerate, expect_fail
