@@ -87,7 +87,7 @@ def test_close_channel_shutdown_msg_normal_case_receiver_side(runner: Runner) ->
     run_runner(runner, merge_events_sequences(pre=pre_events, post=test))
 
 
-@pytest.mark.skip("working in progress")
+@pytest.mark.skip("this leave core lightning in a stuck situation")
 def test_close_channel_shutdown_msg_normal_case_sender_side(runner: Runner) -> None:
     """Close the channel with the other peer, and check if the
     shutdown message works in the expected way.
