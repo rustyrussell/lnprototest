@@ -1,0 +1,16 @@
+{
+  "package_name": "lnprototest",
+  "version": "v0.0.2",
+  "api": {
+    "name": "github",
+    "repository": "rustyrussell/lnprototest",
+    "branch": "macros/changelog"
+  },
+  "generation_method": {
+    "name": "semver-v2",
+    "header_filter": false
+  },
+  "serialization_method": {
+    "name": "md"
+  }
+}
