@@ -165,7 +165,7 @@ def test_open_channel_bad_type(runner: Runner, with_proposal: Any) -> None:
         TryAll(
             # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
             # | 20/21 | `option_anchor_outputs`          | Anchor outputs
-            Msg("init", globalfeatures="", features=bitfield(12, 20)),
+            Msg("init", globalfeatures="", features=bitfield(12, 21)),
             # BOLT #9:
             # | 12/13 | `option_static_remotekey`        | Static key for remote output
             Msg("init", globalfeatures="", features=bitfield(12)),
