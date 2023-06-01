@@ -33,6 +33,7 @@ from lnprototest.stash import (
     funding_txid,
     funding_tx,
     funding,
+    stash_field_from_event,
 )
 from helpers import (
     utxo,
@@ -110,7 +111,7 @@ def test_open_channel_from_accepter_side(runner: Runner) -> None:
             delayed_payment_basepoint=remote_delayed_payment_basepoint(),
             htlc_basepoint=remote_htlc_basepoint(),
             first_per_commitment_point=remote_per_commitment_point(0),
-            minimum_depth=3,
+            minimum_depth=stash_field_from_event("accept_channel"),
             channel_reserve_satoshis=9998,
         ),
         # Ignore unknown odd messages

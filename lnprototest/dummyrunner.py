@@ -49,7 +49,7 @@ class DummyRunner(Runner):
     def start(self) -> None:
         self.blockheight = 102
 
-    def stop(self) -> None:
+    def stop(self, print_logs: bool = False) -> None:
         pass
 
     def restart(self) -> None:

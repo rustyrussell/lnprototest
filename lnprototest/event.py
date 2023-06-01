@@ -346,6 +346,7 @@ class ExpectMsg(PerConnEvent):
             # Might be completely unknown to namespace.
             try:
                 msg = Message.read(namespace(), io.BytesIO(binmsg))
+                runner.add_stash(msg.messagetype.name, msg)
             except ValueError as ve:
                 raise EventError(
                     self, "Runner gave bad msg {}: {}".format(binmsg.hex(), ve)
