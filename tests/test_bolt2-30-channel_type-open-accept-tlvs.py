@@ -8,12 +8,16 @@ from lnprototest import (
     Msg,
     Runner,
     KeySet,
-    regtest_hash,
     bitfield,
     channel_type_csv,
     ExpectError,
 )
-from helpers import tx_spendable, funding_amount_for_utxo, pubkey_of
+from lnprototest.utils import (
+    BitcoinUtils,
+    tx_spendable,
+    funding_amount_for_utxo,
+    pubkey_of,
+)
 from typing import Any
 import pytest
 
@@ -50,7 +54,7 @@ def test_open_channel(runner: Runner, with_proposal: Any) -> None:
         ),
         Msg(
             "open_channel",
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             temporary_channel_id="00" * 32,
             funding_satoshis=funding_amount_for_utxo(0),
             push_msat=0,
@@ -109,7 +113,7 @@ def test_open_channel_empty_type(runner: Runner, with_proposal: Any) -> None:
         ),
         Msg(
             "open_channel",
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             temporary_channel_id="00" * 32,
             funding_satoshis=funding_amount_for_utxo(0),
             push_msat=0,
@@ -174,7 +178,7 @@ def test_open_channel_bad_type(runner: Runner, with_proposal: Any) -> None:
         ),
         Msg(
             "open_channel",
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             temporary_channel_id="00" * 32,
             funding_satoshis=funding_amount_for_utxo(0),
             push_msat=0,

@@ -11,6 +11,7 @@ reference material, and the tutorial should get you started.
 
 """
 from .errors import EventError, SpecFileError
+
 from .event import (
     Event,
     Connect,
@@ -38,7 +39,9 @@ from .event import (
     CloseChannel,
     ExpectDisconnect,
 )
+
 from .structure import Sequence, OneOf, AnyOrder, TryAll
+
 from .runner import (
     Runner,
     Conn,
@@ -64,7 +67,6 @@ from .keyset import KeySet
 from .commit_tx import Commit, HTLC, UpdateCommit
 from .utils import (
     Side,
-    regtest_hash,
     privkey_expand,
     wait_for,
     LightningUtils,

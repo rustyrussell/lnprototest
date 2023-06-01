@@ -21,8 +21,8 @@ from lnprototest import (
     CheckEq,
     msat,
     remote_funding_privkey,
-    regtest_hash,
     bitfield,
+    Block,
 )
 from lnprototest.stash import (
     sent,
@@ -35,8 +35,9 @@ from lnprototest.stash import (
     funding,
     stash_field_from_event,
 )
-from helpers import (
+from lnprototest.utils import (
     utxo,
+    BitcoinUtils,
     tx_spendable,
     run_runner,
     merge_events_sequences,
@@ -44,7 +45,7 @@ from helpers import (
     pubkey_of,
     gen_random_keyset,
 )
-from spec_helper import connect_to_node_helper
+from lnprototest.utils.ln_spec_utils import connect_to_node_helper
 
 
 def test_open_channel_announce_features(runner: Runner) -> None:
@@ -80,7 +81,7 @@ def test_open_channel_from_accepter_side(runner: Runner) -> None:
     test_events = [
         Msg(
             "open_channel",
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             temporary_channel_id="00" * 32,
             funding_satoshis=funding_amount_for_utxo(0),
             push_msat=0,
@@ -181,7 +182,7 @@ def test_open_channel_opener_side(runner: Runner) -> None:
         # This gives a channel of 999877sat
         ExpectMsg(
             "open_channel",
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=999877,
             push_msat=0,
             dust_limit_satoshis=546,

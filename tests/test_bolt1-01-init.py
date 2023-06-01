@@ -1,8 +1,17 @@
 #! /usr/bin/env python3
 # Variations on init exchange.
 # Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
+import functools
+
+from typing import List, Any
+
 import pytest
 import pyln.spec.bolt1
+
+from pyln.proto.message import Message
+
+from lnprototest.stash import rcvd
+from lnprototest.utils.utils import run_runner
 from lnprototest import (
     Runner,
     Event,
@@ -19,12 +28,6 @@ from lnprototest import (
     SpecFileError,
     ExpectDisconnect,
 )
-from lnprototest.stash import rcvd
-from pyln.proto.message import Message
-from typing import List, Any
-from helpers import run_runner
-import functools
-
 
 # BOLT #1: The sending node:
 # ...

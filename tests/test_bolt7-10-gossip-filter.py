@@ -16,7 +16,7 @@ from lnprototest import (
 )
 import unittest
 import time
-from helpers import utxo, tx_spendable
+from lnprototest.utils import utxo, tx_spendable
 
 
 def test_gossip_timestamp_filter(runner: Runner) -> None:

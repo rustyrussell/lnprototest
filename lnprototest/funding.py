@@ -1,15 +1,21 @@
 # Support for funding txs.
+import coincurve
+import io
+import logging
+
 from typing import Tuple, Any, Optional, Union, Callable, Dict, List
-from .utils import Side, privkey_expand, regtest_hash
+
+from hashlib import sha256
+from pyln.proto.message import Message
+
+from .utils.bitcoin_utils import BitcoinUtils
+from .utils import Side, privkey_expand
 from .event import Event, ResolvableInt, ResolvableStr
 from .namespace import namespace
 from .runner import Runner
 from .signature import Sig
-from pyln.proto.message import Message
-from hashlib import sha256
-import coincurve
-import io
-import logging
+
+import bitcoin.core.script as script
 from bitcoin.core import (
     COutPoint,
     CScript,
@@ -22,7 +28,6 @@ from bitcoin.core import (
     Hash160,
     CTransaction,
 )
-import bitcoin.core.script as script
 from bitcoin.wallet import P2WPKHBitcoinAddress
 
 ResolvableFunding = Union["Funding", Callable[["Runner", "Event", str], "Funding"]]
@@ -43,7 +48,7 @@ class Funding(object):
         local_funding_privkey: str,
         remote_node_privkey: str,
         remote_funding_privkey: str,
-        chain_hash: str = regtest_hash,
+        chain_hash: str = BitcoinUtils.blockchain_hash(),
         locktime: int = 0,
     ):
         self.chain_hash = chain_hash
@@ -137,7 +142,7 @@ class Funding(object):
         remote_funding_privkey: str,
         funding_sats: int,
         locktime: int,
-        chain_hash: str = regtest_hash,
+        chain_hash: str = BitcoinUtils.blockchain_hash(),
     ) -> "Funding":
         # Create dummy one to start: we will fill in txid at the end
         return Funding(
@@ -305,7 +310,7 @@ class Funding(object):
         local_funding_privkey: str,
         remote_node_privkey: str,
         remote_funding_privkey: str,
-        chain_hash: str = regtest_hash,
+        chain_hash: str = BitcoinUtils.blockchain_hash(),
     ) -> Tuple["Funding", str]:
         """Make a funding transaction by spending this utxo using privkey: return Funding, tx."""
 
@@ -654,7 +659,7 @@ class AcceptFunding(Event):
         local_funding_privkey: ResolvableStr,
         remote_node_privkey: ResolvableStr,
         remote_funding_privkey: ResolvableStr,
-        chain_hash: str = regtest_hash,
+        chain_hash: str = BitcoinUtils.blockchain_hash(),
     ):
         super().__init__()
         self.funding_txid = funding_txid
@@ -702,7 +707,7 @@ class CreateFunding(Event):
         local_funding_privkey: ResolvableStr,
         remote_node_privkey: ResolvableStr,
         remote_funding_privkey: ResolvableStr,
-        chain_hash: str = regtest_hash,
+        chain_hash: str = BitcoinUtils.blockchain_hash(),
     ):
         super().__init__()
         self.txid_in = txid_in
@@ -754,7 +759,7 @@ class CreateDualFunding(Event):
         local_funding_privkey: str,
         remote_node_privkey: str,
         remote_funding_privkey: ResolvableStr,
-        chain_hash: str = regtest_hash,
+        chain_hash: str = BitcoinUtils.blockchain_hash(),
     ):
         super().__init__()
 
