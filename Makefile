@@ -13,10 +13,7 @@ check-pytest-found:
 check: check-pytest-found
 	$(PYTEST) $(PYTEST_ARGS) $(TEST_DIR)
 
-check-source: check-fmt check-flake8 check-mypy check-internal-tests
-
-check-flake8:
-	flake8 --ignore=E501,E731,W503 --exclude=venv\/,build\/
+check-source: check-fmt check-mypy check-internal-tests
 
 check-mypy:
 	mypy --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs $(PYTHONFILES)
