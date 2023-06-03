@@ -1,9 +1,11 @@
-from lnprototest import Runner, Event, Side, SpecFileError, Funding
-from typing import Callable, Optional, Any
-from pyln.proto.message import Message
 import functools
 import time
 import coincurve
+
+from typing import Callable, Optional, Any
+from pyln.proto.message import Message
+
+from lnprototest import Runner, Event, Side, SpecFileError, Funding
 
 
 def commitsig_to_send() -> Callable[[Runner, Event, str], str]:
@@ -275,12 +277,15 @@ def funding_close_tx() -> Callable[[Runner, Event, str], str]:
     return _funding_close_tx
 
 
-def stash_field_from_event(stash_key: str) -> Callable[[Runner, Event, str], str]:
+def stash_field_from_event(
+    stash_key: str, field_name: Optional[str] = None, dummy_val: Optional[Any] = None
+) -> Callable[[Runner, Event, str], str]:
     """Generic stash function to get the information back from a previous event"""
 
     def _stash_field_from_event(runner: Runner, event: Event, field: str) -> str:
         if runner._is_dummy():
-            return "0"
+            return dummy_val
+        field = field if field_name is None else field_name
         return runner.get_stash(event, stash_key).fields[field]
 
     return _stash_field_from_event
