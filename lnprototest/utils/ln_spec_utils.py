@@ -8,7 +8,7 @@ be used after this sequence of steps.
 
 author: Vincenzo PAlazzo https://github.com/vincenzopalazzo
 """
-from typing import List
+from typing import List, Optional
 
 
 class LightningUtils:
@@ -49,11 +49,12 @@ def connect_to_node_helper(
     runner: "Runner",
     tx_spendable: str,
     conn_privkey: str = "02",
-    global_features="",
-    features: str = "",
+    global_features: Optional[str] = None,
+    features: Optional[str] = None,
 ) -> List["Event"]:
     """Helper function to make a connection with the node"""
     from lnprototest.utils.bitcoin_utils import tx_spendable
+    from lnprototest.stash import stash_field_from_event
     from lnprototest import (
         Connect,
         Block,
@@ -65,7 +66,15 @@ def connect_to_node_helper(
         Block(blockheight=102, txs=[tx_spendable]),
         Connect(connprivkey=conn_privkey),
         ExpectMsg("init"),
-        Msg("init", globalfeatures=global_features, features=features),
+        Msg(
+            "init",
+            globalfeatures=stash_field_from_event("init", dummy_val="")
+            if global_features is None
+            else global_features,
+            features=stash_field_from_event("init", dummy_val="")
+            if features is None
+            else features,
+        ),
     ]
 
 
