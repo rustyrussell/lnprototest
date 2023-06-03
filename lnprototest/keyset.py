@@ -2,7 +2,6 @@
 # FIXME: clean this up for use as pyln.proto.tx
 import coincurve
 import hashlib
-from .utils import privkey_expand, check_hex
 
 
 class KeySet(object):
@@ -14,6 +13,9 @@ class KeySet(object):
         delayed_payment_base_secret: str,
         shachain_seed: str,
     ):
+
+        from .utils import privkey_expand, check_hex
+
         self.revocation_base_secret = privkey_expand(revocation_base_secret)
         self.payment_base_secret = privkey_expand(payment_base_secret)
         self.htlc_base_secret = privkey_expand(htlc_base_secret)

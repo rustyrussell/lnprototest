@@ -273,3 +273,14 @@ def funding_close_tx() -> Callable[[Runner, Event, str], str]:
         return runner.get_stash(event, "Funding").close_tx()
 
     return _funding_close_tx
+
+
+def stash_field_from_event(stash_key: str) -> Callable[[Runner, Event, str], str]:
+    """Generic stash function to get the information back from a previous event"""
+
+    def _stash_field_from_event(runner: Runner, event: Event, field: str) -> str:
+        if runner._is_dummy():
+            return "0"
+        return runner.get_stash(event, stash_key).fields[field]
+
+    return _stash_field_from_event

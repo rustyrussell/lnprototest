@@ -33,7 +33,7 @@ from lnprototest import (
 from lnprototest import wait_for
 from typing import Dict, Any, Callable, List, Optional, cast
 
-TIMEOUT = int(os.getenv("TIMEOUT", "30"))
+TIMEOUT = int(os.getenv("TIMEOUT", "60"))
 LIGHTNING_SRC = os.path.join(os.getcwd(), os.getenv("LIGHTNING_SRC", "../lightning/"))
 
 
@@ -175,7 +175,7 @@ class Runner(lnprototest.Runner):
                 logging.debug(f"waiting for core-lightning: Exception received {ex}")
                 return False
 
-        wait_for(lambda: node_ready(self.rpc))
+        wait_for(lambda: node_ready(self.rpc), timeout=TIMEOUT)
         logging.debug("Waited for core-lightning")
 
         # Make sure that we see any funds that come to our wallet

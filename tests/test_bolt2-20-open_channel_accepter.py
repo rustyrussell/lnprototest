@@ -4,6 +4,7 @@ import pytest
 from hashlib import sha256
 
 from pyln.proto.message import Message
+
 from lnprototest import (
     TryAll,
     Connect,
@@ -26,7 +27,6 @@ from lnprototest import (
     Side,
     msat,
     remote_funding_privkey,
-    regtest_hash,
     bitfield,
     Event,
     DualFundAccept,
@@ -55,7 +55,7 @@ from lnprototest.stash import (
     get_member,
     witnesses,
 )
-from helpers import (
+from lnprototest.utils import (
     utxo,
     tx_spendable,
     funding_amount_for_utxo,
@@ -64,6 +64,7 @@ from helpers import (
     privkey_for_index,
     utxo_amount,
     run_runner,
+    BitcoinUtils,
 )
 from typing import Any, Callable, List
 
@@ -236,7 +237,7 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount_for_utxo(input_index),
             dust_limit_satoshis=546,
             max_htlc_value_in_flight_msat=4294967295,
@@ -462,7 +463,7 @@ def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount_for_utxo(input_index),
             dust_limit_satoshis=546,
             max_htlc_value_in_flight_msat=4294967295,
@@ -655,7 +656,7 @@ def test_open_opener_no_input(runner: Runner, with_proposal: Any) -> None:
         ExpectMsg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.remote),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=999877,
             dust_limit_satoshis=546,
             htlc_minimum_msat=0,
@@ -848,7 +849,7 @@ def test_open_opener_with_inputs(runner: Runner, with_proposal: Any) -> None:
         ExpectMsg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.remote),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=999877,
             dust_limit_satoshis=546,
             htlc_minimum_msat=0,
@@ -1079,7 +1080,7 @@ def test_df_accepter_opener_underpays_fees(runner: Runner, with_proposal: Any) -
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             # Leave some room for a change output
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
@@ -1272,7 +1273,7 @@ def test_df_opener_accepter_underpays_fees(runner: Runner, with_proposal: Any) -
         ExpectMsg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.remote),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=900000,
             dust_limit_satoshis=546,
             htlc_minimum_msat=0,
@@ -1781,7 +1782,7 @@ def test_rbf_accepter(runner: Runner, with_proposal: Any) -> None:
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             max_htlc_value_in_flight_msat=4294967295,
@@ -1884,7 +1885,7 @@ def test_rbf_opener(runner: Runner, with_proposal: Any) -> None:
         ExpectMsg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.remote),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             htlc_minimum_msat=0,
@@ -1995,7 +1996,7 @@ def test_rbf_accepter_channel_ready(runner: Runner, with_proposal: Any) -> None:
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils().blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             max_htlc_value_in_flight_msat=4294967295,
@@ -2121,7 +2122,7 @@ def test_rbf_opener_channel_ready(runner: Runner, with_proposal: Any) -> None:
         ExpectMsg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.remote),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             htlc_minimum_msat=0,
@@ -2258,7 +2259,7 @@ def test_rbf_accepter_forgets(runner: Runner, with_proposal: Any) -> None:
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             max_htlc_value_in_flight_msat=4294967295,
@@ -2417,7 +2418,7 @@ def test_rbf_opener_forgets(runner: Runner, with_proposal: Any) -> None:
         ExpectMsg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.remote),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             htlc_minimum_msat=0,
@@ -2593,7 +2594,7 @@ def test_rbf_not_valid_rbf(runner: Runner, with_proposal: Any) -> None:
         Msg(
             "open_channel2",
             channel_id=channel_id_tmp(local_keyset, Side.local),
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             funding_satoshis=funding_amount,
             dust_limit_satoshis=546,
             max_htlc_value_in_flight_msat=4294967295,

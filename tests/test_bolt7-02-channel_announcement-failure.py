@@ -17,7 +17,7 @@ from lnprototest import (
 )
 import time
 from typing import cast
-from helpers import utxo, tx_spendable
+from lnprototest.utils import utxo, tx_spendable
 
 
 # FIXME: Make this work in-place!

@@ -22,7 +22,6 @@ from lnprototest import (
     Side,
     msat,
     remote_funding_privkey,
-    regtest_hash,
     bitfield,
     HTLC,
     UpdateCommit,
@@ -40,7 +39,13 @@ from lnprototest.stash import (
     htlc_sigs_to_send,
     htlc_sigs_to_recv,
 )
-from helpers import utxo, tx_spendable, funding_amount_for_utxo, pubkey_of
+from lnprototest.utils import pubkey_of
+from lnprototest.utils.bitcoin_utils import (
+    BitcoinUtils,
+    utxo,
+    tx_spendable,
+    funding_amount_for_utxo,
+)
 
 # FIXME: bolt9.featurebits?
 # BOLT #9:
@@ -102,7 +107,7 @@ def test_htlc_add(runner: Runner) -> None:
         ),
         Msg(
             "open_channel",
-            chain_hash=regtest_hash,
+            chain_hash=BitcoinUtils.blockchain_hash(),
             temporary_channel_id="00" * 32,
             funding_satoshis=funding_amount_for_utxo(0),
             push_msat=0,

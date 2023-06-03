@@ -15,12 +15,11 @@ from lnprototest import (
     bitfield,
     TryAll,
     Sequence,
-    regtest_hash,
     CheckEq,
     EventError,
     namespace,
 )
-from helpers import tx_spendable, utxo
+from lnprototest.utils import BitcoinUtils, tx_spendable, utxo
 from typing import Optional
 import unittest
 import time
@@ -263,13 +262,13 @@ def test_query_channel_range(runner: Runner) -> None:
             [
                 Msg(
                     "query_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=0,
                     number_of_blocks=103,
                 ),
                 ExpectMsg(
                     "reply_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=0,
                     number_of_blocks=103,
                 ),
@@ -279,13 +278,13 @@ def test_query_channel_range(runner: Runner) -> None:
             [
                 Msg(
                     "query_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=103,
                     number_of_blocks=1,
                 ),
                 ExpectMsg(
                     "reply_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=103,
                     number_of_blocks=1,
                 ),
@@ -295,21 +294,21 @@ def test_query_channel_range(runner: Runner) -> None:
             [
                 Msg(
                     "query_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=109,
                     number_of_blocks=4294967295,
                 ),
                 OneOf(
                     ExpectMsg(
                         "reply_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=109,
                         number_of_blocks=4294967186,
                     ),
                     # Could truncate number_of_blocks.
                     ExpectMsg(
                         "reply_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=109,
                         number_of_blocks=1,
                     ),
@@ -320,13 +319,13 @@ def test_query_channel_range(runner: Runner) -> None:
             [
                 Msg(
                     "query_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=103,
                     number_of_blocks=7,
                 ),
                 ExpectMsg(
                     "reply_channel_range",
-                    chain_hash=regtest_hash,
+                    chain_hash=BitcoinUtils.blockchain_hash(),
                     first_blocknum=103,
                     number_of_blocks=7,
                 ),
@@ -338,14 +337,14 @@ def test_query_channel_range(runner: Runner) -> None:
                 events=[
                     Msg(
                         "query_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=103,
                         number_of_blocks=7,
                         tlvs="{query_option={query_option_flags=1}}",
                     ),
                     ExpectMsg(
                         "reply_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=103,
                         number_of_blocks=7,
                     ),
@@ -359,14 +358,14 @@ def test_query_channel_range(runner: Runner) -> None:
                 events=[
                     Msg(
                         "query_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=103,
                         number_of_blocks=7,
                         tlvs="{query_option={query_option_flags=2}}",
                     ),
                     ExpectMsg(
                         "reply_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=103,
                         number_of_blocks=7,
                         tlvs="{checksums_tlv={checksums=["
@@ -384,14 +383,14 @@ def test_query_channel_range(runner: Runner) -> None:
                 events=[
                     Msg(
                         "query_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=103,
                         number_of_blocks=7,
                         tlvs="{query_option={query_option_flags=3}}",
                     ),
                     ExpectMsg(
                         "reply_channel_range",
-                        chain_hash=regtest_hash,
+                        chain_hash=BitcoinUtils.blockchain_hash(),
                         first_blocknum=103,
                         number_of_blocks=7,
                         tlvs="{checksums_tlv={checksums=["

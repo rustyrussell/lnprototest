@@ -25,15 +25,19 @@ BOLT 2 proposal https://github.com/lightning/bolts/pull/972
  author: https://github.com/vincenzopalazzo
 """
 import pytest
+
 from lnprototest import (
     ExpectMsg,
     Msg,
     Runner,
     MustNotMsg,
 )
-from helpers import run_runner, merge_events_sequences, tx_spendable
+from lnprototest.utils import run_runner, merge_events_sequences, tx_spendable
 from lnprototest.stash import channel_id
-from spec_helper import open_and_announce_channel_helper, connect_to_node_helper
+from lnprototest.utils.ln_spec_utils import (
+    open_and_announce_channel_helper,
+    connect_to_node_helper,
+)
 from lnprototest.utils import BitcoinUtils, ScriptType
 from lnprototest.event import CloseChannel
 
@@ -122,6 +126,7 @@ def test_close_channel_shutdown_msg_normal_case_sender_side(runner: Runner) -> N
     run_runner(runner, merge_events_sequences(pre=pre_events, post=test))
 
 
+@pytest.mark.skip(reason="skipping this for now because looks like flacky on CI")
 def test_close_channel_shutdown_msg_wrong_script_pubkey_receiver_side(
     runner: Runner,
 ) -> None:

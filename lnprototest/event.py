@@ -7,13 +7,17 @@ import io
 import struct
 import time
 import json
+
 from typing import Optional, Dict, Union, Callable, Any, List, TYPE_CHECKING, overload
+
 from pyln.proto.message import Message
+
 from .errors import SpecFileError, EventError
 from .namespace import namespace
-from .utils import check_hex
 from .signature import Sig
 from .bitfield import has_bit
+from .utils import check_hex
+
 from bitcoin.core import CTransaction
 
 if TYPE_CHECKING:
@@ -346,6 +350,7 @@ class ExpectMsg(PerConnEvent):
             # Might be completely unknown to namespace.
             try:
                 msg = Message.read(namespace(), io.BytesIO(binmsg))
+                runner.add_stash(msg.messagetype.name, msg)
             except ValueError as ve:
                 raise EventError(
                     self, "Runner gave bad msg {}: {}".format(binmsg.hex(), ve)

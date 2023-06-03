@@ -13,7 +13,7 @@ from lnprototest import (
     Disconnect,
     Runner,
 )
-from helpers import tx_spendable, utxo
+from lnprototest.utils import tx_spendable, utxo
 import time
 
 
