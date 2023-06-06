@@ -377,7 +377,10 @@ class Block(Event):
     """Generate a block, at blockheight, with optional txs."""
 
     def __init__(
-        self, blockheight: int, number: int = 1, txs: List[ResolvableStr] = []
+        self,
+        blockheight: int,
+        number: Union[int, Callable] = 1,
+        txs: List[ResolvableStr] = [],
     ):
         super().__init__()
         self.blockheight = blockheight
@@ -398,6 +401,9 @@ class Block(Event):
         # Throw away blocks we're replacing.
         if runner.getblockheight() >= self.blockheight:
             runner.trim_blocks(self.blockheight - 1)
+
+        if isinstance(self.number, Callable):
+            self.number = self.resolve_arg(None, runner, self.number)
 
         # Add new one
         runner.add_blocks(

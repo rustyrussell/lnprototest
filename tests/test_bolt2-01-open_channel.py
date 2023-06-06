@@ -152,7 +152,13 @@ def test_open_channel_from_accepter_side(runner: Runner) -> None:
             signature=commitsig_to_recv(),
         ),
         # Mine it and get it deep enough to confirm channel.
-        Block(blockheight=103, number=3, txs=[funding_tx()]),
+        Block(
+            blockheight=103,
+            number=stash_field_from_event(
+                "accept_channel", field_name="minimum_depth", dummy_val=3
+            ),
+            txs=[funding_tx()],
+        ),
         ExpectMsg(
             "channel_ready",
             channel_id=channel_id(),
