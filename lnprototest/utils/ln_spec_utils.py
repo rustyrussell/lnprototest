@@ -113,6 +113,7 @@ def open_and_announce_channel_helper(
         commitsig_to_send,
         funding_txid,
         funding_tx,
+        stash_field_from_event,
     )
 
     # Make up a channel between nodes 02 and 03, using bitcoin privkeys 10 and 20
@@ -157,7 +158,7 @@ def open_and_announce_channel_helper(
             delayed_payment_basepoint=remote_delayed_payment_basepoint(),
             htlc_basepoint=remote_htlc_basepoint(),
             first_per_commitment_point=remote_per_commitment_point(0),
-            minimum_depth=3,
+            minimum_depth=stash_field_from_event("accept_channel", dummy_val=3),
             channel_reserve_satoshis=9998,
         ),
         # Create and stash Funding object and FundingTx
@@ -193,7 +194,13 @@ def open_and_announce_channel_helper(
             "funding_signed", channel_id=channel_id(), signature=commitsig_to_recv()
         ),
         # Mine it and get it deep enough to confirm channel.
-        Block(blockheight=103, number=3, txs=[funding_tx()]),
+        Block(
+            blockheight=103,
+            number=stash_field_from_event(
+                "accept_channel", field_name="minimum_depth", dummy_val=3
+            ),
+            txs=[funding_tx()],
+        ),
         ExpectMsg(
             "channel_ready",
             channel_id=channel_id(),
