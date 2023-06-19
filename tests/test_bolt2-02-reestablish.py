@@ -9,7 +9,6 @@ from lnprototest import (
     ExpectMsg,
     Msg,
     RawMsg,
-    KeySet,
     CreateFunding,
     Commit,
     Runner,
@@ -24,7 +23,6 @@ from lnprototest import (
     CheckEq,
     msat,
     remote_funding_privkey,
-    bitfield,
     negotiated,
 )
 from lnprototest.stash import (
@@ -36,15 +34,19 @@ from lnprototest.stash import (
     funding_txid,
     funding_tx,
     funding,
+    stash_field_from_event,
 )
 from lnprototest.utils import (
     BitcoinUtils,
     run_runner,
+    merge_events_sequences,
     utxo,
     tx_spendable,
     funding_amount_for_utxo,
     pubkey_of,
+    gen_random_keyset,
 )
+from lnprototest.utils.ln_spec_utils import connect_to_node_helper
 
 # FIXME: bolt9.featurebits?
 # BOLT #9:
@@ -62,29 +64,14 @@ anchor_outputs = 21
 
 def test_reestablish(runner: Runner) -> None:
     local_funding_privkey = "20"
-
-    local_keyset = KeySet(
-        revocation_base_secret="21",
-        payment_base_secret="22",
-        htlc_base_secret="24",
-        delayed_payment_base_secret="23",
-        shachain_seed="00" * 32,
+    local_keyset = gen_random_keyset(int(local_funding_privkey))
+    connections_events = connect_to_node_helper(
+        runner=runner,
+        tx_spendable=tx_spendable,
+        conn_privkey="02",
     )
-    test = [
-        Block(blockheight=102, txs=[tx_spendable]),
-        Connect(connprivkey="02"),
-        ExpectMsg("init"),
-        TryAll(
-            Msg("init", globalfeatures="", features=bitfield(data_loss_protect)),
-            Msg("init", globalfeatures="", features=bitfield(static_remotekey)),
-            Msg(
-                "init",
-                globalfeatures="",
-                features=bitfield(static_remotekey, anchor_outputs),
-            ),
-            # And nothing.
-            Msg("init", globalfeatures="", features=""),
-        ),
+
+    test_events = [
         Msg(
             "open_channel",
             chain_hash=BitcoinUtils.blockchain_hash(),
@@ -115,7 +102,7 @@ def test_reestablish(runner: Runner) -> None:
             delayed_payment_basepoint=remote_delayed_payment_basepoint(),
             htlc_basepoint=remote_htlc_basepoint(),
             first_per_commitment_point=remote_per_commitment_point(0),
-            minimum_depth=3,
+            minimum_depth=stash_field_from_event("accept_channel", dummy_val=3),
             channel_reserve_satoshis=9998,
         ),
         # Create and stash Funding object and FundingTx
@@ -151,7 +138,13 @@ def test_reestablish(runner: Runner) -> None:
             "funding_signed", channel_id=channel_id(), signature=commitsig_to_recv()
         ),
         # Mine it and get it deep enough to confirm channel.
-        Block(blockheight=103, number=3, txs=[funding_tx()]),
+        Block(
+            blockheight=103,
+            number=stash_field_from_event(
+                "accept_channel", field_name="minimum_depth", dummy_val=3
+            ),
+            txs=[funding_tx()],
+        ),
         ExpectMsg(
             "channel_ready",
             channel_id=channel_id(),
@@ -215,4 +208,4 @@ def test_reestablish(runner: Runner) -> None:
         # the wrong info!
     ]
 
-    run_runner(runner, test)
+    run_runner(runner, merge_events_sequences(connections_events, test_events))
