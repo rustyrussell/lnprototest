@@ -6,6 +6,7 @@ import tempfile
 import coincurve
 import functools
 
+from .bitfield import bitfield
 from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
@@ -119,6 +120,19 @@ class Runner(ABC):
         """The Teardown method is called at the end of the test,
         and it is used to clean up the root dir where the tests are run."""
         shutil.rmtree(self.directory)
+
+    def runner_features(
+        self,
+        additional_features: Optional[List[int]] = None,
+        globals: bool = False,
+    ) -> str:
+        """
+        Provide the features required by the node.
+        """
+        if additional_features is None:
+            return ""
+        else:
+            return bitfield(*additional_features)
 
     @abstractmethod
     def is_running(self) -> bool:

@@ -56,7 +56,9 @@ def test_close_channel_shutdown_msg_normal_case_receiver_side(runner: Runner) ->
     # the option that the helper method feels for us
     test_opts = {}
     pre_events_conn = connect_to_node_helper(
-        runner, tx_spendable=tx_spendable, conn_privkey="03"
+        runner=runner,
+        tx_spendable=tx_spendable,
+        conn_privkey="03",
     )
     pre_events = open_and_announce_channel_helper(
         runner, conn_privkey="03", opts=test_opts
@@ -105,7 +107,9 @@ def test_close_channel_shutdown_msg_normal_case_sender_side(runner: Runner) -> N
     # the option that the helper method feels for us
     test_opts = {}
     pre_events_conn = connect_to_node_helper(
-        runner, tx_spendable=tx_spendable, conn_privkey="03"
+        runner=runner,
+        tx_spendable=tx_spendable,
+        conn_privkey="03",
     )
     pre_events = open_and_announce_channel_helper(
         runner, conn_privkey="03", opts=test_opts
@@ -140,7 +144,9 @@ def test_close_channel_shutdown_msg_wrong_script_pubkey_receiver_side(
     # the option that the helper method feels for us
     test_opts = {}
     pre_events_conn = connect_to_node_helper(
-        runner, tx_spendable=tx_spendable, conn_privkey="03"
+        runner=runner,
+        tx_spendable=tx_spendable,
+        conn_privkey="03",
     )
     pre_events = open_and_announce_channel_helper(
         runner, conn_privkey="03", opts=test_opts
