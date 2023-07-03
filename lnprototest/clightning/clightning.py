@@ -211,14 +211,14 @@ class Runner(lnprototest.Runner):
         self.bitcoind.restart()
         self.start(also_bitcoind=False)
 
-    def connect(self, _: Event, connprivkey: str) -> None:
-        self.add_conn(
-            RunnerConn(
-                connprivkey,
-                "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-                self.lightning_port,
-            )
+    def connect(self, _: Event, connprivkey: str) -> RunnerConn:
+        conn = RunnerConn(
+            connprivkey,
+            "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+            self.lightning_port,
         )
+        self.add_conn(conn)
+        return conn
 
     def getblockheight(self) -> int:
         return self.bitcoind.rpc.getblockcount()
