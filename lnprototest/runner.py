@@ -1,3 +1,4 @@
+import io
 import logging
 import shutil
 import tempfile
@@ -6,6 +7,8 @@ import pyln
 import coincurve
 import functools
 
+import pyln
+from pyln.proto.message import Message
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, Union, Any, Callable
@@ -16,6 +19,7 @@ from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
+from .namespace import namespace
 
 
 class Conn(object):
@@ -168,6 +172,28 @@ class Runner(ABC):
     @abstractmethod
     def connect(self, event: Event, connprivkey: str) -> None:
         pass
+
+    def send_msg(self, msg: Message) -> None:
+        """Send a message through the last connection"""
+        missing = msg.missing_fields()
+        if missing:
+            raise SpecFileError(self, "Missing fields {}".format(missing))
+        binmsg = io.BytesIO()
+        msg.write(binmsg)
+        self.last_conn.connection.send_message(msg.getvalue())
+
+    def recv_msg(
+        self, timeout: int = 1000, skip_filter: Optional[int] = None
+    ) -> Message:
+        """Listen on the connection for incoming message.
+
+        If the {skip_filter} is specified, the message that
+        match the filters are skipped.
+        """
+        raw_msg = self.last_conn.connection.read_message()
+        msg = Message.read(namespace(), io.BytesIO(raw_msg))
+        self.add_stash(msg.messagetype.name, msg)
+        return msg
 
     @abstractmethod
     def check_final_error(
