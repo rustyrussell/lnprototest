@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # This script exercises the core-lightning implementation
 
 # Released by Rusty Russell under CC0:
@@ -27,6 +26,7 @@ from lnprototest import (
     SpecFileError,
     KeySet,
     Conn,
+    RunnerConn,
     namespace,
     MustNotMsg,
 )
@@ -35,23 +35,6 @@ from typing import Dict, Any, Callable, List, Optional, cast
 
 TIMEOUT = int(os.getenv("TIMEOUT", "60"))
 LIGHTNING_SRC = os.path.join(os.getcwd(), os.getenv("LIGHTNING_SRC", "../lightning/"))
-
-
-class CLightningConn(lnprototest.Conn):
-    def __init__(self, connprivkey: str, port: int):
-        super().__init__(connprivkey)
-        # FIXME: pyln.proto.wire should just use coincurve PrivateKey!
-        self.connection = pyln.proto.wire.connect(
-            pyln.proto.wire.PrivateKey(bytes.fromhex(self.connprivkey.to_hex())),
-            # FIXME: Ask node for pubkey
-            pyln.proto.wire.PublicKey(
-                bytes.fromhex(
-                    "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-                )
-            ),
-            "127.0.0.1",
-            port,
-        )
 
 
 class Runner(lnprototest.Runner):
@@ -194,7 +177,7 @@ class Runner(lnprototest.Runner):
         self.shutdown(also_bitcoind=also_bitcoind)
         self.running = False
         for c in self.conns.values():
-            cast(CLightningConn, c).connection.connection.close()
+            c.connection.connection.close()
         if print_logs:
             log_path = f"{self.lightning_dir}/regtest/log"
             with open(log_path) as log:
@@ -216,7 +199,13 @@ class Runner(lnprototest.Runner):
         self.start(also_bitcoind=False)
 
     def connect(self, _: Event, connprivkey: str) -> None:
-        self.add_conn(CLightningConn(connprivkey, self.lightning_port))
+        self.add_conn(
+            RunnerConn(
+                connprivkey,
+                "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                self.lightning_port,
+            )
+        )
 
     def getblockheight(self) -> int:
         return self.bitcoind.rpc.getblockcount()
@@ -232,15 +221,13 @@ class Runner(lnprototest.Runner):
 
         wait_for(lambda: self.rpc.getinfo()["blockheight"] == self.getblockheight())
 
-    def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
+    def recv(self, event: Event, conn: RunnerConn, outbuf: bytes) -> None:
         try:
-            cast(CLightningConn, conn).connection.send_message(outbuf)
+            conn.connection.send_message(outbuf)
         except BrokenPipeError:
             # This happens when they've sent an error and closed; try
             # reading it to figure out what went wrong.
-            fut = self.executor.submit(
-                cast(CLightningConn, conn).connection.read_message
-            )
+            fut = self.executor.submit(conn.connection.read_message)
             try:
                 msg = fut.result(1)
             except futures.TimeoutError:
@@ -255,7 +242,7 @@ class Runner(lnprototest.Runner):
     def fundchannel(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         amount: int,
         feerate: int = 253,
         expect_fail: bool = False,
@@ -279,7 +266,7 @@ class Runner(lnprototest.Runner):
 
         def _fundchannel(
             runner: Runner,
-            conn: Conn,
+            conn: RunnerConn,
             amount: int,
             feerate: int,
             expect_fail: bool = False,
@@ -352,7 +339,7 @@ class Runner(lnprototest.Runner):
     def init_rbf(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         channel_id: str,
         amount: int,
         utxo_txid: str,
@@ -416,7 +403,9 @@ class Runner(lnprototest.Runner):
             },
         )
 
-    def addhtlc(self, event: Event, conn: Conn, amount: int, preimage: str) -> None:
+    def addhtlc(
+        self, event: Event, conn: RunnerConn, amount: int, preimage: str
+    ) -> None:
         payhash = hashlib.sha256(bytes.fromhex(preimage)).hexdigest()
         routestep = {
             "msatoshi": amount,
@@ -429,9 +418,9 @@ class Runner(lnprototest.Runner):
         self.rpc.sendpay([routestep], payhash)
 
     def get_output_message(
-        self, conn: Conn, event: Event, timeout: int = TIMEOUT
+        self, conn: RunnerConn, event: Event, timeout: int = TIMEOUT
     ) -> Optional[bytes]:
-        fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
+        fut = self.executor.submit(conn.connection.read_message)
         try:
             return fut.result(timeout)
         except futures.TimeoutError as ex:
@@ -441,7 +430,7 @@ class Runner(lnprototest.Runner):
             logging.error(f"{ex}")
             return None
 
-    def check_error(self, event: Event, conn: Conn) -> Optional[str]:
+    def check_error(self, event: Event, conn: RunnerConn) -> Optional[str]:
         # We get errors in form of err msgs, always.
         super().check_error(event, conn)
         msg = self.get_output_message(conn, event)
@@ -452,13 +441,13 @@ class Runner(lnprototest.Runner):
     def check_final_error(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         expected: bool,
         must_not_events: List[MustNotMsg],
     ) -> None:
         if not expected:
             # Inject raw packet to ensure it hangs up *after* processing all previous ones.
-            cast(CLightningConn, conn).connection.connection.send(bytes(18))
+            conn.connection.connection.send(bytes(18))
 
             while True:
                 binmsg = self.get_output_message(conn, event)
@@ -475,7 +464,7 @@ class Runner(lnprototest.Runner):
                 if msgtype == namespace().get_msgtype("error").number:
                     raise EventError(event, "Got error msg: {}".format(binmsg.hex()))
 
-        cast(CLightningConn, conn).connection.connection.close()
+        conn.connection.connection.close()
 
     def expect_tx(self, event: Event, txid: str) -> None:
         # Ah bitcoin endianness...

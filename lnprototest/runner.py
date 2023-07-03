@@ -1,10 +1,14 @@
-#! /usr/bin/python3
 import logging
 import shutil
 import tempfile
 
+import pyln
 import coincurve
 import functools
+
+
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, List, Union, Any, Callable
 
 from .bitfield import bitfield
 from .errors import SpecFileError
@@ -12,8 +16,6 @@ from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
 from .utils import privkey_expand
 from .keyset import KeySet
-from abc import ABC, abstractmethod
-from typing import Dict, Optional, List, Union, Any, Callable
 
 
 class Conn(object):
@@ -32,6 +34,28 @@ class Conn(object):
         return self.name
 
 
+class RunnerConn(Conn):
+    """Default Connection implementation for a runner that use the pyln.proto
+    to open a connection over a socket."""
+
+    def __init__(
+        self,
+        connprivkey: str,
+        counterparty_pubkey: str,
+        port: int,
+        host: str = "127.0.0.1",
+    ):
+        super().__init__(connprivkey)
+        # FIXME: pyln.proto.wire should just use coincurve PrivateKey!
+        self.connection = pyln.proto.wire.connect(
+            pyln.proto.wire.PrivateKey(bytes.fromhex(self.connprivkey.to_hex())),
+            # FIXME: Ask node for pubkey
+            pyln.proto.wire.PublicKey(bytes.fromhex(counterparty_pubkey)),
+            host,
+            port,
+        )
+
+
 class Runner(ABC):
     """Abstract base class for runners.
 
@@ -43,8 +67,8 @@ class Runner(ABC):
         self.config = config
         self.directory = tempfile.mkdtemp(prefix="lnpt-cl-")
         # key == connprivkey, value == Conn
-        self.conns: Dict[str, Conn] = {}
-        self.last_conn: Optional[Conn] = None
+        self.conns: Dict[str, RunnerConn] = {}
+        self.last_conn: Optional[RunnerConn] = None
         self.stash: Dict[str, Dict[str, Any]] = {}
         self.logger = logging.getLogger(__name__)
         if self.config.getoption("verbose"):
@@ -56,7 +80,7 @@ class Runner(ABC):
         """The DummyRunner returns True here, as it can't do some things"""
         return False
 
-    def find_conn(self, connprivkey: Optional[str]) -> Optional[Conn]:
+    def find_conn(self, connprivkey: Optional[str]) -> Optional[RunnerConn]:
         # Default is whatever we specified last.
         if connprivkey is None:
             return self.last_conn
@@ -65,17 +89,17 @@ class Runner(ABC):
             return self.last_conn
         return None
 
-    def add_conn(self, conn: Conn) -> None:
+    def add_conn(self, conn: RunnerConn) -> None:
         self.conns[conn.name] = conn
         self.last_conn = conn
 
-    def disconnect(self, event: Event, conn: Conn) -> None:
+    def disconnect(self, event: Event, conn: RunnerConn) -> None:
         if conn is None:
             raise SpecFileError(event, "Unknown conn")
         del self.conns[conn.name]
         self.check_final_error(event, conn, conn.expected_error, conn.must_not_events)
 
-    def check_error(self, event: Event, conn: Conn) -> Optional[str]:
+    def check_error(self, event: Event, conn: RunnerConn) -> Optional[str]:
         conn.expected_error = True
         return None
 
@@ -171,11 +195,11 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
+    def recv(self, event: Event, conn: RunnerConn, outbuf: bytes) -> None:
         pass
 
     @abstractmethod
-    def get_output_message(self, conn: Conn, event: ExpectMsg) -> Optional[bytes]:
+    def get_output_message(self, conn: RunnerConn, event: ExpectMsg) -> Optional[bytes]:
         pass
 
     @abstractmethod
@@ -206,7 +230,7 @@ class Runner(ABC):
     def fundchannel(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         amount: int,
         feerate: int = 0,
         expect_fail: bool = False,
@@ -217,7 +241,7 @@ class Runner(ABC):
     def init_rbf(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         channel_id: str,
         amount: int,
         utxo_txid: str,
@@ -227,7 +251,9 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def addhtlc(self, event: Event, conn: Conn, amount: int, preimage: str) -> None:
+    def addhtlc(
+        self, event: Event, conn: RunnerConn, amount: int, preimage: str
+    ) -> None:
         pass
 
     @abstractmethod
