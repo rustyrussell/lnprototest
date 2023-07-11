@@ -49,12 +49,11 @@ def connect_to_node_helper(
     runner: "Runner",
     tx_spendable: str,
     conn_privkey: str = "02",
-    global_features: Optional[str] = None,
-    features: Optional[str] = None,
+    global_features: Optional[List[int]] = None,
+    features: Optional[List[int]] = None,
 ) -> List["Event"]:
     """Helper function to make a connection with the node"""
     from lnprototest.utils.bitcoin_utils import tx_spendable
-    from lnprototest.stash import stash_field_from_event
     from lnprototest import (
         Connect,
         Block,
@@ -68,12 +67,17 @@ def connect_to_node_helper(
         ExpectMsg("init"),
         Msg(
             "init",
-            globalfeatures=stash_field_from_event("init", dummy_val="")
+            globalfeatures=runner.runner_features(globals=True)
             if global_features is None
-            else global_features,
-            features=stash_field_from_event("init", dummy_val="")
+            else (
+                runner.runner_features(
+                    global_features,
+                    globals=True,
+                )
+            ),
+            features=runner.runner_features()
             if features is None
-            else features,
+            else (runner.runner_features(features)),
         ),
     ]
 
