@@ -14,14 +14,14 @@ from lnprototest import (
     Funding,
     bitfield,
 )
-import unittest
+import pytest
 import time
 from lnprototest.utils import utxo, tx_spendable
 
 
 def test_gossip_timestamp_filter(runner: Runner) -> None:
     if runner.has_option("option_gossip_queries") is None:
-        unittest.SkipTest("Needs option_gossip_queries")
+        pytest.skip("Needs option_gossip_queries")
 
     funding1, funding1_tx = Funding.from_utxo(
         *utxo(0),
@@ -46,7 +46,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         Block(blockheight=102, txs=[tx_spendable]),
         Connect(connprivkey="03"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=""),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
         # txid 189c40b0728f382fe91c87270926584e48e0af3a6789f37454afee6c7560311d
         Block(blockheight=103, number=6, txs=[funding1_tx]),
         RawMsg(funding1.channel_announcement("103x1x0", "")),
@@ -61,7 +65,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         ExpectMsg("init"),
         # BOLT #9:
         # | 6/7   | `gossip_queries`                 | More sophisticated gossip control
-        Msg("init", globalfeatures="", features=bitfield(6)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[6]),
+        ),
         Msg(
             "gossip_timestamp_filter",
             chain_hash="06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f",
@@ -90,7 +98,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         # New peer connects, asks for gossip_timestamp_filter=all.  update and node announcement will be relayed.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=bitfield(6)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[6]),
+        ),
         Msg(
             "gossip_timestamp_filter",
             chain_hash="06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f",
@@ -110,7 +122,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         #    `timestamp_range`.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=bitfield(6)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[6]),
+        ),
         Msg(
             "gossip_timestamp_filter",
             chain_hash="06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f",
@@ -123,7 +139,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         Disconnect(),
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=bitfield(6)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[6]),
+        ),
         Msg(
             "gossip_timestamp_filter",
             chain_hash="06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f",
@@ -137,7 +157,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         # These two succeed in getting the gossip, then stay connected for next test.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=bitfield(6)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[6]),
+        ),
         Msg(
             "gossip_timestamp_filter",
             chain_hash="06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f",
@@ -151,7 +175,11 @@ def test_gossip_timestamp_filter(runner: Runner) -> None:
         ),
         Connect(connprivkey="06"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=bitfield(6)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[6]),
+        ),
         Msg(
             "gossip_timestamp_filter",
             chain_hash="06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f",

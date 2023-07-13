@@ -2,6 +2,7 @@
 # Variations on adding an HTLC.
 
 from lnprototest import (
+    OneOf,
     TryAll,
     Connect,
     Block,
@@ -38,6 +39,7 @@ from lnprototest.stash import (
     funding,
     htlc_sigs_to_send,
     htlc_sigs_to_recv,
+    stash_field_from_event,
 )
 from lnprototest.utils import pubkey_of
 from lnprototest.utils.bitcoin_utils import (
@@ -94,16 +96,10 @@ def test_htlc_add(runner: Runner) -> None:
         Block(blockheight=102, txs=[tx_spendable]),
         Connect(connprivkey="02"),
         ExpectMsg("init"),
-        TryAll(
-            Msg("init", globalfeatures="", features=bitfield(data_loss_protect)),
-            Msg("init", globalfeatures="", features=bitfield(static_remotekey)),
-            Msg(
-                "init",
-                globalfeatures="",
-                features=bitfield(static_remotekey, anchor_outputs),
-            ),
-            # And nothing.
-            Msg("init", globalfeatures="", features=""),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
         ),
         Msg(
             "open_channel",
@@ -135,7 +131,7 @@ def test_htlc_add(runner: Runner) -> None:
             delayed_payment_basepoint=remote_delayed_payment_basepoint(),
             htlc_basepoint=remote_htlc_basepoint(),
             first_per_commitment_point=remote_per_commitment_point(0),
-            minimum_depth=3,
+            minimum_depth=6,
             channel_reserve_satoshis=9998,
         ),
         # Create and stash Funding object and FundingTx
@@ -171,7 +167,11 @@ def test_htlc_add(runner: Runner) -> None:
             "funding_signed", channel_id=channel_id(), signature=commitsig_to_recv()
         ),
         # Mine it and get it deep enough to confirm channel.
-        Block(blockheight=103, number=3, txs=[funding_tx()]),
+        Block(
+            blockheight=103,
+            number=6,
+            txs=[funding_tx()],
+        ),
         ExpectMsg(
             "channel_ready",
             channel_id=channel_id(),
