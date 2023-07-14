@@ -5,6 +5,8 @@ from lnprototest import (
     FundChannel,
     ExpectMsg,
     ExpectTx,
+    ExpectError,
+    MustNotMsg,
     Msg,
     RawMsg,
     AcceptFunding,
@@ -45,7 +47,10 @@ from lnprototest.utils import (
     pubkey_of,
     gen_random_keyset,
 )
-from lnprototest.utils.ln_spec_utils import connect_to_node_helper
+from lnprototest.utils.ln_spec_utils import (
+    connect_to_node_helper,
+    open_and_announce_channel_helper,
+)
 
 
 def test_open_channel_announce_features(runner: Runner) -> None:
@@ -278,3 +283,55 @@ def test_open_channel_opener_side(runner: Runner) -> None:
         TryAll([], RawMsg(bytes.fromhex("270F"))),
     ]
     run_runner(runner, merge_events_sequences(connections_events, test_events))
+
+
+def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) -> None:
+    """Testing the case where the channel is announces in the correct way but one node
+    send the wrong signature inside the `announcement_signatures` message."""
+    connections_events = connect_to_node_helper(
+        runner=runner,
+        tx_spendable=tx_spendable,
+        conn_privkey="02",
+    )
+    opts = {}
+    open_channel_events = open_and_announce_channel_helper(runner, "02", opts=opts)
+    pre_events = merge_events_sequences(connections_events, open_channel_events)
+
+    dummy_sign = "138c93afb2013c39f959e70a163c3d6d8128cf72f8ae143f87b9d1fd6bb0ad30321116b9c58d69fca9fb33c214f681b664e53d5640abc2fdb972dc62a5571053"
+    short_channel_id = opts["short_channel_id"]
+    test_events = [
+        ExpectMsg(
+            "announcement_signatures",
+            channel_id=channel_id(),
+            short_channel_id=short_channel_id,
+            node_signature=stash_field_from_event(
+                "announcement_signatures", dummy_val=dummy_sign
+            ),
+            bitcoin_signature=stash_field_from_event(
+                "announcement_signatures", dummy_val=dummy_sign
+            ),
+        ),
+        # BOLT 7:
+        # - if the node_signature OR the bitcoin_signature is NOT correct:
+        # - MAY send a warning and close the connection, or send an error and fail the channel.
+        #
+        # In our case, we send an error and stop the open channel procedure. This approach is
+        # considered overly strict since the peer can recover from it. However, this step is
+        # optional. If the peer sends it, we assume that the signature must be correct.
+        Msg(
+            "announcement_signatures",
+            channel_id=channel_id(),
+            short_channel_id=short_channel_id,
+            node_signature=stash_field_from_event(
+                "announcement_signatures", dummy_val=dummy_sign
+            ),
+            bitcoin_signature=stash_field_from_event(
+                "announcement_signatures", dummy_val=dummy_sign
+            ),
+        ),
+        ExpectError(),
+        # BOLT 2: The channel is not practically usable until at least one side has
+        # announced its fee levels and expiry, using channel_update.
+        MustNotMsg("channel_update"),
+    ]
+    run_runner(runner, merge_events_sequences(pre_events, test_events))
