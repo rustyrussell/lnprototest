@@ -2,7 +2,6 @@
 # Variations on adding an HTLC.
 
 from lnprototest import (
-    OneOf,
     TryAll,
     Connect,
     Block,
@@ -131,7 +130,7 @@ def test_htlc_add(runner: Runner) -> None:
             delayed_payment_basepoint=remote_delayed_payment_basepoint(),
             htlc_basepoint=remote_htlc_basepoint(),
             first_per_commitment_point=remote_per_commitment_point(0),
-            minimum_depth=6,
+            minimum_depth=stash_field_from_event("accept_channel", dummy_val=3),
             channel_reserve_satoshis=9998,
         ),
         # Create and stash Funding object and FundingTx
@@ -169,7 +168,9 @@ def test_htlc_add(runner: Runner) -> None:
         # Mine it and get it deep enough to confirm channel.
         Block(
             blockheight=103,
-            number=6,
+            number=stash_field_from_event(
+                "accept_channel", field_name="minimum_depth", dummy_val=3
+            ),
             txs=[funding_tx()],
         ),
         ExpectMsg(
