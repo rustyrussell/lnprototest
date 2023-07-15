@@ -542,6 +542,16 @@ class ExpectError(PerConnEvent):
         error = runner.check_error(self, self.find_conn(runner))
         if error is None:
             raise EventError(self, "No error found")
+        if runner._is_dummy():
+            return True
+        error = bytes.fromhex(error)
+        msg = Message.read(namespace(), io.BytesIO(error))
+        logging.info(f"message received {msg.messagetype.name}, hex {error.hex()}")
+        if msg.messagetype.name not in "error":
+            raise EventError(
+                self,
+                f"not error found but received `{msg.messagetype.name}` with hex: `{error.hex()}`",
+            )
         return True
 
 
