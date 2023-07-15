@@ -220,10 +220,13 @@ def test_bad_announcement(runner: Runner) -> None:
                 MustNotMsg("channel_update"),
             ],
             # BOLT #7:
-            #   - otherwise:
-            #    - if `bitcoin_signature_1`, `bitcoin_signature_2`, `node_signature_1` OR
-            #    `node_signature_2` are invalid OR NOT correct:
-            #      - SHOULD fail the connection.
+            # - if the specified chain_hash is unknown to the receiver:
+            #   - MUST ignore the message.
+            # - otherwise:
+            #   - if bitcoin_signature_1, bitcoin_signature_2, node_signature_1 OR node_signature_2 are invalid OR NOT correct:
+            #   - SHOULD send a warning.
+            #   - MAY close the connection.
+            #   - MUST ignore the message.
             [
                 TryAll(
                     [RawMsg(ann_bad_nodesig1)],
@@ -231,7 +234,7 @@ def test_bad_announcement(runner: Runner) -> None:
                     [RawMsg(ann_bad_bitcoinsig1)],
                     [RawMsg(ann_bad_bitcoinsig2)],
                 ),
-                ExpectError(),
+                ExpectMsg("warning"),
             ],
         ),
     ]
