@@ -39,8 +39,13 @@ class Conn(object):
 
 
 class RunnerConn(Conn):
-    """Default Connection implementation for a runner that use the pyln.proto
-    to open a connection over a socket."""
+    """
+    Default Connection implementation for a runner that use the pyln.proto
+    to open a connection over a socket.
+
+    Each connection has an internal memory to stash information
+    and keep connection state.
+    """
 
     def __init__(
         self,
@@ -58,6 +63,20 @@ class RunnerConn(Conn):
             host,
             port,
         )
+        self.stash: Dict[str, Dict[str, Any]] = {}
+        self.logger = logging.getLogger(__name__)
+
+    def add_stash(self, stashname: str, vals: Any) -> None:
+        """Add a dict to the stash."""
+        self.stash[stashname] = vals
+
+    def get_stash(self, event: Event, stashname: str, default: Any = None) -> Any:
+        """Get an entry from the stash."""
+        if stashname not in self.stash:
+            if default is not None:
+                return default
+            raise SpecFileError(event, "Unknown stash name {}".format(stashname))
+        return self.stash[stashname]
 
 
 class Runner(ABC):

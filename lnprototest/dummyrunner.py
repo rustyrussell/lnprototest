@@ -1,10 +1,7 @@
-#! /usr/bin/python3
 # #### Dummy runner which you should replace with real one. ####
 import io
-from .runner import Runner, Conn
-from .event import Event, ExpectMsg, MustNotMsg
-from typing import List, Optional
-from .keyset import KeySet
+from typing import Any
+
 from pyln.proto.message import (
     Message,
     FieldType,
@@ -12,7 +9,11 @@ from pyln.proto.message import (
     EllipsisArrayType,
     SizedArrayType,
 )
-from typing import Any
+
+from .runner import Runner, Conn
+from .event import Event, ExpectMsg, MustNotMsg
+from typing import List, Optional
+from .keyset import KeySet
 
 
 class DummyRunner(Runner):
