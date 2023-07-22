@@ -1,11 +1,12 @@
-#! /usr/bin/python3
 import pytest
 import importlib
+
 import lnprototest
 import pyln.spec.bolt1
 import pyln.spec.bolt2
 import pyln.spec.bolt7
 from pyln.proto.message import MessageNamespace
+
 from typing import Any, Callable, Generator, List
 
 
@@ -14,7 +15,6 @@ def pytest_addoption(parser: Any) -> None:
         "--runner",
         action="store",
         help="runner to use",
-        default="lnprototest.DummyRunner",
     )
     parser.addoption(
         "--runner-args",
@@ -26,6 +26,11 @@ def pytest_addoption(parser: Any) -> None:
 
 @pytest.fixture()  # type: ignore
 def runner(pytestconfig: Any) -> Any:
+    runner_opt = pytestconfig.getoption("runner")
+    if runner_opt is None:
+        pytest.skip(
+            "Runner need to be specified eg. `make check PYTEST_ARGS='--runner=lnprototest.clightning.Runner'`"
+        )
     parts = pytestconfig.getoption("runner").rpartition(".")
     runner = importlib.import_module(parts[0]).__dict__[parts[2]](pytestconfig)
     yield runner
