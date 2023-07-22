@@ -55,7 +55,6 @@ from .runner import (
     remote_funding_pubkey,
     remote_funding_privkey,
 )
-from .dummyrunner import DummyRunner
 from .namespace import (
     peer_message_namespace,
     namespace,
