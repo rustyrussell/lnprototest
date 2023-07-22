@@ -5,7 +5,10 @@ POSSIBLE_PYTEST_NAMES=pytest-3 pytest3 pytest
 PYTEST := $(shell for p in $(POSSIBLE_PYTEST_NAMES); do if type $$p > /dev/null; then echo $$p; break; fi done)
 TEST_DIR=tests
 
-default: check-source check check-quotes
+# We disable the default target for the moment because we
+# need to fix pytest
+# default: check-source check check-quotes
+default: fmt check
 
 check-pytest-found:
 	@if [ -z "$(PYTEST)" ]; then echo "Cannot find any pytest: $(POSSIBLE_PYTEST_NAMES)" >&2; exit 1; fi
