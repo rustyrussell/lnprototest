@@ -7,17 +7,16 @@ import pyln
 import coincurve
 import functools
 
-import pyln
-from pyln.proto.message import Message
-
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, Union, Any, Callable
+
+from pyln.proto.message import Message
 
 from .bitfield import bitfield
 from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
-from .utils import privkey_expand
+from .utils import privkey_expand, ResolvableStr, ResolvableInt, resolve_args
 from .keyset import KeySet
 from .namespace import namespace
 
@@ -77,6 +76,33 @@ class RunnerConn(Conn):
                 return default
             raise SpecFileError(event, "Unknown stash name {}".format(stashname))
         return self.stash[stashname]
+
+    def recv_msg(
+        self, timeout: int = 1000, skip_filter: Optional[int] = None
+    ) -> Message:
+        """Listen on the connection for incoming message.
+
+        If the {skip_filter} is specified, the message that
+        match the filters are skipped.
+        """
+        raw_msg = self.connection.read_message()
+        msg = Message.read(namespace(), io.BytesIO(raw_msg))
+        self.add_stash(msg.messagetype.name, msg)
+        return msg
+
+    def send_msg(
+        self, msg_name: str, **kwargs: Union[ResolvableStr, ResolvableInt]
+    ) -> None:
+        """Send a message through the last connection"""
+        msgtype = namespace().get_msgtype(msg_name)
+        msg = Message(msgtype, **resolve_args(self, kwargs))
+        missing = msg.missing_fields()
+        if missing:
+            raise SpecFileError(self, "Missing fields {}".format(missing))
+        binmsg = io.BytesIO()
+        msg.write(binmsg)
+        self.connection.send_message(binmsg.getvalue())
+        # FIXME: we should listen to possible connection here
 
 
 class Runner(ABC):
@@ -189,7 +215,7 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def connect(self, event: Event, connprivkey: str) -> None:
+    def connect(self, event: Event, connprivkey: str) -> RunnerConn:
         pass
 
     def send_msg(self, msg: Message) -> None:
