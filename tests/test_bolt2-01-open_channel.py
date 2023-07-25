@@ -328,6 +328,6 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
                 "announcement_signatures", dummy_val=dummy_sign
             ),
         ),
-        ExpectError(),
+        ExpectMsg("warning"),
     ]
     run_runner(runner, merge_events_sequences(pre_events, test_events))
