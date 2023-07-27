@@ -29,6 +29,7 @@ from lnprototest import (
     ExpectDisconnect,
 )
 
+
 # BOLT #1: The sending node:
 # ...
 # - SHOULD NOT set features greater than 13 in `globalfeatures`.

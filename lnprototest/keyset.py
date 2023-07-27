@@ -13,7 +13,6 @@ class KeySet(object):
         delayed_payment_base_secret: str,
         shachain_seed: str,
     ):
-
         from .utils import privkey_expand, check_hex
 
         self.revocation_base_secret = privkey_expand(revocation_base_secret)
