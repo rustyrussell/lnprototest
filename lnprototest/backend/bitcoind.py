@@ -11,7 +11,7 @@ import logging
 import socket
 
 from contextlib import closing
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from bitcoin.rpc import RawProxy
 from .backend import Backend
 
@@ -52,7 +52,8 @@ class BitcoinProxy:
 class Bitcoind(Backend):
     """Starts regtest bitcoind on an ephemeral port, and returns the RPC proxy"""
 
-    def __init__(self, basedir: str):
+    def __init__(self, basedir: str, with_wallet: Optional[str] = None):
+        self.with_wallet = with_wallet
         self.rpc = None
         self.proc = None
         self.base_dir = basedir
@@ -119,7 +120,9 @@ class Bitcoind(Backend):
         if self.btc_version >= 210000:
             # Maintains the compatibility between wallet
             # different ln implementation can use the main wallet (?)
-            self.rpc.createwallet("main")  # Automatically loads
+            self.rpc.createwallet(
+                "main" if self.with_wallet is None else self.with_wallet
+            )  # Automatically loads
 
     def __is__bitcoind_ready(self) -> bool:
         """Check if bitcoind is ready during the execution"""
