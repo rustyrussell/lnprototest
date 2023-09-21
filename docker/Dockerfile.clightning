@@ -61,7 +61,7 @@ RUN git config --global user.name "John Doe" && \
     cd lightning && \
     poetry config virtualenvs.create false && \
     poetry install && \
-    ./configure --enable-developer && \
+    ./configure && \
     make -j$(nproc)
 
 RUN mkdir lnprototest
