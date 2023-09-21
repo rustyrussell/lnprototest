@@ -199,7 +199,7 @@ def open_and_announce_channel_helper(
         ),
         # Mine it and get it deep enough to confirm channel.
         Block(
-            blockheight=103,
+            blockheight=block_height,
             number=stash_field_from_event(
                 "accept_channel", field_name="minimum_depth", dummy_val=3
             ),
@@ -216,9 +216,12 @@ def open_and_announce_channel_helper(
             second_per_commitment_point=local_keyset.per_commit_point(1),
         ),
         # wait confirmations
-        Block(blockheight=103, number=6),
-        # BOLT 2:
         #
-        # Once both nodes have exchanged channel_ready (and optionally announcement_signatures),
-        # the channel can be used to make payments via Hashed Time Locked Contracts.
+        # FIXME: Uh! do you know why this sucks, because lnprototest is lazy evaluated.
+        # This is huggly, and we should change it at some point but this now works.
+        Block(
+            blockheight=lambda runner, event, _: block_height
+            + runner.get_stash(event, "accept_channel").fields["minimum_depth"],
+            number=6,
+        ),
     ]
