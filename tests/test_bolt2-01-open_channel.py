@@ -299,6 +299,10 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
     dummy_sign = "138c93afb2013c39f959e70a163c3d6d8128cf72f8ae143f87b9d1fd6bb0ad30321116b9c58d69fca9fb33c214f681b664e53d5640abc2fdb972dc62a5571053"
     short_channel_id = opts["short_channel_id"]
     test_events = [
+        # BOLT 2:
+        #
+        # - Once both nodes have exchanged channel_ready (and optionally announcement_signatures),
+        #   the channel can be used to make payments via Hashed Time Locked Contracts.
         ExpectMsg(
             "announcement_signatures",
             channel_id=channel_id(),
