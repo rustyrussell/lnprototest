@@ -346,7 +346,7 @@ class ExpectMsg(PerConnEvent):
                     raise EventError(
                         self, "Got msg banned by {}: {}".format(e, binmsg.hex())
                     )
-            logging.debug(f"raw msg {binmsg}")
+            logging.debug(f"raw msg {''.join('%02x' % b for b in binmsg)}")
             # Might be completely unknown to namespace.
             try:
                 msg = Message.read(namespace(), io.BytesIO(binmsg))
@@ -378,7 +378,7 @@ class Block(Event):
 
     def __init__(
         self,
-        blockheight: int,
+        blockheight: Union[int, Callable],
         number: Union[int, Callable] = 1,
         txs: List[ResolvableStr] = [],
     ):
@@ -389,6 +389,10 @@ class Block(Event):
 
     def action(self, runner: "Runner") -> bool:
         super().action(runner)
+
+        if isinstance(self.blockheight, Callable):
+            self.blockheight = self.resolve_arg(None, runner, self.blockheight)
+
         # Oops, did they ask us to produce a block with no predecessor?
         if runner.getblockheight() + 1 < self.blockheight:
             raise SpecFileError(
@@ -397,7 +401,6 @@ class Block(Event):
                     self.blockheight, runner.getblockheight()
                 ),
             )
-
         # Throw away blocks we're replacing.
         if runner.getblockheight() >= self.blockheight:
             runner.trim_blocks(self.blockheight - 1)
