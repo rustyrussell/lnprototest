@@ -70,6 +70,19 @@ class Runner(lnprototest.Runner):
         for flag in config.getoption("runner_args"):
             self.startup_flags.append("--{}".format(flag))
 
+        # Does it support (i.e. require!) --developer?
+        ret = subprocess.run(
+            [
+                "{}/lightningd/lightningd".format(LIGHTNING_SRC),
+                "--developer",
+                "--help",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if ret.returncode == 0:
+            self.startup_flags.append("--developer")
+
         opts = (
             subprocess.run(
                 [
