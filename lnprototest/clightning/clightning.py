@@ -71,7 +71,7 @@ class Runner(lnprototest.Runner):
             self.startup_flags.append("--{}".format(flag))
 
         # Does it support (i.e. require!) --developer?
-        ret = subprocess.run(
+        ret = subprocess.Popen(
             [
                 "{}/lightningd/lightningd".format(LIGHTNING_SRC),
                 "--developer",
@@ -80,7 +80,7 @@ class Runner(lnprototest.Runner):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        if ret.returncode == 0:
+        if ret.returncode != 0:
             self.startup_flags.append("--developer")
 
         opts = (
