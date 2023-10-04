@@ -21,7 +21,7 @@ from lnprototest import (
 )
 from lnprototest.utils import BitcoinUtils, tx_spendable, utxo
 from typing import Optional
-import unittest
+import pytest
 import time
 import io
 import zlib
@@ -165,7 +165,7 @@ def update_checksums(update1: Optional[Message], update2: Optional[Message]) -> 
 
 def test_query_channel_range(runner: Runner) -> None:
     if runner.has_option("option_gossip_queries") is None:
-        unittest.SkipTest("Needs option_gossip_queries")
+        pytest.skip("Needs option_gossip_queries")
 
     funding1, funding1_tx = Funding.from_utxo(
         *utxo(0),
@@ -239,7 +239,11 @@ def test_query_channel_range(runner: Runner) -> None:
         Block(blockheight=109, number=6, txs=[funding2_tx]),
         Connect(connprivkey="03"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=""),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
         RawMsg(funding1.channel_announcement("103x1x0", "")),
         RawMsg(update_103x1x0_LOCAL),
         RawMsg(funding2.channel_announcement("109x1x0", "")),
@@ -250,7 +254,11 @@ def test_query_channel_range(runner: Runner) -> None:
         ExpectMsg("init"),
         # BOLT #9:
         # | 6/7   | `gossip_queries`                 | More sophisticated gossip control
-        Msg("init", globalfeatures="", features=bitfield(7)),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[7]),
+        ),
         TryAll(
             # No queries?  Must not get anything.
             [
