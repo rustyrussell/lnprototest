@@ -302,6 +302,13 @@ class ExpectMsg(PerConnEvent):
             return []
         return ExpectMsg.ignore_pings(msg)
 
+    @staticmethod
+    def ignore_channel_update(msg: Message) -> Optional[List[Message]]:
+        """Ignore any channel update messages.  Respond to pings."""
+        if msg.messagetype.number == 258:
+            return []
+        return ExpectMsg.ignore_pings(msg)
+
     def __init__(
         self,
         msgtypename: str,

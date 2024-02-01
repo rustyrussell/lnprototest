@@ -1,6 +1,8 @@
 # Variations on open_channel, accepter + opener perspectives
 from lnprototest import (
     TryAll,
+    OneOf,
+    ExpectDisconnect,
     Block,
     FundChannel,
     ExpectMsg,
@@ -24,6 +26,8 @@ from lnprototest import (
     remote_funding_privkey,
     bitfield,
     Block,
+    ExpectError,
+    Disconnect,
 )
 from lnprototest.stash import (
     sent,
@@ -313,6 +317,7 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
             bitcoin_signature=stash_field_from_event(
                 "announcement_signatures", dummy_val=dummy_sign
             ),
+            ignore=ExpectMsg.ignore_channel_update,
         ),
         # BOLT 7:
         # - if the node_signature OR the bitcoin_signature is NOT correct:
@@ -332,6 +337,11 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
                 "announcement_signatures", dummy_val=dummy_sign
             ),
         ),
-        ExpectMsg("warning"),
+        # FIXME: here there is an error but we are not able to catch
+        # because core lightning is too fast in closing the connection.
+        #
+        # So we should change the OneOf to all exception and stop when
+        # the first one succided
+        ExpectDisconnect(),
     ]
     run_runner(runner, merge_events_sequences(pre_events, test_events))
