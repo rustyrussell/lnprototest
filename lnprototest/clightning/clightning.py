@@ -168,7 +168,7 @@ class Runner(lnprototest.Runner):
                 "--bitcoin-rpcuser=rpcuser",
                 "--bitcoin-rpcpassword=rpcpass",
                 f"--bitcoin-rpcconnect=localhost:{self.bitcoind.port}",
-                "--log-level=io",
+                "--log-level=debug",
                 "--log-file=log",
                 "--htlc-maximum-msat=2000sat",
             ]
