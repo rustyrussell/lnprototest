@@ -399,7 +399,7 @@ class Runner(lnprototest.Runner):
             # Run until they're done sending us updates
             while not update["commitments_secured"]:
                 update = runner.rpc.openchannel_update(channel_id, update["psbt"])
-            signed_psbt = runner.rpc.signpsbt(update["psbt"])["signed_psbt"]
+            signed_psbt = runner.rpc.signpsbt(update["psbt"], unsafe_sign_all=True)["signed_psbt"]
             return runner.rpc.openchannel_signed(channel_id, signed_psbt)
 
         def _done(fut: Any) -> None:
