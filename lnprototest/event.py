@@ -124,15 +124,7 @@ class Connect(Event):
 
     def action(self, runner: "Runner") -> bool:
         super().action(runner)
-        if runner.find_conn(self.connprivkey):
-            raise SpecFileError(
-                self, "Already have connection to {}".format(self.connprivkey)
-            )
-        # This is a hack: if we've already got a connection, wait 1 second
-        # for gossip to be processed before connecting another one!
-        if len(runner.conns) != 0:
-            time.sleep(1)
-        runner.connect(self, self.connprivkey)
+        runner.connect(self)
         return True
 
 
@@ -196,7 +188,7 @@ class Msg(PerConnEvent):
             raise SpecFileError(self, "Missing fields {}".format(missing))
         binmsg = io.BytesIO()
         message.write(binmsg)
-        runner.recv(self, self.find_conn(runner), binmsg.getvalue())
+        runner.recv(self, binmsg.getvalue())
         msg_to_stash(runner, self, message)
         return True
 
@@ -333,19 +325,13 @@ class ExpectMsg(PerConnEvent):
 
     def action(self, runner: "Runner") -> bool:
         super().action(runner)
-        conn = self.find_conn(runner)
         while True:
-            binmsg = runner.get_output_message(conn, self)
+            binmsg = runner.get_output_message(self)
             if binmsg is None:
                 raise EventError(
                     self, f"Did not receive a message {self.msgtype} from runner"
                 )
 
-            for e in conn.must_not_events:
-                if e.matches(binmsg):
-                    raise EventError(
-                        self, "Got msg banned by {}: {}".format(e, binmsg.hex())
-                    )
             logging.debug(f"raw msg {''.join('%02x' % b for b in binmsg)}")
             # Might be completely unknown to namespace.
             try:

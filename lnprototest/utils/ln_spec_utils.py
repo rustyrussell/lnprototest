@@ -98,6 +98,7 @@ def open_and_announce_channel_helper(
         Msg,
         Commit,
         Side,
+        Wait,
         CreateFunding,
         remote_funding_pubkey,
         remote_revocation_basepoint,

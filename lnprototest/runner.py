@@ -2,6 +2,10 @@
 import logging
 import shutil
 import tempfile
+import socket
+import subprocess
+import json
+import time
 
 import coincurve
 import functools
@@ -16,20 +20,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, Union, Any, Callable
 
 
-class Conn(object):
-    """Class for connections.  Details filled in by the particular runner."""
-
-    def __init__(self, connprivkey: str):
-        """Create a connection from a node with the given hex privkey: we use
-        trivial values for private keys, so we simply left-pad with zeroes"""
-        self.name = connprivkey
-        self.connprivkey = privkey_expand(connprivkey)
-        self.pubkey = coincurve.PublicKey.from_secret(self.connprivkey.secret)
-        self.expected_error = False
-        self.must_not_events: List[MustNotMsg] = []
-
-    def __str__(self) -> str:
-        return self.name
+class Conn:
+    pass
 
 
 class Runner(ABC):
@@ -42,63 +34,86 @@ class Runner(ABC):
     def __init__(self, config: Any):
         self.config = config
         self.directory = tempfile.mkdtemp(prefix="lnpt-cl-")
-        # key == connprivkey, value == Conn
-        self.conns: Dict[str, Conn] = {}
-        self.last_conn: Optional[Conn] = None
         self.stash: Dict[str, Dict[str, Any]] = {}
+
         self.logger = logging.getLogger(__name__)
         if self.config.getoption("verbose"):
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.INFO)
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        #
+        self.run_server()
+        self.impl_node_id = None
+        self.port = None
+        self.last_msg_unreaded = None
+
+    def run_server(self) -> None:
+        self.proc = subprocess.Popen(
+            [
+                "lnprototestd",
+                "--data-dir={}".format(self.directory),
+            ]
+        )
+        time.sleep(1)
+        self.server.connect(f"{self.directory}/lnprototest.sock")
+        self.server.settimeout(10.0)
+
+    def finish_config(self, node_id: str, port: int) -> None:
+        self.impl_node_id = node_id
+        self.port = port
+
+    def call(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        self.logger.info(f"lnprototest calling `{method}` with params `{params}`")
+        self.server.sendall(
+            json.dumps(
+                {
+                    "id": "runner/1",
+                    "jsonrpc": "2.0",
+                    "method": method,
+                    "params": params,
+                }
+            ).encode()
+        )
+        all_data = b""  # Byte string to hold all received data
+        while True:
+            data = self.server.recv(1024)  # Adjust the buffer size as needed
+            if data:
+                all_data += data
+            else:
+                break
+
+            if data.endswith(b"\n"):
+                # No more data; the server has closed the connection
+                break
+            self.logger.info(f"reading {data}")
+        response = json.loads(all_data.decode())
+        # FIXME: check the error here
+        self.logger.info(f"{str(response)}")
+        return response
 
     def _is_dummy(self) -> bool:
         """The DummyRunner returns True here, as it can't do some things"""
         return False
 
-    def find_conn(self, connprivkey: Optional[str]) -> Optional[Conn]:
-        # Default is whatever we specified last.
-        if connprivkey is None:
-            return self.last_conn
-        if connprivkey in self.conns:
-            self.last_conn = self.conns[connprivkey]
-            return self.last_conn
-        return None
-
-    def add_conn(self, conn: Conn) -> None:
-        self.conns[conn.name] = conn
-        self.last_conn = conn
-
-    def disconnect(self, event: Event, conn: Conn) -> None:
-        if conn is None:
-            raise SpecFileError(event, "Unknown conn")
-        del self.conns[conn.name]
-        self.check_final_error(event, conn, conn.expected_error, conn.must_not_events)
-
-    def check_error(self, event: Event, conn: Conn) -> Optional[str]:
-        conn.expected_error = True
-        return None
-
-    def post_check(self, sequence: Sequence) -> None:
-        # Make sure no connection had an error.
-        for conn_name in list(self.conns.keys()):
-            logging.debug(
-                f"disconnection connection with key={conn_name} and value={self.conns[conn_name]}"
-            )
-            self.disconnect(sequence, self.conns[conn_name])
+    # FIXME: this should be implemented because we should be albe
+    # to disconnect the current connection
+    def disconnect(self) -> None:
+        pass
 
     def restart(self) -> None:
-        self.conns = {}
-        self.last_conn = None
+        self.disconnect()
+        self.connect()
         self.stash = {}
 
-    # FIXME: Why can't we use SequenceUnion here?
+    # FIXME: Why can't we use SequenceUnion here? Because python types sucks
+    #
+    # FIXME(vincenzo): Semplify in the future the type of events
     def run(self, events: Union[Sequence, List[Event], Event]) -> None:
         sequence = Sequence(events)
         self.start()
         while True:
             all_done = sequence.action(self)
-            self.post_check(sequence)
             if all_done:
                 self.stop()
                 return
@@ -141,19 +156,12 @@ class Runner(ABC):
         Is leave up to the runner implementation to keep the runner state"""
         pass
 
-    @abstractmethod
-    def connect(self, event: Event, connprivkey: str) -> None:
-        pass
-
-    @abstractmethod
-    def check_final_error(
-        self,
-        event: Event,
-        conn: Conn,
-        expected: bool,
-        must_not_events: List[MustNotMsg],
-    ) -> None:
-        pass
+    def connect(self, event: Event) -> None:
+        msg = self.call("connect", {"NodeId": self.impl_node_id, "Port": self.port})
+        if "error" not in msg:
+            self.last_msg_unreaded = bytes.fromhex(msg["result"]["Msg"])
+            return
+        self.logger.error(f"{msg}")
 
     @abstractmethod
     def start(self) -> None:
@@ -170,13 +178,19 @@ class Runner(ABC):
         """
         pass
 
-    @abstractmethod
-    def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
-        pass
+    def recv(self, event: Event, outbuf: bytes) -> None:
+        msg = self.call("send", {"Msg": outbuf.hex()})
+        if "error" not in msg:
+            self.last_msg_unreaded = bytes.fromhex(msg["result"]["Msg"])
+            return
+        self.logger.error(f"{msg}")
+        return
 
-    @abstractmethod
-    def get_output_message(self, conn: Conn, event: ExpectMsg) -> Optional[bytes]:
-        pass
+    def get_output_message(self, event: ExpectMsg) -> Optional[bytes]:
+        msg = self.last_msg_unreaded
+        if msg is not None:
+            self.last_msg_unreaded = None
+        return msg
 
     @abstractmethod
     def getblockheight(self) -> int:

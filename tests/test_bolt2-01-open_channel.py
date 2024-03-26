@@ -305,6 +305,8 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
         #   the channel can be used to make payments via Hashed Time Locked Contracts.
         ExpectMsg(
             "announcement_signatures",
+            # FIXME(vincenzopalazzo): we should set something inside the runnner
+            ignore=ExpectMsg.ignore_all_gossip,
             channel_id=channel_id(),
             short_channel_id=short_channel_id,
             node_signature=stash_field_from_event(

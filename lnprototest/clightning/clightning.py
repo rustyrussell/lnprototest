@@ -37,21 +37,12 @@ TIMEOUT = int(os.getenv("TIMEOUT", "60"))
 LIGHTNING_SRC = os.path.join(os.getcwd(), os.getenv("LIGHTNING_SRC", "../lightning/"))
 
 
-class CLightningConn(lnprototest.Conn):
-    def __init__(self, connprivkey: str, port: int):
-        super().__init__(connprivkey)
-        # FIXME: pyln.proto.wire should just use coincurve PrivateKey!
-        self.connection = pyln.proto.wire.connect(
-            pyln.proto.wire.PrivateKey(bytes.fromhex(self.connprivkey.to_hex())),
-            # FIXME: Ask node for pubkey
-            pyln.proto.wire.PublicKey(
-                bytes.fromhex(
-                    "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-                )
-            ),
-            "127.0.0.1",
-            port,
-        )
+class Conn:
+    pass
+
+
+class CLightningConn:
+    pass
 
 
 class Runner(lnprototest.Runner):
@@ -189,6 +180,8 @@ class Runner(lnprototest.Runner):
                 return False
 
         wait_for(lambda: node_ready(self.rpc), timeout=TIMEOUT)
+        info = self.rpc.getinfo()
+        self.finish_config(info["id"], self.lightning_port)
         logging.debug("Waited for core-lightning")
 
         # Make sure that we see any funds that come to our wallet
@@ -206,8 +199,7 @@ class Runner(lnprototest.Runner):
         self.logger.debug("[STOP]")
         self.shutdown(also_bitcoind=also_bitcoind)
         self.running = False
-        for c in self.conns.values():
-            cast(CLightningConn, c).connection.connection.close()
+        # FIXME: stop connection
         if print_logs:
             log_path = f"{self.lightning_dir}/regtest/log"
             with open(log_path) as log:
@@ -228,9 +220,6 @@ class Runner(lnprototest.Runner):
         self.bitcoind.restart()
         self.start(also_bitcoind=False)
 
-    def connect(self, _: Event, connprivkey: str) -> None:
-        self.add_conn(CLightningConn(connprivkey, self.lightning_port))
-
     def getblockheight(self) -> int:
         return self.bitcoind.rpc.getblockcount()
 
@@ -244,26 +233,6 @@ class Runner(lnprototest.Runner):
         self.bitcoind.rpc.generatetoaddress(n, self.bitcoind.rpc.getnewaddress())
 
         wait_for(lambda: self.rpc.getinfo()["blockheight"] == self.getblockheight())
-
-    def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
-        try:
-            cast(CLightningConn, conn).connection.send_message(outbuf)
-        except BrokenPipeError:
-            # This happens when they've sent an error and closed; try
-            # reading it to figure out what went wrong.
-            fut = self.executor.submit(
-                cast(CLightningConn, conn).connection.read_message
-            )
-            try:
-                msg = fut.result(1)
-            except futures.TimeoutError:
-                msg = None
-            if msg:
-                raise EventError(
-                    event, "Connection closed after sending {}".format(msg.hex())
-                )
-            else:
-                raise EventError(event, "Connection closed")
 
     def fundchannel(
         self,
@@ -440,19 +409,6 @@ class Runner(lnprototest.Runner):
             "channel": "1x1x1",
         }
         self.rpc.sendpay([routestep], payhash)
-
-    def get_output_message(
-        self, conn: Conn, event: Event, timeout: int = TIMEOUT
-    ) -> Optional[bytes]:
-        fut = self.executor.submit(cast(CLightningConn, conn).connection.read_message)
-        try:
-            return fut.result(timeout)
-        except futures.TimeoutError as ex:
-            logging.error(f"timeout exception {ex}")
-            return None
-        except Exception as ex:
-            logging.error(f"{ex}")
-            return None
 
     def check_error(self, event: Event, conn: Conn) -> Optional[str]:
         # We get errors in form of err msgs, always.
