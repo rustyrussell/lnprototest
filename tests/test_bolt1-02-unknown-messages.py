@@ -15,20 +15,18 @@ def test_unknowns(runner: Runner, namespaceoverride: Any) -> None:
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        TryAll(
-            [],
-            # BOLT #1:
-            # A receiving node:
-            #   - upon receiving a message of _odd_, unknown type:
-            #     - MUST ignore the received message.
-            [RawMsg(bytes.fromhex("270F"))],
-            # BOLT #1:
-            # A receiving node:...
-            #   - upon receiving a message of _even_, unknown type:
-            #     - MUST close the connection.
-            #     - MAY fail the channels.
-            [RawMsg(bytes.fromhex("2710")), ExpectDisconnect()],
-        ),
+        # BOLT #1:
+        # A receiving node:
+        #   - upon receiving a message of _odd_, unknown type:
+        #     - MUST ignore the received message.
+        RawMsg(bytes.fromhex("270F")),
+        # BOLT #1:
+        # A receiving node:...
+        #   - upon receiving a message of _even_, unknown type:
+        #     - MUST close the connection.
+        #     - MAY fail the channels.
+        RawMsg(bytes.fromhex("2710")),
+        ExpectDisconnect(),
     ]
 
     runner.run(test)

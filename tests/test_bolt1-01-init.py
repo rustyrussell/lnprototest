@@ -1,6 +1,8 @@
-#! /usr/bin/env python3
-# Variations on init exchange.
-# Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
+"""
+Variation of init exchange.
+
+Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
+"""
 import functools
 
 from typing import List, Any
@@ -88,7 +90,24 @@ def test_echo_init(runner: Runner, namespaceoverride: Any) -> None:
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
         # optionally disconnect that first one
-        TryAll([], Disconnect()),
+        Connect(connprivkey="02"),
+        # You should always handle us echoing your own features back!
+        ExpectMsg("init"),
+        Msg("init", globalfeatures=rcvd(), features=rcvd()),
+    ]
+
+    run_runner(runner, test)
+
+
+def test_echo_init_after_disconnect(runner: Runner, namespaceoverride: Any) -> None:
+    # We override default namespace since we only need BOLT1
+    namespaceoverride(pyln.spec.bolt1.namespace)
+    test = [
+        Connect(connprivkey="03"),
+        ExpectMsg("init"),
+        Msg("init", globalfeatures="", features=""),
+        # optionally disconnect that first one
+        Disconnect(),
         Connect(connprivkey="02"),
         # You should always handle us echoing your own features back!
         ExpectMsg("init"),
@@ -105,8 +124,6 @@ def test_init_check_received_msg(runner: Runner, namespaceoverride: Any) -> None
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # Even if we don't send anything, it should send init.
         ExpectMsg("init", if_match=no_gf13),
@@ -121,8 +138,6 @@ def test_init_invalid_globalfeatures(runner: Runner, namespaceoverride: Any) -> 
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         ExpectMsg("init", if_match=no_gf13),
         # BOLT #1:
@@ -140,8 +155,6 @@ def test_init_is_first_msg(runner: Runner, namespaceoverride: Any) -> None:
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # Minimal possible init message.
         # BOLT #1:
@@ -160,8 +173,6 @@ def test_init_check_free_featurebits(runner: Runner, namespaceoverride: Any) -> 
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         ExpectMsg("init", if_match=functools.partial(no_feature, [98, 99])),
         # BOLT #1:
@@ -183,8 +194,6 @@ def test_init_fail_connection_if_receive_an_even_unknown_featurebits(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # BOLT #1:
         # The receiving node: ...
@@ -206,8 +215,6 @@ def test_init_fail_connection_if_receive_an_even_unknown_globalfeaturebits(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # init msg with unknown even global bit (98): you will error
         ExpectMsg("init"),
@@ -226,8 +233,6 @@ def test_init_fail_ask_for_option_data_loss_protect(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # If you don't support `option_data_loss_protect`, you will be ok if
         # we ask for it.
@@ -251,8 +256,6 @@ def test_init_advertize_option_data_loss_protect(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # If you support `option_data_loss_protect`, you will advertize it odd.
         Sequence(
@@ -272,8 +275,6 @@ def test_init_required_option_data_loss_protect(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # If you require `option_data_loss_protect`, you will advertize it even.
         Sequence(
@@ -293,8 +294,6 @@ def test_init_reject_option_data_loss_protect_if_not_supported(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # If you don't support `option_anchor_outputs`, you will error if
         # we require it.
@@ -319,8 +318,6 @@ def test_init_advertize_option_anchor_outputs(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # If you support `option_anchor_outputs`, you will advertize it odd.
         Sequence(
@@ -340,8 +337,6 @@ def test_init_required_option_anchor_outputs(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # If you require `option_anchor_outputs`, you will advertize it even.
         Sequence(
@@ -361,8 +356,6 @@ def test_init_advertize_option_static_remotekey(
         Connect(connprivkey="03"),
         ExpectMsg("init"),
         Msg("init", globalfeatures="", features=""),
-        # optionally disconnect that first one
-        TryAll([], Disconnect()),
         Connect(connprivkey="02"),
         # BOLT-a12da24dd0102c170365124782b46d9710950ac1 #9:
         # | Bits  | Name                    | ... | Dependencies
