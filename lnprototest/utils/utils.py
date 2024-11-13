@@ -8,10 +8,16 @@ import typing
 import logging
 import traceback
 
-from typing import Union, Sequence, List
+from typing import Union, Sequence, List, Dict, Callable, Any
 from enum import IntEnum
 
 from lnprototest.keyset import KeySet
+
+# Type for arguments: either strings, or functions to call at runtime
+ResolvableStr = Union[str, Callable[["RunnerConn", "Event", str], str]]
+ResolvableInt = Union[int, Callable[["RunnerConn", "Event", str], int]]
+ResolvableBool = Union[int, Callable[["RunnerConn", "Event", str], bool]]
+Resolvable = Union[Any, Callable[["RunnerConn", "Event", str], Any]]
 
 
 class Side(IntEnum):
@@ -106,3 +112,19 @@ def merge_events_sequences(
     """Merge the two list in the pre-post order"""
     pre.extend(post)
     return pre
+
+
+def resolve_arg(fieldname: str, conn: "RunnerConn", arg: Resolvable) -> Any:
+    """If this is a string, return it, otherwise call it to get result"""
+    if callable(arg):
+        return arg(conn, fieldname)
+    else:
+        return arg
+
+
+def resolve_args(conn: "RunnerConn", kwargs: Dict[str, Resolvable]) -> Dict[str, Any]:
+    """Take a dict of args, replace callables with their return values"""
+    ret: Dict[str, str] = {}
+    for field, str_or_func in kwargs.items():
+        ret[field] = resolve_arg(field, conn, str_or_func)
+    return ret
