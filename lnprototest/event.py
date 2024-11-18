@@ -566,23 +566,28 @@ class ExpectError(PerConnEvent):
 
 
 class ExpectDisconnect(PerConnEvent):
-    """This is considerer an hack, because the protocol
-    is not specifing what fail the connection means, so in
-    some case a node close the connection without any message
-    or in a local env the connection got close before sending
-    out the msg, so this event is the simplest way to work around
-    this current issue."""
+    """
+    This is considered a hack because the protocol does not specify what failing the connection means.
+    In some cases, a node closes the connection without any message, or in a local environment, the
+    connection may close before sending out the message. This event is the simplest way to work around
+    this current issue.
+    """
 
     def __init__(self, connprivkey: Optional[str] = None):
         super().__init__(connprivkey)
 
     def action(self, runner: "Runner") -> bool:
         super().action(runner)
+        if runner._is_dummy():
+            return True
         msg = runner.check_error(self, self.find_conn(runner))
+        logging.info(f"expecting disconnection: `{msg}`")
         # in this case of the dummy runner we return a `Dummy error`
         # but in this case we wan receive an None value
         # because the connected got close before
-        return msg is None or runner._is_dummy()
+        if msg is None:
+            return True
+        raise EventError(self, "Peer did not disconnect")
 
 
 class CheckEq(Event):
