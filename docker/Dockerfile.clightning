@@ -38,7 +38,7 @@ RUN apt-get -qq update && \
 	wget \
 	gettext \
 	xsltproc \
-	zlib1g-dev \ 
+	zlib1g-dev \
 	jq && \
 	rm -rf /var/lib/apt/lists/*
 
@@ -59,7 +59,8 @@ RUN pip3 install -U pip && \
 RUN git config --global user.name "John Doe" && \
 	git config --global user.email johndoe@example.com && \
 	git clone https://github.com/ElementsProject/lightning.git && \
-	cd lightning && \
+	# FIXME: cln 24.05 is the last version that works with the current lnprototest.
+	cd lightning && git checkout v24.05 && \
 	pip3 install mako --break-system-packages && pip3 install grpcio-tools --break-system-packages && \
 	./configure && \
 	make -j$(nproc)
