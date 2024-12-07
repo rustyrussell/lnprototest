@@ -31,14 +31,22 @@ def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
         Block(blockheight=102, txs=[tx_spendable]),
         Connect(connprivkey="03"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=""),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
         Block(blockheight=103, number=6, txs=[funding_tx]),
         RawMsg(funding.channel_announcement("103x1x0", "")),
         # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement, as there is no
         # channel_update.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features="08"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[3]),
+        ),
         MustNotMsg("channel_announcement"),
         Disconnect(),
         RawMsg(
@@ -58,7 +66,11 @@ def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
         # Now we'll relay to a new peer.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features="08"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[3]),
+        ),
         ExpectMsg("channel_announcement", short_channel_id="103x1x0"),
         ExpectMsg(
             "channel_update",
@@ -73,7 +85,11 @@ def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
         Block(blockheight=109, number=13, txs=[funding.close_tx(200, "99")]),
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features="08"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[3]),
+        ),
         MustNotMsg("channel_announcement"),
         MustNotMsg("channel_update"),
     ]
