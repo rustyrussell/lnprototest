@@ -43,7 +43,11 @@ def test_premature_channel_announcement(runner: Runner) -> None:
         Block(blockheight=102, txs=[tx_spendable]),
         Connect(connprivkey="03"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=""),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
         # txid 189c40b0728f382fe91c87270926584e48e0af3a6789f37454afee6c7560311d
         Block(blockheight=103, txs=[funding_tx]),
         TryAll(
@@ -72,7 +76,11 @@ def test_premature_channel_announcement(runner: Runner) -> None:
         # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement.
         Connect(connprivkey="05"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features="08"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(additional_features=[3]),
+        ),
         MustNotMsg("channel_announcement"),
         MustNotMsg("channel_update"),
     ]
@@ -144,7 +152,11 @@ def test_bad_announcement(runner: Runner) -> None:
         Block(blockheight=102, txs=[tx_spendable]),
         Connect(connprivkey="03"),
         ExpectMsg("init"),
-        Msg("init", globalfeatures="", features=""),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
         # txid 189c40b0728f382fe91c87270926584e48e0af3a6789f37454afee6c7560311d
         Block(blockheight=103, number=6, txs=[funding_tx]),
         TryAll(
@@ -215,7 +227,11 @@ def test_bad_announcement(runner: Runner) -> None:
                 # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement.
                 Connect(connprivkey="05"),
                 ExpectMsg("init"),
-                Msg("init", globalfeatures="", features="08"),
+                Msg(
+                    "init",
+                    globalfeatures=runner.runner_features(globals=True),
+                    features=runner.runner_features(additional_features=[3]),
+                ),
                 MustNotMsg("channel_announcement"),
                 MustNotMsg("channel_update"),
             ],
