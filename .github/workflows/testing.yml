@@ -14,11 +14,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { LN_IMPL: clightning }
+        LN_IMPL: [clightning, ldk]
+
     steps:
       - uses: actions/checkout@v2
       - name: Integration testing
         run: |
           docker build -f docker/Dockerfile.${{matrix.LN_IMPL}} -t lnprototest-${{matrix.LN_IMPL}} .
-          docker run lnprototest-${{matrix.LN_IMPL}}
+          docker run -e LN_IMPL=${{matrix.LN_IMPL}} lnprototest-${{matrix.LN_IMPL}}
