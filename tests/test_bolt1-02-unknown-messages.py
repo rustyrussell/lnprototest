@@ -5,7 +5,7 @@ import pyln.spec.bolt1
 
 from typing import Any
 
-from lnprototest import TryAll, Connect, ExpectMsg, Msg, RawMsg, Runner
+from lnprototest import Connect, ExpectMsg, Msg, RawMsg, Runner
 from lnprototest.event import ExpectDisconnect
 from lnprototest.utils import run_runner
 
