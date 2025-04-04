@@ -1,7 +1,7 @@
 # Variations on open_channel, accepter + opener perspectives
 from lnprototest import (
     TryAll,
-    OneOf,
+    Sequence,
     ExpectDisconnect,
     Block,
     FundChannel,
@@ -302,6 +302,8 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
 
     dummy_sign = "138c93afb2013c39f959e70a163c3d6d8128cf72f8ae143f87b9d1fd6bb0ad30321116b9c58d69fca9fb33c214f681b664e53d5640abc2fdb972dc62a5571053"
     short_channel_id = opts["short_channel_id"]
+
+    is_cln = isinstance(runner, Runner)
     test_events = [
         # BOLT 2:
         #
@@ -342,6 +344,7 @@ def test_open_channel_opener_side_wrong_announcement_signatures(runner: Runner) 
         #
         # So we should change the OneOf to all exception and stop when
         # the first one succided
-        ExpectDisconnect(),
+        Sequence(ExpectDisconnect(), enable=(is_cln)),
+        Sequence(ExpectMsg("error"), enable=(not is_cln)),
     ]
     run_runner(runner, merge_events_sequences(pre_events, test_events))
