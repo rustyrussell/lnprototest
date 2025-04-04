@@ -5,7 +5,7 @@ import pyln.spec.bolt1
 
 from typing import Any
 
-from lnprototest import TryAll, Connect, ExpectMsg, Msg, RawMsg, Runner
+from lnprototest import Wait, Connect, ExpectMsg, Msg, RawMsg, Runner
 from lnprototest.event import ExpectDisconnect
 from lnprototest.utils import run_runner
 
@@ -47,6 +47,7 @@ def test_unknowns_even_message(runner: Runner, namespaceoverride: Any) -> None:
         #     - MUST close the connection.
         #     - MAY fail the channels.
         RawMsg(bytes.fromhex("2710")),
+        Wait(1),
         ExpectDisconnect(),
     ]
     run_runner(runner, test)
