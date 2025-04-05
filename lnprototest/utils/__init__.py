@@ -14,6 +14,12 @@ from .utils import (
     check_hex,
     privkey_for_index,
     merge_events_sequences,
+    Resolvable,
+    ResolvableBool,
+    ResolvableInt,
+    ResolvableStr,
+    resolve_arg,
+    resolve_args,
 )
 from .bitcoin_utils import (
     ScriptType,
