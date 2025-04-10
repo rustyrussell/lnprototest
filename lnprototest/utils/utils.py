@@ -1,6 +1,7 @@
 """
 Utils module that implement common function used across lnprototest library.
 """
+
 import string
 import coincurve
 import time

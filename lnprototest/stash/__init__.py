@@ -9,6 +9,7 @@ non-Pythony) test authors, they are always called as (), even if they
 simply return another function.
 
 """
+
 from .stash import (
     commitsig_to_send,
     commitsig_to_recv,
