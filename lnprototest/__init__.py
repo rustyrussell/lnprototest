@@ -10,6 +10,7 @@ The documentation for the classes themselves should cover much of the
 reference material, and the tutorial should get you started.
 
 """
+
 from .errors import EventError, SpecFileError
 
 from .event import (

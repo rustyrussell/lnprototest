@@ -8,6 +8,7 @@ be used after this sequence of steps.
 
 author: Vincenzo PAlazzo https://github.com/vincenzopalazzo
 """
+
 from typing import List, Optional
 
 
@@ -67,17 +68,21 @@ def connect_to_node_helper(
         ExpectMsg("init"),
         Msg(
             "init",
-            globalfeatures=runner.runner_features(globals=True)
-            if global_features is None
-            else (
-                runner.runner_features(
-                    global_features,
-                    globals=True,
+            globalfeatures=(
+                runner.runner_features(globals=True)
+                if global_features is None
+                else (
+                    runner.runner_features(
+                        global_features,
+                        globals=True,
+                    )
                 )
             ),
-            features=runner.runner_features()
-            if features is None
-            else (runner.runner_features(features)),
+            features=(
+                runner.runner_features()
+                if features is None
+                else (runner.runner_features(features))
+            ),
         ),
     ]
 

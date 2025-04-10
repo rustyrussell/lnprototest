@@ -676,15 +676,13 @@ def cmp_msg(msg: Message, expected: Message) -> Optional[str]:
 
 
 @overload
-def msat(sats: int) -> int:
-    ...
+def msat(sats: int) -> int: ...
 
 
 @overload
 def msat(
-    sats: Callable[["Runner", "Event", str], int]
-) -> Callable[["Runner", "Event", str], int]:
-    ...
+    sats: Callable[["Runner", "Event", str], int],
+) -> Callable[["Runner", "Event", str], int]: ...
 
 
 def msat(sats: ResolvableInt) -> ResolvableInt:

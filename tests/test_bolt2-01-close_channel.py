@@ -24,6 +24,7 @@ BOLT 2 proposal https://github.com/lightning/bolts/pull/972
 
  author: https://github.com/vincenzopalazzo
 """
+
 import pytest
 
 from lnprototest import (

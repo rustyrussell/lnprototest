@@ -2,6 +2,7 @@
 Bitcoin utils is a collection of methods that helps to
 work with bitcoin primitive.
 """
+
 import hashlib
 
 from enum import Enum
