@@ -3,6 +3,7 @@ Variation of init exchange.
 
 Spec: MUST respond to known feature bits as specified in [BOLT #9](09-features.md).
 """
+
 import functools
 
 from typing import List, Any
