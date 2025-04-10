@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lnprototest"
-version = "0.0.5"
+version = "0.0.7"
 description = "Spec protocol tests for lightning network implementations"
 authors = ["Rusty Russell <rusty@blockstream.com>", "Vincenzo Palazzo <vincenzopalazzodev@gmail.com>"]
 license = "MIT"
