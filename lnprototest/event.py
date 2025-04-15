@@ -376,10 +376,9 @@ class ExpectMsg(PerConnEvent):
             if err:
                 # Format the error message to be more readable
                 error_msg = f"Expected {self.msgtype}, got {msg.messagetype.name}"
-                if hasattr(msg, 'fields'):
+                if hasattr(msg, "fields"):
                     error_msg += f": {msg.to_str()}"
                 raise EventError(self, error_msg)
-
             break
         return True
 
