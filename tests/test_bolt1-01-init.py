@@ -488,11 +488,7 @@ def test_init_advertize_option_static_remotekey(
     run_runner(runner, sequences)
 
 def test_init_advertize_option_dual_fund(runner: Runner, namespaceoverride: Any) -> None:
-    """Test dual-funding feature negotiation
-    
-    BOLT #9:
-    | 28/29  | `option_dual_fund` | Optional dual funding |
-    """
+    """Test dual-funding feature negotiation """
     namespaceoverride(pyln.spec.bolt1.namespace)
     sequences = [
         Connect(connprivkey="03"),
