@@ -486,3 +486,77 @@ def test_init_advertize_option_static_remotekey(
         ),
     ]
     run_runner(runner, sequences)
+
+def test_init_advertize_option_dual_fund(runner: Runner, namespaceoverride: Any) -> None:
+    """Test dual-funding feature negotiation
+    
+    BOLT #9:
+    | 28/29  | `option_dual_fund` | Optional dual funding |
+    """
+    namespaceoverride(pyln.spec.bolt1.namespace)
+    sequences = [
+        Connect(connprivkey="03"),
+        ExpectMsg("init"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
+        # optionally disconnect that first one
+        TryAll([], Disconnect()),
+        Connect(connprivkey="02"),
+        # If you support dual-funding, you will advertize it odd.
+        Sequence(
+            [ExpectMsg("init", if_match=functools.partial(has_feature, [29]))],
+            enable=(runner.has_option("option_dual_fund") == "odd"),
+        ),
+    ]
+    run_runner(runner, sequences)
+
+def test_init_required_option_dual_fund(runner: Runner, namespaceoverride: Any) -> None:
+    """Test required dual-funding support"""
+    namespaceoverride(pyln.spec.bolt1.namespace)
+    sequences = [
+        Connect(connprivkey="03"),
+        ExpectMsg("init"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
+        # optionally disconnect that first one
+        TryAll([], Disconnect()),
+        Connect(connprivkey="02"),
+        # If you require dual-funding, you will advertize it even.
+        Sequence(
+            [ExpectMsg("init", if_match=functools.partial(has_feature, [28]))],
+            enable=(runner.has_option("option_dual_fund") == "even"),
+        ),
+    ]
+    run_runner(runner, sequences)
+
+def test_init_reject_option_dual_fund_if_not_supported(runner: Runner, namespaceoverride: Any) -> None:
+    """Test rejection of required dual-funding when not supported"""
+    namespaceoverride(pyln.spec.bolt1.namespace)
+    sequences = [
+        Connect(connprivkey="03"),
+        ExpectMsg("init"),
+        Msg(
+            "init",
+            globalfeatures=runner.runner_features(globals=True),
+            features=runner.runner_features(),
+        ),
+        # optionally disconnect that first one
+        TryAll([], Disconnect()),
+        Connect(connprivkey="02"),
+        # If you don't support dual-funding, you will error if we require it.
+        Sequence(
+            [
+                ExpectMsg("init", if_match=functools.partial(no_feature, [28, 29])),
+                Msg("init", globalfeatures="", features=bitfield(28)),
+                ExpectDisconnect(),
+            ],
+            enable=not runner.has_option("option_dual_fund"),
+        ),
+    ]
+    run_runner(runner, sequences)
