@@ -1,19 +1,24 @@
-#! /usr/bin/python3
+import io
 import logging
 import shutil
 import tempfile
 
+import pyln
 import coincurve
 import functools
+
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, List, Union, Any, Callable
+
+from pyln.proto.message import Message
 
 from .bitfield import bitfield
 from .errors import SpecFileError
 from .structure import Sequence
 from .event import Event, MustNotMsg, ExpectMsg
-from .utils import privkey_expand
+from .utils import privkey_expand, ResolvableStr, ResolvableInt, resolve_args
 from .keyset import KeySet
-from abc import ABC, abstractmethod
-from typing import Dict, Optional, List, Union, Any, Callable
+from .namespace import namespace
 
 
 class Conn(object):
@@ -32,6 +37,74 @@ class Conn(object):
         return self.name
 
 
+class RunnerConn(Conn):
+    """
+    Default Connection implementation for a runner that use the pyln.proto
+    to open a connection over a socket.
+
+    Each connection has an internal memory to stash information
+    and keep connection state.
+    """
+
+    def __init__(
+        self,
+        connprivkey: str,
+        counterparty_pubkey: str,
+        port: int,
+        host: str = "127.0.0.1",
+    ):
+        super().__init__(connprivkey)
+        # FIXME: pyln.proto.wire should just use coincurve PrivateKey!
+        self.connection = pyln.proto.wire.connect(
+            pyln.proto.wire.PrivateKey(bytes.fromhex(self.connprivkey.to_hex())),
+            # FIXME: Ask node for pubkey
+            pyln.proto.wire.PublicKey(bytes.fromhex(counterparty_pubkey)),
+            host,
+            port,
+        )
+        self.stash: Dict[str, Dict[str, Any]] = {}
+        self.logger = logging.getLogger(__name__)
+
+    def add_stash(self, stashname: str, vals: Any) -> None:
+        """Add a dict to the stash."""
+        self.stash[stashname] = vals
+
+    def get_stash(self, event: Event, stashname: str, default: Any = None) -> Any:
+        """Get an entry from the stash."""
+        if stashname not in self.stash:
+            if default is not None:
+                return default
+            raise SpecFileError(event, "Unknown stash name {}".format(stashname))
+        return self.stash[stashname]
+
+    def recv_msg(
+        self, timeout: int = 1000, skip_filter: Optional[int] = None
+    ) -> Message:
+        """Listen on the connection for incoming message.
+
+        If the {skip_filter} is specified, the message that
+        match the filters are skipped.
+        """
+        raw_msg = self.connection.read_message()
+        msg = Message.read(namespace(), io.BytesIO(raw_msg))
+        self.add_stash(msg.messagetype.name, msg)
+        return msg
+
+    def send_msg(
+        self, msg_name: str, **kwargs: Union[ResolvableStr, ResolvableInt]
+    ) -> None:
+        """Send a message through the last connection"""
+        msgtype = namespace().get_msgtype(msg_name)
+        msg = Message(msgtype, **resolve_args(self, kwargs))
+        missing = msg.missing_fields()
+        if missing:
+            raise SpecFileError(self, "Missing fields {}".format(missing))
+        binmsg = io.BytesIO()
+        msg.write(binmsg)
+        self.connection.send_message(binmsg.getvalue())
+        # FIXME: we should listen to possible connection here
+
+
 class Runner(ABC):
     """Abstract base class for runners.
 
@@ -43,8 +116,8 @@ class Runner(ABC):
         self.config = config
         self.directory = tempfile.mkdtemp(prefix="lnpt-cl-")
         # key == connprivkey, value == Conn
-        self.conns: Dict[str, Conn] = {}
-        self.last_conn: Optional[Conn] = None
+        self.conns: Dict[str, RunnerConn] = {}
+        self.last_conn: Optional[RunnerConn] = None
         self.stash: Dict[str, Dict[str, Any]] = {}
         self.logger = logging.getLogger(__name__)
         if self.config.getoption("verbose"):
@@ -56,7 +129,7 @@ class Runner(ABC):
         """The DummyRunner returns True here, as it can't do some things"""
         return False
 
-    def find_conn(self, connprivkey: Optional[str]) -> Optional[Conn]:
+    def find_conn(self, connprivkey: Optional[str]) -> Optional[RunnerConn]:
         # Default is whatever we specified last.
         if connprivkey is None:
             return self.last_conn
@@ -65,17 +138,17 @@ class Runner(ABC):
             return self.last_conn
         return None
 
-    def add_conn(self, conn: Conn) -> None:
+    def add_conn(self, conn: RunnerConn) -> None:
         self.conns[conn.name] = conn
         self.last_conn = conn
 
-    def disconnect(self, event: Event, conn: Conn) -> None:
+    def disconnect(self, event: Event, conn: RunnerConn) -> None:
         if conn is None:
             raise SpecFileError(event, "Unknown conn")
         del self.conns[conn.name]
         self.check_final_error(event, conn, conn.expected_error, conn.must_not_events)
 
-    def check_error(self, event: Event, conn: Conn) -> Optional[str]:
+    def check_error(self, event: Event, conn: RunnerConn) -> Optional[str]:
         conn.expected_error = True
         return None
 
@@ -142,8 +215,30 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def connect(self, event: Event, connprivkey: str) -> None:
+    def connect(self, event: Event, connprivkey: str) -> RunnerConn:
         pass
+
+    def send_msg(self, msg: Message) -> None:
+        """Send a message through the last connection"""
+        missing = msg.missing_fields()
+        if missing:
+            raise SpecFileError(self, "Missing fields {}".format(missing))
+        binmsg = io.BytesIO()
+        msg.write(binmsg)
+        self.last_conn.connection.send_message(msg.getvalue())
+
+    def recv_msg(
+        self, timeout: int = 1000, skip_filter: Optional[int] = None
+    ) -> Message:
+        """Listen on the connection for incoming message.
+
+        If the {skip_filter} is specified, the message that
+        match the filters are skipped.
+        """
+        raw_msg = self.last_conn.connection.read_message()
+        msg = Message.read(namespace(), io.BytesIO(raw_msg))
+        self.add_stash(msg.messagetype.name, msg)
+        return msg
 
     @abstractmethod
     def check_final_error(
@@ -171,11 +266,11 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def recv(self, event: Event, conn: Conn, outbuf: bytes) -> None:
+    def recv(self, event: Event, conn: RunnerConn, outbuf: bytes) -> None:
         pass
 
     @abstractmethod
-    def get_output_message(self, conn: Conn, event: ExpectMsg) -> Optional[bytes]:
+    def get_output_message(self, conn: RunnerConn, event: ExpectMsg) -> Optional[bytes]:
         pass
 
     @abstractmethod
@@ -206,7 +301,7 @@ class Runner(ABC):
     def fundchannel(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         amount: int,
         feerate: int = 0,
         expect_fail: bool = False,
@@ -217,7 +312,7 @@ class Runner(ABC):
     def init_rbf(
         self,
         event: Event,
-        conn: Conn,
+        conn: RunnerConn,
         channel_id: str,
         amount: int,
         utxo_txid: str,
@@ -227,7 +322,9 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def addhtlc(self, event: Event, conn: Conn, amount: int, preimage: str) -> None:
+    def addhtlc(
+        self, event: Event, conn: RunnerConn, amount: int, preimage: str
+    ) -> None:
         pass
 
     @abstractmethod
