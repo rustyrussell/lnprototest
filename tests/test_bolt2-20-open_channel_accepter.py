@@ -211,7 +211,7 @@ def change_amount(
     return _change_amount
 
 
-@pytest.mark.skip(reason="neet to support modern dual fund channel")
+@pytest.mark.skip(reason="need to support modern dual fund channel")
 def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
     runner.add_startup_flag("experimental-dual-fund")
@@ -419,7 +419,7 @@ def test_open_accepter_no_inputs(runner: Runner, with_proposal: Any) -> None:
     run_runner(runner, test)
 
 
-@pytest.mark.skip(reason="neet to support modern dual fund channel")
+@pytest.mark.skip(reason="need to support modern dual fund channel")
 def test_open_accepter_with_inputs(runner: Runner, with_proposal: Any) -> None:
     with_proposal(dual_fund_csv)
     runner.add_startup_flag("experimental-dual-fund")
