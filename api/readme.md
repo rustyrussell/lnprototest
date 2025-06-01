@@ -13,37 +13,39 @@
 
 # API Testing
 
-### 1. Check API Health
+### Check API Health
 ```bash
 curl http://localhost:5000/health
 ```
 
-### 2. Create Nodes
-- **First Node**:
-  ```bash
-  curl -X POST http://localhost:5000/nodes -H "Content-Type: application/json"
-  ```
-- **Second Node**:
-  ```bash
-  curl -X POST http://localhost:5000/nodes -H "Content-Type: application/json"
-  ```
 
-### 3. Create a Connection
-```bash
-curl -X POST http://localhost:5000/connections -H "Content-Type: application/json" -d '{"sourceNodeId": "node-uuid-1", "targetNodeId": "node-uuid-2"}'
+### GET /messages
+Returns the latest message logs for real-time frontend updates.
+
+**Response:**
+```json
+{
+  "messages": [
+    {
+      "id": "string",
+      "from": "runner",
+      "to": "ldk",
+      "type": "init",
+      "content": { ... },
+      "timestamp": 1234567890
+    },
+    ...
+  ]
+}
 ```
 
-### 4. Send an Init Message
+### Example Usage
+
+To fetch the latest messages for the visualizer:
 ```bash
-curl -X POST http://localhost:5000/send-init -H "Content-Type: application/json" -d '{"connectionId": "conn-uuid", "globalfeatures": "00", "features": "01"}'
+curl http://localhost:5000/messages
 ```
 
-### 5. Retrieve Message History
-```bash
-curl http://localhost:5000/message-flow/conn-uuid
-```
+### Real-Time Frontend Integration
 
-### 6. Clear Message History
-```bash
-curl -X DELETE http://localhost:5000/message-flow/conn-uuid
-```
+The frontend polls this endpoint every 2 seconds to keep the UI in sync with backend events.

@@ -73,7 +73,7 @@ pytest --runner=lnprototest.clightning.Runner
 For testing with the Lightning Development Kit (LDK), follow these steps (contributed by Prakhar Saxena, LDK maintainer):
 
 1. Ensure Bitcoin Core 23.0 is installed and in your path.
-2. Create a work directory (e.g., `WORKDIR`) and clone both `lnprototest` and Prakhar’s LDK-Sample fork:
+2. Create a work directory (e.g., `WORKDIR`) and clone both `lnprototest` and Prakhar's LDK-Sample fork:
    ```bash
    mkdir WORKDIR
    cd WORKDIR
@@ -109,6 +109,17 @@ For testing with the Lightning Development Kit (LDK), follow these steps (contri
    ```
    (Replace `/path/to/WORKDIR` with your actual path.)
 
+## Real-Time Visualization
+
+The visualizer now supports near real-time updates by polling the backend for new messages every 2 seconds.
+
+- The backend exposes a `/messages` endpoint that returns the latest message logs.
+- The frontend automatically updates the message flow and connection visualization as new messages arrive.
+
+## Connection Visualization
+
+- The connection line between nodes is always visible and reflects the current connection status.
+- Message animations are layered on top of the connection line for clarity.
 
 # Further Work
 
