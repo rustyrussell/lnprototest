@@ -573,21 +573,36 @@ class ExpectDisconnect(PerConnEvent):
     this current issue.
     """
 
-    def __init__(self, connprivkey: Optional[str] = None):
+    def __init__(self, connprivkey: Optional[str] = None, ignore_error: bool = True):
         super().__init__(connprivkey)
+        self.ignore_error = ignore_error
 
     def action(self, runner: "Runner") -> bool:
         super().action(runner)
         if runner._is_dummy():
             return True
-        msg = runner.check_error(self, self.find_conn(runner))
-        logging.info(f"expecting disconnection: `{msg}`")
-        # in this case of the dummy runner we return a `Dummy error`
-        # but in this case we wan receive an None value
-        # because the connected got close before
-        if msg is None:
-            return True
-        raise EventError(self, "Peer did not disconnect")
+
+        while True:
+            msg = runner.check_error(self, self.find_conn(runner))
+            logging.info(f"expecting disconnection: `{msg}`")
+            # in this case of the dummy runner we return a `Dummy error`
+            # but in this case we wan receive an None value
+            # because the connected got close before
+            if msg is None:
+                return True
+
+            if self.ignore_error:
+                 # Check if the message is an "error" message.
+                 # runner.check_error returns a hex string.
+                 try:
+                     parsed_msg = Message.read(namespace(), io.BytesIO(bytes.fromhex(msg)))
+                     if parsed_msg.messagetype.name == "error":
+                         logging.info("Ignored error message before disconnect: {}".format(msg))
+                         continue
+                 except Exception:
+                     pass
+
+            raise EventError(self, "Peer did not disconnect, received: {}".format(msg))
 
 
 class CheckEq(Event):

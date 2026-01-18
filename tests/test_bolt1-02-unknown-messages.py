@@ -43,7 +43,6 @@ def test_unknowns_even_message(runner: Runner, namespaceoverride: Any) -> None:
         ),
         # BOLT #1:
         # A receiving node:...
-        #   - upon receiving a message of _even_, unknown type:
         #     - MUST close the connection.
         #     - MAY fail the channels.
         RawMsg(bytes.fromhex("2710")),
