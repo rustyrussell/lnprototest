@@ -592,12 +592,12 @@ class ExpectDisconnect(PerConnEvent):
                 return True
 
             if self.ignore_error:
-                 # Check if the message is an "error" message.
+                 # Check if the message is an "error" (17) or "warning" (1) message.
                  # runner.check_error returns a hex string.
                  try:
                      parsed_msg = Message.read(namespace(), io.BytesIO(bytes.fromhex(msg)))
-                     if parsed_msg.messagetype.name == "error":
-                         logging.info("Ignored error message before disconnect: {}".format(msg))
+                     if parsed_msg.messagetype.number in (1, 17):
+                         logging.info("Ignored error/warning message before disconnect: {}".format(msg))
                          continue
                  except Exception:
                      pass
