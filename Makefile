@@ -2,7 +2,7 @@
 
 PYTHONFILES := $(shell find * ! -path "build/*" ! -path "venv/*" -name '*.py')
 POSSIBLE_PYTEST_NAMES=pytest-3 pytest3 pytest
-PYTEST := $(shell for p in $(POSSIBLE_PYTEST_NAMES); do if type $$p > /dev/null; then echo $$p; break; fi done)
+PYTEST := poetry run pytest
 TEST_DIR=tests
 
 default: check-source check check-quotes
