@@ -70,7 +70,6 @@ RUN mkdir lnprototest
 COPY . lnprototest
 
 RUN cd lnprototest && \
-    poetry config virtualenvs.create false && \
     poetry install
 RUN cd lnprototest && ls -lha
 
