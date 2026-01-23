@@ -38,8 +38,8 @@ def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
         ),
         Block(blockheight=103, number=6, txs=[funding_tx]),
         RawMsg(funding.channel_announcement("103x1x0", "")),
-        # New peer connects, asking for initial_routing_sync.  We *won't* relay channel_announcement, as there is no
-        # channel_update.
+        # New peer connects, asking for initial_routing_sync.  We relay channel_announcement, even if there is no
+        # channel_update (some impls do this).
         Connect(connprivkey="05"),
         ExpectMsg("init"),
         Msg(
@@ -47,7 +47,7 @@ def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
             globalfeatures=runner.runner_features(globals=True),
             features=runner.runner_features(additional_features=[3]),
         ),
-        MustNotMsg("channel_announcement"),
+        ExpectMsg("channel_announcement", short_channel_id="103x1x0"),
         Disconnect(),
         RawMsg(
             funding.channel_update(
