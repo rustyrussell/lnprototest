@@ -12,6 +12,7 @@ from lnprototest import (
     MustNotMsg,
     Disconnect,
     Runner,
+    Sequence,
 )
 from lnprototest.utils import tx_spendable, utxo
 import time
@@ -47,7 +48,12 @@ def test_gossip_forget_channel_after_12_blocks(runner: Runner) -> None:
             globalfeatures=runner.runner_features(globals=True),
             features=runner.runner_features(additional_features=[3]),
         ),
-        ExpectMsg("channel_announcement", short_channel_id="103x1x0"),
+        # Some impls (like LDK) relay channel_announcement even without channel_update
+        # but others (like core-lightning) do not.
+        Sequence(
+            enable=not runner.__class__.__module__.endswith("clightning.clightning"),
+            events=[ExpectMsg("channel_announcement", short_channel_id="103x1x0")],
+        ),
         Disconnect(),
         RawMsg(
             funding.channel_update(
